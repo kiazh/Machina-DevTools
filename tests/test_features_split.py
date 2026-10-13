@@ -1,0 +1,117 @@
+"""Test that features.py split into domain modules preserves all methods."""
+
+from __future__ import annotations
+
+
+def test_all_feature_methods_accessible_after_split():
+    """All methods from the original features.py must be importable from sub-modules."""
+    from machina.gateway.features import METHODS
+
+    expected = {
+        "session.fork",
+        "session.delete",
+        "session.rename",
+        "session.setGoal",
+        "session.setModel",
+        "session.search",
+        "session.recall",
+        "session.recall.window",
+        "session.export",
+        "context.get",
+        "context.compress",
+        "memory.list",
+        "memory.search",
+        "memory.share",
+        "memory.add",
+        "memory.forget",
+        "memory.pending",
+        "memory.approve",
+        "memory.reject",
+        "memory.approveAll",
+        "memory.rejectAll",
+        "memory.stats",
+        "growth.get",
+        "growth.teach",
+        "growth.feedback",
+        "growth.forget",
+        "growth.installPolicy",
+        "growth.rollback",
+        "mcp.list",
+        "mcp.status",
+        "mcp.configure",
+        "mcp.remove",
+        "mcp.preview",
+        "mcp.connect",
+        "mcp.disconnect",
+        "mcp.tools",
+        "mcp.oauth.preview",
+        "mcp.oauth.start",
+        "mcp.oauth.status",
+        "mcp.oauth.url",
+        "mcp.oauth.open",
+        "mcp.oauth.cancel",
+        "mcp.oauth.forget",
+        "skills.list",
+        "skills.show",
+        "skills.learn",
+        "skills.delete",
+        "skills.curator",
+        "learning.list",
+        "learning.approve",
+        "learning.reject",
+        "config.get",
+        "secrets.list",
+        "secrets.set",
+        "secrets.clear",
+        "profile.get",
+        "profile.set",
+        "profile.list",
+        "status",
+        "agents.list",
+        "agents.save",
+        "agents.delete",
+        "agents.run",
+        "agents.history",
+        "jobs.create",
+        "jobs.list",
+        "jobs.setEnabled",
+        "jobs.resume",
+        "jobs.delete",
+        "mode.get",
+        "mode.set",
+        "mode.revoke",
+        "approvals.list",
+        "approvals.resolve",
+    }
+    assert set(METHODS) == expected
+
+
+def test_submodules_importable():
+    """Each domain module must be importable."""
+    from machina.gateway.features import agents, config, jobs, memory, secrets, sessions, skills
+
+    assert hasattr(sessions, "session_fork")
+    assert hasattr(memory, "memory_list")
+    assert hasattr(skills, "skills_list")
+    assert hasattr(agents, "agents_list")
+    assert hasattr(jobs, "jobs_create")
+    assert hasattr(config, "config_get")
+    assert hasattr(secrets, "secrets_list")
+
+
+def test_register_still_works():
+    """register() must still add all methods to a gateway."""
+    from machina.gateway.features import METHODS, register
+    from machina.gateway.server import Gateway
+
+    gw = Gateway(lambda frame: None)
+    register(gw)
+    assert set(METHODS) <= set(gw._methods)
+
+
+def test_coerce_config_value_preserved():
+    """coerce_config_value must still be accessible."""
+    from machina.gateway.features import coerce_config_value
+
+    assert coerce_config_value("max_iterations", "7") == 7
+    assert coerce_config_value("verbose", "off") is False
