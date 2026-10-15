@@ -69,6 +69,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e "Machina-Harness[dev,connectors]"
 
+      - name: Link harness artifacts for path-coupled tests
+        env:
+          MACHINA_REPO: ${{ github.workspace }}/Machina-Harness
+        run: ./bootstrap-links.sh "$MACHINA_REPO"
+
       - name: Run backend suite
         env:
           MACHINA_REPO: ${{ github.workspace }}/Machina-Harness

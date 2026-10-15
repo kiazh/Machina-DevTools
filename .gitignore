@@ -6,3 +6,15 @@ __pycache__/
 .env
 .coverage
 htmlcov/
+
+# Harness-artifact symlinks created by bootstrap-links.sh (local convenience)
+machina
+skills
+ui
+docs
+research
+tools
+scripts
+docker-compose.yml
+install.sh
+.env.example
