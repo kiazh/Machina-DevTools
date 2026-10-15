@@ -132,13 +132,25 @@ async def test_document_benchmark_real_postgres(db_pool, monkeypatch):
     from machina.rag import evaluation
     from machina.rag import pipeline as pipeline_module
     from machina.rag.pipeline import RAGConfig
+    from tests.support.repo_paths import repo_root
 
     monkeypatch.setattr("machina.db.connection.db", db_pool)
     monkeypatch.setattr(pipeline_module, "db", db_pool)
-    root = Path(__file__).resolve().parents[1]
-    dataset = json.loads((root / "tests/data/rag/machina_docs_v1.json").read_text())
-    pipeline = RAGPipeline(config=RAGConfig(enable_embeddings=False, enable_reranking=False))
-    report = await evaluation.benchmark_documents(pipeline, dataset, root)
+    project_root = Path(__file__).resolve().parents[1]
+    dataset = json.loads((project_root / "tests/data/rag/machina_docs_v1.json").read_text())
+    # The dataset's documents are harness-relative (`docs/...`). Both corpus
+    # containment checks — benchmark_documents(root=...) and the FileLoader base
+    # directory — must therefore use the harness checkout: CI happens to pass
+    # because it nests the harness inside the workspace, but a sibling checkout
+    # (the supported local layout) resolves `docs` outside the workspace root.
+    corpus_root = repo_root()
+    from machina.rag.loaders import FileLoader
+
+    pipeline = RAGPipeline(
+        loader=FileLoader(base_dir=corpus_root),
+        config=RAGConfig(enable_embeddings=False, enable_reranking=False),
+    )
+    report = await evaluation.benchmark_documents(pipeline, dataset, corpus_root)
     assert report["means"]["recall_at_k"] == 1.0
     assert report["means"]["mrr"] >= 0.5
     assert report["no_answer_false_positive_rate"] == 0
