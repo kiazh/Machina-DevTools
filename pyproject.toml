@@ -1,0 +1,18 @@
+# Machina-DevTools — pytest configuration.
+#
+# Mirrors the relevant [tool.pytest.ini_options] block from Machina-Harness'
+# pyproject.toml.  The suite itself is installed against a Machina checkout
+# (editable install or MACHINA_REPO on PYTHONPATH); this project intentionally
+# does not declare a ``machina`` dependency because the checkout is always a
+# local sibling during development and CI checks out a pinned ref.
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = [
+    "ui_integration: full UI checks against the gateway (owned by the UI CI job)",
+    "workflow_trial: optional native-versus-LangGraph research checks",
+    "db: requires the dedicated PostgreSQL test database",
+    "integration: exercises service or transport integration boundaries",
+    "load: load/concurrent integration tests (deselect with '-m \"not load\"')",
+]
