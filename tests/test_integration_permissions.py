@@ -559,7 +559,9 @@ def test_loopback_and_reuse():
 
 
 def test_no_docker_needed_for_host():
-    with open("FEATURE_LEDGER.md", encoding="utf-8") as f:
+    from tests.support.repo_paths import repo_path
+
+    with open(repo_path("FEATURE_LEDGER.md"), encoding="utf-8") as f:
         src = f.read()
     assert "No Docker needed" in src
 
@@ -1081,7 +1083,7 @@ def test_cli_mode_separate_processes():
         assert shown2.returncode == 0
 
 
-def test_launcher_propagates_mode_to_gateway(monkeypatch):
+def test_launcher_propagates_mode_to_gateway(monkeypatch, tmp_path):
     """LP-13: CLI --mode reaches the Node child (previously dropped)."""
     import types
 
@@ -1106,8 +1108,19 @@ def test_launcher_propagates_mode_to_gateway(monkeypatch):
     import shutil
 
     monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/node")
+    # launch_ui refuses to start without an npm-installed UI tree; CI checks
+    # out the harness sources but never runs npm install, so the installed
+    # state must not leak into this test. Pin a stub tree via the supported
+    # MACHINA_UI_DIR override and drive the mode-propagation path itself.
+    ui = tmp_path / "ui"
+    (ui / "src").mkdir(parents=True)
+    (ui / "src" / "main.ts").write_text("// stub entry\n", encoding="utf-8")
+    (ui / "node_modules" / "@earendil-works" / "pi-tui").mkdir(parents=True)
+    monkeypatch.setenv("MACHINA_UI_DIR", str(ui))
+
     rc = launcher.launch_ui(mode="full")
     assert rc == 0
+    assert str(ui.resolve() / "src" / "main.ts") in seen["args"]
     assert "--mode" in seen["args"] and "full" in seen["args"]
 
 

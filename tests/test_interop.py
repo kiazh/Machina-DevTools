@@ -1164,12 +1164,14 @@ def test_cli_interop_setup_invalid_scope_exits_2():
 
 
 def test_new_flags_are_documented_in_help():
+    from tests.support.ansi import strip_ansi
+
     setup_help = runner.invoke(cli.app, ["setup", "--help"])
     assert setup_help.exit_code == 0, setup_help.output
-    flat = " ".join(setup_help.output.split())
+    flat = " ".join(strip_ansi(setup_help.output).split())
     assert "--interop" in flat and "MACHINA_INTEROP" in flat
 
     interop_help = runner.invoke(cli.app, ["interop", "setup", "--help"])
     assert interop_help.exit_code == 0, interop_help.output
-    flat = " ".join(interop_help.output.split())
+    flat = " ".join(strip_ansi(interop_help.output).split())
     assert "--mode" in flat and "auto|all|none" in flat and "--no-prompt" in flat

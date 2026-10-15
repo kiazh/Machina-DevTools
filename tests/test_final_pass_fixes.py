@@ -144,11 +144,10 @@ def test_docker_context_and_docs_handle_telemetry_state():
     """N5: hatch force-include can't exclude telemetry from wheels (verified),
     so the enforced contract is: docker contexts prune it and pyproject
     documents the limitation honestly."""
-    from pathlib import Path
+    from tests.support.repo_paths import repo_path
 
-    root = Path(__file__).resolve().parents[1]
-    dockerignore = (root / ".dockerignore").read_text(encoding="utf-8")
+    dockerignore = repo_path(".dockerignore").read_text(encoding="utf-8")
     assert "skills/telemetry.json" in dockerignore
     assert "skills/telemetry.json.lock" in dockerignore
-    pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
+    pyproject = repo_path("pyproject.toml").read_text(encoding="utf-8")
     assert "force-include bypasses" in pyproject, "limitation must be documented, not dead config"

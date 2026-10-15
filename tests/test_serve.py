@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 from typer.testing import CliRunner
 
 from machina.cli import app
+from tests.support.ansi import strip_ansi
 
 runner = CliRunner()
 
@@ -24,9 +25,12 @@ class TestServeCommand:
         """The serve command shows help with all options."""
         result = runner.invoke(app, ["serve", "--help"])
         assert result.exit_code == 0
-        assert "--host" in result.output
-        assert "--port" in result.output
-        assert "--reload" in result.output
+        # GITHUB_ACTIONS flips typer into styled rendering; assert on the
+        # visible text so the options are checked regardless of ANSI styling.
+        plain = strip_ansi(result.output)
+        assert "--host" in plain
+        assert "--port" in plain
+        assert "--reload" in plain
 
     @patch("uvicorn.run")
     @patch("machina.api.app.create_app")

@@ -5,11 +5,14 @@ Regression pins for the infra/cluster audit (INFRA-B1/M1/M2/M4, m1/m2/m3/m5/n5).
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
-ROOT = Path(__file__).resolve().parents[1]
+from tests.support.repo_paths import repo_root
+
+# Every artifact pinned here (Dockerfile.sandbox, installer, CI config,
+# dependabot, compose) lives in the Machina checkout under test; this
+# repository only symlinks a subset of them (bootstrap-links.sh).
+ROOT = repo_root()
 
 
 def test_sandbox_dockerfile_matches_current_package_layout():

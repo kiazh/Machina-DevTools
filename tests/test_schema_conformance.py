@@ -8,6 +8,7 @@ from pathlib import Path
 import asyncpg
 import pytest
 
+from tests.support.repo_paths import repo_path
 from tests.support.schema import isolated_schema
 
 pytestmark = [pytest.mark.integration, pytest.mark.db]
@@ -170,16 +171,44 @@ async def test_fresh_schema_fks_indexes_and_projections(db_pool):
         )
 
 
-def static_queries():
+# Modules whose literal DML targets tables that are created at runtime, never
+# by schema.sql, and therefore can never compile against a fresh isolated
+# schema:
+#   * research/workflow_trial.py + research/workflow_benchmark.py are the
+#     optional native-vs-LangGraph approval trial (deselected in CI via the
+#     `workflow_trial` marker). workflow_trial_runs / workflow_trial_effects
+#     are created by the trial's own setup() DDL, and the LangGraph path
+#     additionally owns its checkpointer tables (checkpoints,
+#     checkpoint_blobs, checkpoint_writes, checkpoint_migrations) through
+#     langgraph-checkpoint-postgres' AsyncPostgresSaver.setup().
+# The workflow_trial suite (workflow-trial extra installed) is what covers
+# these statements; the schema scan skips them by explicit path only.
+_LANGGRAPH_OWNED_SOURCES = (
+    "research/workflow_trial.py",
+    "research/workflow_benchmark.py",
+)
+
+
+def static_queries(root: Path | None = None, *, include_langgraph_owned: bool = False):
     """Complete literal SQL passed to the database, excluding dynamic builders.
 
     SQLite-dialect statements are skipped per source file: a file that uses
     the sqlite3 module may contain ``?`` placeholders and SQLite-only syntax,
     which can never compile against PostgreSQL. The skip is file-scoped so a
     Postgres file using JSONB ``?`` operators is still scanned.
+
+    ``_LANGGRAPH_OWNED_SOURCES`` are skipped by explicit path: their tables are
+    created at runtime, not by ``schema.sql`` (see the constant's comment).
+    ``include_langgraph_owned=True`` disables that skip so the exclusion can be
+    controlled; the default is the production scan.
     """
-    root = Path(__file__).resolve().parents[1] / "machina"
+    root = root if root is not None else repo_path("machina")
     for path in root.rglob("*.py"):
+        if (
+            not include_langgraph_owned
+            and path.relative_to(root).as_posix() in _LANGGRAPH_OWNED_SOURCES
+        ):
+            continue
         source = path.read_text(encoding="utf-8")
         tree = ast.parse(source)
         sqlite_dialect = "sqlite3" in source
@@ -247,3 +276,45 @@ async def test_static_python_sql_compiles_against_schema(db_pool):
                     errors.append(f"{location}: {type(error).__name__}")
         assert count >= 100, "SQL discovery stopped covering production queries"
         assert errors == [], errors
+
+
+async def test_langgraph_owned_exclusion_control(db_pool, tmp_path):
+    """Control for the langgraph-owned exclusion above — not a weakening.
+
+    Guards three properties: the exclusion names real files (no stale skip
+    hiding a moved module), the excluded files do contribute literal DML when
+    the skip is disabled (so the exclusion is what makes the scan pass), and
+    the same ``prepare`` gate still rejects a genuinely undefined table in
+    product-style SQL scanned by the very same discoverer.
+    """
+    root = repo_path("machina")
+    for relative in _LANGGRAPH_OWNED_SOURCES:
+        assert (root / relative).is_file(), f"stale exclusion (file moved?): {relative}"
+
+    excluded_names = tuple(Path(relative).name + ":" for relative in _LANGGRAPH_OWNED_SOURCES)
+    without_skip = [
+        location
+        for location, _ in static_queries(include_langgraph_owned=True)
+        if location.startswith(excluded_names)
+    ]
+    assert without_skip, "excluded modules contribute no SQL; the exclusion is stale"
+    assert [
+        location for location, _ in static_queries() if location.startswith(excluded_names)
+    ] == [], "langgraph-owned sources leaked back into the schema scan"
+
+    (tmp_path / "synthetic_product_module.py").write_text(
+        "async def run(conn):\n"
+        "    return await conn.execute('SELECT 1 FROM table_that_is_not_in_the_schema')\n",
+        encoding="utf-8",
+    )
+    scanned = list(static_queries(tmp_path))
+    assert [query for _, query in scanned] == [
+        "SELECT 1 FROM table_that_is_not_in_the_schema"
+    ]
+
+    async with (
+        isolated_schema(db_pool) as (_, database),
+        database.acquire() as connection,
+    ):
+        with pytest.raises(asyncpg.UndefinedTableError):
+            await connection.prepare(scanned[0][1])
