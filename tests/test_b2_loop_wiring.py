@@ -552,6 +552,50 @@ async def test_reprojection_is_pure_and_prefetches_lookups_before_projecting(
     assert first.request_tokens <= first.effective_budget
 
 
+# ─── §14.3: instruction text is never dropped or demoted ────────────────────
+
+
+@pytest.mark.asyncio
+async def test_instruction_survives_projection_byte_for_byte_and_is_not_demoted(
+    tmp_path, monkeypatch
+):
+    """A projected request keeps its instruction message byte-for-byte.
+
+    The current turn's instruction is the first ``required`` unit. Even when
+    the payload is over budget and older units are projected to verified views,
+    the instruction must survive verbatim and render *ahead* of derived
+    scope/state pins (read-only scope here) — projection can never drop or
+    demote instruction text behind non-governing pins (§14.3).
+    """
+    messages = _corpus_messages("multi_round")
+    instruction = messages[0]  # the current turn's instruction (required unit)
+    assert instruction["role"] == "system" and "tool_calls" not in instruction
+
+    monkeypatch.setattr("machina.core.request_gate.artifact_store", _VerifiedLookupOnly())
+    full = _count(messages, [], _RejectingProvider())
+    _freeze_budget(monkeypatch, full - 100)  # force a reduction
+    config.set("request_projection_enabled", True)
+
+    # This request carries a derived (non-governing) read-only-scope pin.
+    gate = await evaluate_request(
+        messages,
+        session=Session(id=uuid.uuid4()),
+        provider=_RejectingProvider(),
+        tool_defs=[],
+        session_id=uuid.uuid4(),
+        agent_id="harness",
+        user_message="Where is the persona stored?",
+    )
+
+    assert gate.failure is None and gate.projected is True
+    # Instruction is byte-for-byte and first; the derived pin follows it.
+    assert gate.messages[0] == instruction
+    assert dict(instruction) in [dict(m) for m in gate.messages]
+    assert gate.messages[1] == {"role": "system", "content": "operation_scope=read-only"}
+    # It is a real projection, not a passthrough: older rounds became views.
+    assert any("[machina view:" in str(m.get("content", "")) for m in gate.messages)
+
+
 @pytest.mark.asyncio
 async def test_seam_keeps_provider_native_blocks_protected(tmp_path, monkeypatch):
     native = [{"type": "thinking", "thinking": "signed", "signature": "sig-b2"}]
