@@ -104,13 +104,25 @@ class TestLLMChaos:
     async def test_agent_handles_invalid_tool_calls(self, mock_session, tool_call):
         """Agent should not crash on malformed, unnamed, or unknown tool calls."""
         provider = AsyncMock()
+        # The agent is unbounded by design (stagnation/window terminators only),
+        # so the provider must finish after the invalid-tool evidence lands.
+        # Repeating this exact request forever spins until the context window
+        # cap, which is what made the full CI selection appear hung.
         provider.complete = AsyncMock(
-            return_value=LLMResponse(
-                content="",
-                model="test-model",
-                usage={"total_tokens": 5},
-                tool_calls=[tool_call],
-            )
+            side_effect=[
+                LLMResponse(
+                    content="",
+                    model="test-model",
+                    usage={"total_tokens": 5},
+                    tool_calls=[tool_call],
+                ),
+                LLMResponse(
+                    content="Handled the invalid tool call.",
+                    model="test-model",
+                    usage={"total_tokens": 5},
+                    tool_calls=[],
+                ),
+            ]
         )
 
         with patch("machina.core.agent.session_manager") as mock_sm:
@@ -841,21 +853,32 @@ class TestConcurrentChaos:
             return "done"
 
         provider = AsyncMock()
+        # Bounded like the sibling chaos tests: answer with the tool call once,
+        # then finish. A constant tool-call mock spins the unbounded agent loop
+        # until the context window cap (which stalled the full CI selection).
         provider.complete = AsyncMock(
-            return_value=LLMResponse(
-                content="",
-                model="test",
-                usage={"total_tokens": 5},
-                tool_calls=[
-                    {
-                        "id": "call_1",
-                        "function": {
-                            "name": "concurrent_tool",
-                            "arguments": json.dumps({"delay": 0.01}),
-                        },
-                    }
-                ],
-            )
+            side_effect=[
+                LLMResponse(
+                    content="",
+                    model="test",
+                    usage={"total_tokens": 5},
+                    tool_calls=[
+                        {
+                            "id": "call_1",
+                            "function": {
+                                "name": "concurrent_tool",
+                                "arguments": json.dumps({"delay": 0.01}),
+                            },
+                        }
+                    ],
+                ),
+                LLMResponse(
+                    content="Concurrent tool execution complete.",
+                    model="test",
+                    usage={"total_tokens": 5},
+                    tool_calls=[],
+                ),
+            ]
         )
 
         with patch("machina.core.agent.session_manager") as mock_sm:
