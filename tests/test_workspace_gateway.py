@@ -301,7 +301,11 @@ async def test_document_flow_and_validation(tmp_path):
         gw, {"workspaceId": wid, "uri": uri, "languageId": "python", "version": 1, "text": "x = 1\n"}
     )
     assert opened["acceptedVersion"] == 1
-    assert opened["state"] == "missing"  # no server manager is a truthful state
+    # Trusted open attaches a real manager, so a python document starts the
+    # server lazily: never "ready" before the handshake completes, and an
+    # environment without the binary stays honest with "missing".
+    assert opened["state"] in {"starting", "initializing", "missing"}
+    assert opened["state"] != "ready"
     assert isinstance(opened["serverGeneration"], int)
 
     changed = await ws.workspace_document_change(
@@ -384,6 +388,10 @@ async def test_document_flow_and_validation(tmp_path):
             await ws.workspace_document_change(gw, params)
         assert error.value.code == INVALID_PARAMS
 
+    # The lazy chain may have spawned a server; retire it bounded.
+    gw.workspace_service.close()
+    await gw.workspace_service.wait_stopped()
+
 
 async def test_document_stale_epoch_refused(tmp_path):
     gw, opened, wid = await _opened(tmp_path)
@@ -435,15 +443,16 @@ async def test_intelligence_without_manager_is_truthful(tmp_path):
 
 
 async def test_lsp_status_and_control_without_manager(tmp_path):
-    gw, _, wid = await _opened(tmp_path)
+    # Untrusted workspaces never get language servers (plan §14): the truthful
+    # missing contract now lives on this path, not on the trusted default.
+    gw, _, wid = await _opened(tmp_path, trust=False)
     assert await ws.workspace_lsp_status(gw, {"workspaceId": wid}) == {"servers": []}
 
-    started = await ws.workspace_lsp_control(
+    refused = await ws.workspace_lsp_control(
         gw, {"workspaceId": wid, "action": "start", "profile": "python"}
     )
-    assert started["state"] == "missing"
-    assert started["action"] == "start"
-    assert started["profile"] == "python"
+    assert refused["refused"]["reason"] == "denied"
+    assert "trusted" in refused["refused"]["message"]
 
     for params in (
         {"workspaceId": wid, "action": "install", "profile": "python"},
