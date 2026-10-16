@@ -140,8 +140,12 @@ def test_repomap_has_no_module_level_machina_imports():
 
 # Current census of module-level machina.core import statements per leaf
 # package (see DEVIATION above). Ratchets down, never up.
+# Token-efficiency pass (2026-10-16): tools 21 -> 23 for the artifact tools
+# module (tools/artifacts.py): +2 module-level core bindings
+# (machina.core.artifacts for the store/handles, machina.core.exceptions for
+# ToolError), matching the session_recall transcript-tool idiom.
 _CORE_IMPORT_CEILINGS = {
-    "tools": 21,
+    "tools": 23,
     "memory": 14,
     "permissions": 1,
     "skills": 4,
@@ -157,7 +161,7 @@ _CORE_IMPORT_CEILINGS = {
 # machina/research/benchmark.py's architecture section (round-2 review N6:
 # the hand-mirrored literal drifted once already). Moves only with the delta
 # table documented inside test_deferred_import_count_ratchet.
-DEFERRED_IMPORT_CAP = 721
+DEFERRED_IMPORT_CAP = 725
 
 
 def test_module_level_core_imports_only_shrink():
@@ -292,6 +296,26 @@ def test_deferred_import_count_ratchet():
     #     prepare_query_embedding seam). New modules +0 (firecrawl_lifecycle
     #     imports at module level; streaming.py unchanged).
     #   Census 721, cap 721.
+    #   Token-efficiency pass (2026-10-16, measured post-``ruff format``):
+    #   721 -> 722 (+1). The new modules (tool_views, projection, artifacts,
+    #   pricing, provider/prompt_cache, provider/usage_map) bind everything at
+    #   module level; the ledger's per-provider usage_map bindings were
+    #   hoisted. The remaining +1 is core/prompt.py's output_policy_section,
+    #   which binds config inside the function to match that file's
+    #   established lazy-import idiom (turn_model and the section builders do
+    #   the same).
+    #   Pinned now-playing bar (2026-10-16, TUI): 722 -> 724 (+2) — the
+    #   gateway nowplaying handlers bind ``machina.core.nowplaying`` inside
+    #   each handler so the ctypes/osascript detection module (macOS-only
+    #   private framework loading) is imported lazily, never at gateway
+    #   boot. core/nowplaying.py itself imports at module level.
+    #   A1 catalog metadata (2026-10-16, deterministic-skills): 724 -> 725
+    #   (+1). skills/registry.py reaches the new skills/metadata.py module
+    #   through one function-level helper (``_metadata_module``) in
+    #   SkillParser.parse / SkillRegistry.load_all / update_skill, keeping the
+    #   registry's module-level machina imports pinned to the
+    #   ports+observability seam (test_architecture_pairs) while paying a
+    #   single census unit.
     # Procedure: this number may only move with a delta table like the above
     # in this comment; silent growth fails the suite by design.
     total = sum(_deferred_import_count(p) for p in ROOT.rglob("*.py"))
@@ -459,8 +483,34 @@ def test_deferred_import_count_ratchet():
 #         recognized before choices and raised as typed ProviderError while
 #         preserving partial-output accounting (H12).
 #     Provider package total 5003 -> 5015 by exactly this delta.
+#   Token-efficiency pass (2026-10-16, measured post-``ruff format`` on the
+#   settled tree):
+#     +22 core/agent.py (2269 -> 2291): bounded tool views at the append seam
+#         (call + artifact handle on the durable chunk payload, +13), the
+#         accepted-completion attribution call at both success exits (+4),
+#         the projection call replacing the removed inline evidence block
+#         (+2), imports and comments (+3). All heavy logic lives in the new
+#         core/tool_views.py and core/projection.py per the extraction
+#         pattern (same discipline as the A5 turn_flow move).
+#     Provider package total 4986 (measured) -> 5447 (+461), measured on
+#     the settled tree after the review fixes:
+#       +371 new core/provider/prompt_cache.py (cache capability profiles +
+#            the breakpoint machinery moved out of transport.py + the
+#            Anthropic/OpenRouter application helpers),
+#       +221 new core/provider/usage_map.py (provider usage normalization,
+#            including the partial-partition handling from review),
+#       -108 core/provider/transport.py (382 -> 274; breakpoint section
+#            relocated to prompt_cache.py, re-exported for old import paths),
+#       -11 openrouter.py, -6 direct.py, -4 anthropic.py, -2 chatgpt.py,
+#       -2 copilot.py (usage normalization via the shared map removed inline
+#            dict rebuilding; openrouter's duplicated cache wiring coalesced
+#            into openrouter_cache_wiring; openrouter's non-stream response
+#            now passes the parsed usage mapping through), +2 ollama.py.
+#       Per-file ceilings hold without exceptions: anthropic 574 <= 580,
+#       chatgpt 682 <= 684, copilot 441 <= 443, direct 342 <= 348,
+#       openrouter 597 <= 608, transport 274 <= 382, ollama 369 <= 388.
 GOD_FILE_CEILINGS: tuple[tuple[str, int], ...] = (
-    ("core/agent.py", 2269),
+    ("core/agent.py", 2291),
     ("core/compression.py", 999),
     ("core/provider/__init__.py", 53),
     ("core/provider/_log.py", 10),
@@ -504,7 +554,7 @@ def test_god_file_ceilings_only_fall(relative_path, ceiling):
 # 4780 = 5501 - 720 for the vendor-compliance removal (claude.py + gemini.py
 #        deleted) - 8 (factory.py branches/imports) - 2 (__init__.py exports)
 #        + 9 (specs.py: the Kimi Code spec + registry comment, same wave).
-_PROVIDER_PACKAGE_TOTAL_CEILING = 5015
+_PROVIDER_PACKAGE_TOTAL_CEILING = 5447
 
 
 def test_provider_package_total_only_falls():
