@@ -243,3 +243,162 @@ async def test_default_sized_artifact_page_passes_through():
     )
     assert view == page
     assert artifact_id is None
+
+
+# ─── 6. DeepSeek hit/miss reconciliation against the prompt total ───────────
+
+
+def test_openai_hit_only_reconciles_uncached_to_prompt_total():
+    usage = parse_openai_usage(
+        {
+            "prompt_tokens": 1000,
+            "completion_tokens": 10,
+            "total_tokens": 1010,
+            "prompt_cache_hit_tokens": 800,
+        }
+    )
+    assert usage["uncached_input_tokens"] == 200  # prompt - hit
+    assert usage["cache_read_tokens"] == 800
+    assert usage["prompt_tokens"] == 1000
+    assert usage["usage_basis"] == "provider"
+    # Degenerate hit reading: the partition still never exceeds the total.
+    degenerate = parse_openai_usage(
+        {"prompt_tokens": 100, "completion_tokens": 1, "prompt_cache_hit_tokens": 200}
+    )
+    assert degenerate["uncached_input_tokens"] == 0
+    assert degenerate["cache_read_tokens"] == 100
+    assert degenerate["prompt_tokens"] == 100
+
+
+def test_openai_miss_only_derives_cache_read_from_prompt_total():
+    # Review finding: the miss-only branch used to keep miss as the whole
+    # prompt (200 here) and discard the provider's 1000-token total, while the
+    # hit-only branch derived its missing side from that total.
+    usage = parse_openai_usage(
+        {
+            "prompt_tokens": 1000,
+            "completion_tokens": 10,
+            "total_tokens": 1010,
+            "prompt_cache_miss_tokens": 200,
+        }
+    )
+    assert usage["uncached_input_tokens"] == 200
+    assert usage["cache_read_tokens"] == 800  # prompt - miss
+    assert usage["prompt_tokens"] == 1000
+    assert usage["usage_basis"] == "provider"
+    # A derived split never upgrades an estimate to a provider bill.
+    estimate = parse_openai_usage(
+        {"prompt_tokens": 1000, "completion_tokens": 10, "prompt_cache_miss_tokens": 200},
+        estimated=True,
+    )
+    assert estimate["usage_basis"] == "local_estimate"
+    # A miss reading larger than the total clamps to it instead of exceeding.
+    degenerate = parse_openai_usage(
+        {"prompt_tokens": 100, "completion_tokens": 1, "prompt_cache_miss_tokens": 200}
+    )
+    assert degenerate["uncached_input_tokens"] == 100
+    assert degenerate["cache_read_tokens"] == 0
+    assert degenerate["prompt_tokens"] == 100
+
+
+def test_openai_consistent_hit_miss_split_is_copied_verbatim():
+    usage = parse_openai_usage(
+        {
+            "prompt_tokens": 1000,
+            "completion_tokens": 10,
+            "total_tokens": 1010,
+            "prompt_cache_hit_tokens": 800,
+            "prompt_cache_miss_tokens": 200,
+        }
+    )
+    assert usage["uncached_input_tokens"] == 200
+    assert usage["cache_read_tokens"] == 800
+    assert usage["prompt_tokens"] == 1000
+    assert usage["usage_basis"] == "provider"
+
+
+def test_openai_inconsistent_hit_miss_reconciles_to_prompt_total():
+    # Over-reported split (800 + 300 vs 1000): the reported miss bounds the
+    # cache read, so the partition never exceeds the provider's total and the
+    # conservative uncached side keeps the provider's own figure.
+    over = parse_openai_usage(
+        {
+            "prompt_tokens": 1000,
+            "completion_tokens": 10,
+            "total_tokens": 1110,
+            "prompt_cache_hit_tokens": 800,
+            "prompt_cache_miss_tokens": 300,
+        }
+    )
+    assert over["uncached_input_tokens"] == 300
+    assert over["cache_read_tokens"] == 700  # min(hit, prompt - miss)
+    assert over["prompt_tokens"] == 1000
+    assert over["total_tokens"] == 1110
+    assert over["usage_basis"] == "provider"
+
+    # Under-reported split (800 + 100 vs 1000): the explicit hit survives and
+    # the unaccounted remainder of the total joins the uncached side.
+    under = parse_openai_usage(
+        {
+            "prompt_tokens": 1000,
+            "completion_tokens": 10,
+            "total_tokens": 1010,
+            "prompt_cache_hit_tokens": 800,
+            "prompt_cache_miss_tokens": 100,
+        }
+    )
+    assert under["uncached_input_tokens"] == 200
+    assert under["cache_read_tokens"] == 800
+    assert under["prompt_tokens"] == 1000
+    for usage in (over, under):
+        assert (
+            usage["uncached_input_tokens"] + usage["cache_read_tokens"] == usage["prompt_tokens"]
+        )
+
+
+def test_openai_cached_tokens_only_shape_stays_byte_identical():
+    # The `prompt_tokens_details` path is untouched by the hit/miss
+    # reconciliation: pin the complete dict (legacy keys + split + basis).
+    usage = parse_openai_usage(
+        {
+            "prompt_tokens": 1000,
+            "completion_tokens": 10,
+            "total_tokens": 1010,
+            "prompt_tokens_details": {"cached_tokens": 800},
+        }
+    )
+    assert usage == {
+        "prompt_tokens": 1000,
+        "completion_tokens": 10,
+        "total_tokens": 1010,
+        "uncached_input_tokens": 200,
+        "cache_read_tokens": 800,
+        "cache_reported": True,
+        "usage_basis": "provider",
+    }
+
+
+def test_openai_without_cache_fields_makes_no_basis_claim():
+    usage = parse_openai_usage({"prompt_tokens": 7, "completion_tokens": 3, "total_tokens": 10})
+    assert usage == {"prompt_tokens": 7, "completion_tokens": 3, "total_tokens": 10}
+    assert "cache_reported" not in usage
+    assert "usage_basis" not in usage  # no cache claim means no basis claim
+
+
+def test_openai_hit_miss_without_prompt_total_keeps_verbatim_fields():
+    # No prompt total: the reported fields are kept verbatim and the unknown
+    # side stays missing (never a fabricated zero).
+    both = parse_openai_usage(
+        {
+            "completion_tokens": 10,
+            "prompt_cache_hit_tokens": 800,
+            "prompt_cache_miss_tokens": 200,
+        }
+    )
+    assert both["uncached_input_tokens"] == 200
+    assert both["cache_read_tokens"] == 800
+    assert both["prompt_tokens"] == 1000
+    miss_only = parse_openai_usage({"completion_tokens": 10, "prompt_cache_miss_tokens": 200})
+    assert miss_only["uncached_input_tokens"] == 200
+    assert miss_only["prompt_tokens"] == 200
+    assert "cache_read_tokens" not in miss_only
