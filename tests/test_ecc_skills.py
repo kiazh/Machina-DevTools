@@ -23,7 +23,7 @@ def test_curated_ecc_skills_are_mandatory_even_with_local_override(tmp_path, mon
 
 
 def test_ecc_router_and_budget():
-    from machina.skills.runtime import automatic_skill_context, rank_skills
+    from machina.skills.runtime import automatic_skill_context, automatic_skills
 
     skills = SkillRegistry()
     skills.load_all()
@@ -33,8 +33,8 @@ def test_ecc_router_and_budget():
         ("Design a FastAPI service", "ecc-fastapi-patterns"),
         ("Review API authentication security vulnerabilities", "ecc-security-review"),
     ]:
-        assert expected in [s.name for s in rank_skills(skills, query)[:3]]
-    assert not rank_skills(skills, "hello thanks")
+        assert expected in [s.name for s in automatic_skills(skills, query)[:3]]
+    assert not automatic_skills(skills, "hello thanks")
     from machina.core.assembler import get_token_count
 
     text = automatic_skill_context(
@@ -159,7 +159,11 @@ async def test_default_skills_reach_first_provider_call(streaming, monkeypatch):
         ).content == "Done"
     prompt = provider.calls[0]["messages"][0]["content"]
     assert "ecc-python-testing" in prompt
-    assert "# Python Testing" in prompt
+    # A1 enrichment sidecars give the ECC routing anchors declared sections, so
+    # a no-stage request now gets stage-honest disclosure (bootstrap + locators)
+    # instead of the old whole-body excerpt. The automatic context still reaches
+    # the first provider call; assert its marker rather than the retired body.
+    assert "## Automatic skills" in prompt
     assert provider.calls[0]["tools"] == []
 
 
@@ -244,9 +248,9 @@ def test_skill_list_description_discourages_catalog_enumeration():
     ],
 )
 def test_representative_ecc_routing(query, expected):
-    from machina.skills.runtime import rank_skills
+    from machina.skills.runtime import automatic_skills
 
-    assert expected in [s.name for s in rank_skills(SkillRegistry(), query)[:3]]
+    assert expected in [s.name for s in automatic_skills(SkillRegistry(), query)[:3]]
 
 
 def test_bundled_names_cannot_be_shadowed_but_derived_names_survive(tmp_path, monkeypatch):
@@ -280,17 +284,20 @@ def test_builtin_curation_and_restricted_context(tmp_path, monkeypatch):
     )
     assert "ecc-python-testing" in text
     assert "skill_read" not in text and "skill_list" not in text and "skill_resource" not in text
-    assert "full instructions at" in text
+    # Enriched section-bearing skills no longer take the whole-body excerpt
+    # path, so the restricted pointer is the header line that names authorized
+    # tools for further files, not the retired whole-body "full instructions at".
+    assert "use authorized tools for further files" in text
 
 
 def test_explicit_local_trigger_wins_without_a_technology_keyword(tmp_path):
-    from machina.skills.runtime import rank_skills
+    from machina.skills.runtime import automatic_skills
 
     skills = SkillRegistry(tmp_path)
     skills.create_skill(
         "python-deploy", "A deployment workflow", "Deploy carefully", triggers=["deploy"]
     )
-    assert [s.name for s in rank_skills(skills, "Deploy our service")] == ["python-deploy"]
+    assert [s.name for s in automatic_skills(skills, "Deploy our service")] == ["python-deploy"]
 
 
 @pytest.mark.asyncio

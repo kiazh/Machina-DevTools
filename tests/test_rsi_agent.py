@@ -7,24 +7,31 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from machina.skills.registry import Skill
-from machina.skills.runtime import SkillIndex
 
+def test_learned_skill_weights_only_reorder_relevant_candidates(tmp_path):
+    """Learned weights reorder relevant candidates; they never fabricate one.
 
-def test_learned_skill_weights_only_reorder_relevant_candidates():
-    skills = [
-        Skill(name, "Probe workflow checks", ["probe"], "inspect and verify", "unused")
-        for name in ("alpha-probe", "beta-probe")
-    ]
-    skills.append(Skill("rust-patterns", "Rust workflow checks", [], "rust", "unused"))
-    index = SkillIndex(skills)
-    ranked = index.rank(
-        "probe", weights={"beta-probe": 1.2, "alpha-probe": 0.8, "rust-patterns": 100000}
+    Exercised through the canonical automatic selector (the legacy
+    ``SkillIndex.rank`` unit was deleted in A2c). Weights stay a bounded
+    preference (spec §9.2) — they cannot make an irrelevant skill eligible.
+    """
+    from machina.skills.registry import SkillRegistry
+    from machina.skills.runtime import automatic_skills
+
+    reg = SkillRegistry(tmp_path)
+    reg.create_skill("alpha-probe", "Probe workflow checks", "inspect and verify", triggers=["probe"])
+    reg.create_skill("beta-probe", "Probe workflow checks", "inspect and verify", triggers=["probe"])
+    reg.create_skill("rust-patterns", "Rust workflow checks", "rust")
+
+    ranked = automatic_skills(
+        reg, "probe", weights={"beta-probe": 1.2, "alpha-probe": 0.8, "rust-patterns": 100000}
     )
     assert [skill.name for skill in ranked] == ["beta-probe", "alpha-probe"]
-    requested = index.rank("alpha-probe probe", weights={"beta-probe": 100000, "alpha-probe": 0.01})
+    requested = automatic_skills(
+        reg, "alpha-probe probe", weights={"beta-probe": 100000, "alpha-probe": 0.01}
+    )
     assert requested[0].name == "alpha-probe"
-    assert index.rank("hello", weights={"rust-patterns": 100000}) == []
+    assert automatic_skills(reg, "hello", weights={"rust-patterns": 100000}) == []
 
 
 def test_informational_questions_do_not_invent_an_action_strategy():

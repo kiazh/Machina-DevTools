@@ -9,9 +9,10 @@
   failure never breaks turns), advisory-only complexity (no delegation
   change), and stagnation-only halts (productive loops stay unbounded in
   both run and run_stream).
-- Preselect ranking parity is proved (cache == ports == direct) while the
-  inline rank call site is explicitly NOT replaced (ownership: workflow.py
-  is not S3-owned; complexity fan-out stays advisory).
+- Preselect ranking parity is proved (cache == ports == canonical) and the
+  legacy inline ``rank_skills`` call site in workflow.py is now replaced by the
+  canonical ``automatic_skills`` selector (A2c): there is one ranking
+  implementation, and complexity fan-out stays advisory.
 """
 
 from __future__ import annotations
@@ -179,14 +180,14 @@ async def test_complexity_advisory_changes_no_delegation():
     assert agent._last_complexity["level"] == "subagents"  # recommended, not executed
 
 
-def test_preselect_parity_holds_but_inline_call_not_replaced(tmp_path):
-    """Ranking parity proved; replacement deferred (workflow.py not S3-owned)."""
+def test_preselect_parity_holds_and_inline_call_is_canonical(tmp_path):
+    """Preselect/ports/automatic parity; workflow.py has no legacy rank call."""
     import pathlib
 
     from machina.controller.preselect import SkillPreselectCache
     from machina.skills import ports
     from machina.skills.registry import SkillRegistry
-    from machina.skills.runtime import rank_skills as direct_rank
+    from machina.skills.runtime import automatic_skills as direct_rank
 
     reg = SkillRegistry(tmp_path)
     reg.create_skill(
@@ -198,11 +199,12 @@ def test_preselect_parity_holds_but_inline_call_not_replaced(tmp_path):
     cache = SkillPreselectCache(reg)
     for query in ("how do I run python testing with pytest?", "deploy the docker service"):
         assert [s.name for s in cache.rank(query)] == [
-            s.name for s in ports.rank_skills(reg, query)
+            s.name for s in ports.automatic_skills(reg, query)
         ]
         assert [s.name for s in cache.rank(query)] == [s.name for s in direct_rank(reg, query)]
     source = pathlib.Path("machina/skills/workflow.py").read_text()
-    assert "from machina.skills.runtime import" in source  # inline site untouched
+    assert "automatic_skills" in source
+    assert "rank_skills" not in source  # legacy inline site removed (A2c)
 
 
 # --- (d) stagnation mapping + halts ----------------------------------------------

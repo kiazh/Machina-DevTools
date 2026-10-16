@@ -24,7 +24,7 @@ import socket
 import pytest
 
 from machina.skills.registry import Skill, SkillRegistry
-from machina.skills.runtime import rank_skills, search_skills
+from machina.skills.runtime import automatic_skills, search_skills
 from machina.skills.search import (
     APPLICABLE,
     CONDITIONAL,
@@ -561,14 +561,19 @@ def test_no_model_or_embedding_calls_on_the_search_path(tmp_path, monkeypatch):
     assert result.candidates and result.candidates[0].skill_id == "deploy"
 
 
-def test_rank_skills_contract_is_unchanged(tmp_path):
+def test_automatic_skills_contract_excludes_disabled(tmp_path):
+    """The automatic consumer returns plain ranked skills with disabled gone.
+
+    The legacy ``rank_skills`` selector was deleted (A2c); automatic selection,
+    the human browse path and the ``skills.ports`` dispatch all read
+    ``search_skills``, so this is the only ranked-skill-list contract left.
+    """
     reg = _registry(tmp_path)
     reg.create_skill("team-deploy", "Deploy services carefully", "S", triggers=["deploy"])
     reg.create_skill("old-deploy", "Deploy services with legacy steps", "S", triggers=["deploy"])
     reg.set_enabled("old-deploy", False)
 
-    ranked = rank_skills(reg, "deploy payments")
+    ranked = automatic_skills(reg, "deploy payments")
     assert isinstance(ranked, list)
     assert all(isinstance(skill, Skill) for skill in ranked)
-    # Disabled skills stay invisible to the legacy rank path.
     assert [skill.name for skill in ranked] == ["team-deploy"]

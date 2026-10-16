@@ -103,11 +103,11 @@ def test_session_mode_and_execution_context_have_no_direct_skill_deps():
 
 
 def test_preselect_uses_the_ports_rank_dispatch():
-    """preselect.rank_skills IS ports.rank_skills (no reimplementation)."""
+    """preselect.automatic_skills IS ports.automatic_skills (no reimplementation)."""
     import machina.controller.preselect as preselect_mod
     from machina.skills import ports
 
-    assert preselect_mod.rank_skills is ports.rank_skills
+    assert preselect_mod.automatic_skills is ports.automatic_skills
 
 
 def test_registry_declares_skill_source_conformance(tmp_path):
@@ -490,15 +490,15 @@ _FIXED_QUERIES = [
 
 def test_rank_parity_interface_vs_direct_on_fixed_queries(tmp_path):
     from machina.skills import ports
-    from machina.skills.runtime import rank_skills as direct_rank
+    from machina.skills.runtime import automatic_skills as direct_rank
 
     reg = _fixture_registry(tmp_path)
     for query in _FIXED_QUERIES:
-        via_seam = [s.name for s in ports.rank_skills(reg, query)]
+        via_seam = [s.name for s in ports.automatic_skills(reg, query)]
         direct = [s.name for s in direct_rank(reg, query)]
         assert via_seam == direct
         weighted = {"pair-deploy": 1.2}
-        assert [s.name for s in ports.rank_skills(reg, query, weights=weighted)] == [
+        assert [s.name for s in ports.automatic_skills(reg, query, weights=weighted)] == [
             s.name for s in direct_rank(reg, query, weights=weighted)
         ]
 
@@ -512,7 +512,7 @@ def test_preselect_cache_matches_direct_rank_and_ranks_once(tmp_path):
     cache = SkillPreselectCache(reg)
     for query in _FIXED_QUERIES:
         ranked = cache.rank(query)
-        assert [s.name for s in ranked] == [s.name for s in ports.rank_skills(reg, query)]
+        assert [s.name for s in ranked] == [s.name for s in ports.automatic_skills(reg, query)]
     assert cache.rank_calls == len(_FIXED_QUERIES)
     cache.rank(_FIXED_QUERIES[0])
     assert cache.rank_calls == len(_FIXED_QUERIES)

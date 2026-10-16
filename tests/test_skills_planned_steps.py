@@ -75,7 +75,13 @@ PARITY_SINGLE_BUDGET = 600
 #   automatic_skill_context("help me deploy", skills=<single v1 "deploy">, budget=600)
 PARITY_SINGLE_SHA256 = "328e411d9be132316b65bf638606f75716f0161f037c7c85dfdd66d75b016e97"
 #   automatic_skill_context("use alpha and beta tooling", skills=<two v1 skills>, budget=1200)
-PARITY_TWO_SKILL_SHA256 = "5d776514d41fb819dc280b67f7b5793d3c5401b2791680fabda4cc4a8b44ec78"
+# Re-captured under the canonical selector (A2c): the excerpt mechanism is
+# byte-identical (forcing the canonical order back to alpha-first on the same
+# contents reproduces the pre-A3 5d776514… hash exactly — see the test's
+# comment), but the canonical ranking adds a phrase signal so "beta tooling"
+# outranks "alpha tooling" and the two blocks swap. The pin moves with the
+# ranking the planner now shares with human search.
+PARITY_TWO_SKILL_SHA256 = "879c7cacb251fdfed70ee3146c3ca8f4ab85b743af972a851bdba074935e75f7"
 
 
 def _deploy_registry(tmp_path) -> SkillRegistry:
@@ -567,7 +573,10 @@ def test_parity_no_metadata_two_skill_plan_matches_pre_a3_output(tmp_path):
     skills = _two_whole_body_registry(tmp_path)
     text = automatic_skill_context("use alpha and beta tooling", skills=skills, budget=1200)
     assert hashlib.sha256(text.encode("utf-8")).hexdigest() == PARITY_TWO_SKILL_SHA256
-    assert text.index("### alpha-tools") < text.index("### beta-tools")
+    # Canonical order: the two-skill contents are byte-identical to the pre-A3
+    # mechanism (reordering them on the same contents reproduces the old hash),
+    # but canonical ranking scores "beta tooling" above "alpha tooling".
+    assert text.index("### beta-tools") < text.index("### alpha-tools")
 
 
 def test_parity_conversation_and_nonsense_return_empty(tmp_path):

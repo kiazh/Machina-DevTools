@@ -50,12 +50,12 @@ def test_workflow_strong_match_is_symmetric_for_cpp(tmp_path):
     assert _strong_match(skill, "c++builder internals") is False
 
 
-def test_rank_activates_cpp_trigger_skill(tmp_path):
-    from machina.skills.runtime import rank_skills
+def test_automatic_skills_activate_cpp_trigger_skill(tmp_path):
+    from machina.skills.runtime import automatic_skills
 
     skills = _cpp_registry(tmp_path)
-    assert [s.name for s in rank_skills(skills, "use c++ now")] == ["edge-modern"]
-    assert [s.name for s in rank_skills(skills, "c++builder internals")] == []
+    assert [s.name for s in automatic_skills(skills, "use c++ now")] == ["edge-modern"]
+    assert [s.name for s in automatic_skills(skills, "c++builder internals")] == []
 
 
 def test_default_catalog_routes_worker_retry_to_background_jobs():
@@ -66,13 +66,13 @@ def test_default_catalog_routes_worker_retry_to_background_jobs():
     also mislabeled the requested workflow (SKILLS_adversarial_review.md W2).
     Provider-domain retry queries must still lead with llm-provider.
     """
-    from machina.skills.runtime import rank_skills
+    from machina.skills.runtime import automatic_skills
 
     skills = SkillRegistry()
-    worker = [s.name for s in rank_skills(skills, "add retry logic to the worker")]
+    worker = [s.name for s in automatic_skills(skills, "add retry logic to the worker")]
     assert worker[0] == "background-jobs", worker[:3]
     provider = [
-        s.name for s in rank_skills(skills, "configure retries for the openrouter provider")
+        s.name for s in automatic_skills(skills, "configure retries for the openrouter provider")
     ]
     assert provider[0] == "llm-provider", provider[:3]
 

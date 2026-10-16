@@ -221,13 +221,13 @@ def test_preselect_reuses_rank_skills_without_reimplementing(tmp_path, monkeypat
 
     calls = []
 
-    real_rank = preselect_mod.rank_skills
+    real_rank = preselect_mod.automatic_skills
 
     def _counting(skills, query, **kwargs):
         calls.append(query)
         return real_rank(skills, query, **kwargs)
 
-    monkeypatch.setattr(preselect_mod, "rank_skills", _counting)
+    monkeypatch.setattr(preselect_mod, "automatic_skills", _counting)
     cache = SkillPreselectCache(SkillRegistry(tmp_path))
     cache.rank("How does your Python testing work?")
     cache.rank("How does your Python testing work?")
