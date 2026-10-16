@@ -19,9 +19,11 @@ import subprocess
 import sys
 import termios
 import time
+from io import StringIO
 from pathlib import Path
 
 import pytest
+from dotenv import dotenv_values
 
 REPO = Path(__file__).resolve().parents[1]
 DEFAULT_LIB = REPO / "tools" / "install-helpers.sh"
@@ -39,6 +41,7 @@ rand_hex() { printf '0123456789abcdef0123456789abcdef0123456789abcdef0123456789a
 
 def _base_env(extra=None, path_prefix=()):
     env = dict(os.environ)
+    env["VENV_PY"] = sys.executable
     env.pop("MACHINA_ENV_FILE", None)
     env.pop("MACHINA_INSTALL_LIB", None)
     if "MACHINA_INSTALL_LIB" in (extra or {}):
@@ -48,7 +51,13 @@ def _base_env(extra=None, path_prefix=()):
     if extra:
         env.update(extra)
     if "PATH" not in (extra or {}):
-        parts = [str(p) for p in path_prefix] + ["/usr/bin", "/bin", "/usr/sbin", "/sbin"]
+        parts = [str(p) for p in path_prefix] + [
+            str(Path(sys.executable).parent),
+            "/usr/bin",
+            "/bin",
+            "/usr/sbin",
+            "/sbin",
+        ]
         env["PATH"] = ":".join(parts)
     return env
 
@@ -156,7 +165,9 @@ def test_resolve_env_file_unset_uses_checkout(tmp_path):
 
 def test_resolve_env_file_absolute_override(tmp_path):
     proc = run_bash(
-        "resolve_env_file /startup", cwd=tmp_path, env={"MACHINA_ENV_FILE": "/tmp/x y/.env"}
+        "resolve_env_file /startup",
+        cwd=tmp_path,
+        env={"MACHINA_ENV_FILE": "/tmp/x y/.env"},
     )
     assert proc.returncode == 0
     assert proc.stdout.strip() == "/tmp/x y/.env"
@@ -175,7 +186,9 @@ def test_resolve_env_file_relative_anchors_to_startup(tmp_path):
 
 def test_resolve_env_file_unicode_name(tmp_path):
     proc = run_bash(
-        "resolve_env_file /s", cwd=tmp_path, env={"MACHINA_ENV_FILE": "/tmp/ünïcode.env"}
+        "resolve_env_file /s",
+        cwd=tmp_path,
+        env={"MACHINA_ENV_FILE": "/tmp/ünïcode.env"},
     )
     assert proc.stdout.strip() == "/tmp/ünïcode.env"
 
@@ -204,7 +217,7 @@ def test_env_set_preserves_unrelated_values(tmp_path):
     assert proc.returncode == 0, proc.stderr
     lines = env_file.read_text().splitlines()
     assert "KEEP=yes" in lines
-    assert "DATABASE_URL=custom://y" in lines
+    assert dotenv_values(env_file)["DATABASE_URL"] == "custom://y"
     assert sum(1 for line in lines if line.startswith("DATABASE_URL=")) == 1
     assert not list(tmp_path.glob(".env.tmp.*"))
 
@@ -214,7 +227,7 @@ def test_env_set_creates_missing_file_mode_600(tmp_path):
     env_file.parent.mkdir()
     proc = run_bash('env_set FOO bar "$F"', cwd=tmp_path, env={"F": str(env_file)})
     assert proc.returncode == 0, proc.stderr
-    assert env_file.read_text() == "FOO=bar\n"
+    assert dotenv_values(env_file) == {"FOO": "bar"}
     assert file_mode(env_file) == "0o600"
 
 
@@ -288,7 +301,9 @@ def test_db_url_guard_cases(tmp_path):
 
 def test_maybe_write_db_url_preserves_custom(tmp_path):
     env_file = tmp_path / ".env"
-    env_file.write_text("DATABASE_URL=postgresql://u:p@db.internal:5432/prod\nOTHER=1\n")
+    env_file.write_text(
+        "DATABASE_URL=postgresql://u:p@db.internal:5432/prod\nOTHER=1\n"
+    )
     proc = run_bash(
         'maybe_write_db_url "postgresql://machina:NEW@localhost:5432/machina" "$F"',
         cwd=tmp_path,
@@ -297,14 +312,17 @@ def test_maybe_write_db_url_preserves_custom(tmp_path):
     assert proc.returncode == 0, proc.stderr
     assert "Reusing existing custom DATABASE_URL" in proc.stderr
     assert (
-        "DATABASE_URL=postgresql://u:p@db.internal:5432/prod" in env_file.read_text().splitlines()
+        "DATABASE_URL=postgresql://u:p@db.internal:5432/prod"
+        in env_file.read_text().splitlines()
     )
     assert "NEW" not in env_file.read_text()
 
 
 def test_maybe_write_db_url_replaces_default(tmp_path):
     env_file = tmp_path / ".env"
-    env_file.write_text("DATABASE_URL=postgresql://postgres:postgres@localhost:5432/machina\n")
+    env_file.write_text(
+        "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/machina\n"
+    )
     proc = run_bash(
         'maybe_write_db_url "postgresql://machina:NEW@localhost:5432/machina" "$F"',
         cwd=tmp_path,
@@ -313,8 +331,8 @@ def test_maybe_write_db_url_replaces_default(tmp_path):
     assert proc.returncode == 0, proc.stderr
     assert "Wrote generated Postgres credentials" in proc.stdout
     assert (
-        "DATABASE_URL=postgresql://machina:NEW@localhost:5432/machina"
-        in env_file.read_text().splitlines()
+        dotenv_values(env_file)["DATABASE_URL"]
+        == "postgresql://machina:NEW@localhost:5432/machina"
     )
     assert file_mode(env_file) == "0o600"
 
@@ -341,7 +359,13 @@ def test_install_sh_uses_hidden_prompt_without_fallback():
 
 def test_install_sh_no_bare_env_file_ops():
     text = INSTALL_SH.read_text()
-    for banned in [">> .env", "> .env", '" .env > "', 'mv "$TMP_ENV" .env', "mktemp .env.tmp"]:
+    for banned in [
+        ">> .env",
+        "> .env",
+        '" .env > "',
+        'mv "$TMP_ENV" .env',
+        "mktemp .env.tmp",
+    ]:
         assert banned not in text, banned
 
 
@@ -610,7 +634,12 @@ def _run_brew(tmp_path, env_content, **overrides):
         timeout=60,
     )
     alter_log = tmp_path / "alter.log"
-    return proc, env_file.read_text(), before, alter_log.read_text() if alter_log.exists() else ""
+    return (
+        proc,
+        env_file.read_text(),
+        before,
+        alter_log.read_text() if alter_log.exists() else "",
+    )
 
 
 def test_brew_custom_url_survives_new_role(tmp_path):
@@ -628,9 +657,10 @@ def test_brew_default_url_gets_generated_credentials(tmp_path):
     proc, after, _, _ = _run_brew(tmp_path, default)
     assert proc.returncode == 0, proc.stderr
     lines = [line for line in after.splitlines() if line.startswith("DATABASE_URL=")]
-    assert lines == [
-        "DATABASE_URL=postgresql://machina:0123456789abcdef0123456789abcdef@localhost:5432/machina"
-    ]
+    assert len(lines) == 1
+    assert dotenv_values(stream=StringIO(after))["DATABASE_URL"] == (
+        "postgresql://machina:0123456789abcdef0123456789abcdef@localhost:5432/machina"
+    )
 
 
 def test_brew_existing_role_keeps_password_and_url(tmp_path):
@@ -655,7 +685,9 @@ def test_brew_refuses_non_macos(tmp_path):
     workdir = tmp_path / "work"
     workdir.mkdir(exist_ok=True)
     env = _brew_env(tmp_path, bindir, pgbin, workdir / ".env", OS_FAMILY="linux")
-    proc = run_bash("if start_brew_db; then echo RAN; else echo REFUSED; fi", cwd=workdir, env=env)
+    proc = run_bash(
+        "if start_brew_db; then echo RAN; else echo REFUSED; fi", cwd=workdir, env=env
+    )
     assert "REFUSED" in proc.stdout
 
 
@@ -688,7 +720,8 @@ def test_docker_custom_url_preserved(tmp_path):
     assert proc.returncode == 0, proc.stderr
     assert "DOCKER_RC=0" in proc.stdout
     assert (
-        "DATABASE_URL=postgresql://u:p@db.internal:5432/prod" in env_file.read_text().splitlines()
+        "DATABASE_URL=postgresql://u:p@db.internal:5432/prod"
+        in env_file.read_text().splitlines()
     )
 
 
@@ -798,7 +831,9 @@ def test_interop_unknown_mode_warns_and_spawns_nothing(tmp_path):
 def test_interop_all_registers_detected_harnesses(tmp_path):
     env, logs = _interop_harness(tmp_path)
 
-    proc = run_bash("installer_interop_setup all no-prompt", cwd=tmp_path, env=env, timeout=180)
+    proc = run_bash(
+        "installer_interop_setup all no-prompt", cwd=tmp_path, env=env, timeout=180
+    )
 
     assert proc.returncode == 0, proc.stderr + proc.stdout
     assert "Interop harness detection" in proc.stdout

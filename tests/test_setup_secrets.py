@@ -29,8 +29,12 @@ class FakeGW:
 def test_env_roundtrip_preserves_comments(env_file: Path) -> None:
     from machina.security.env_file import read_env_values, set_env_values
 
-    env_file.write_text("# comment\nDATABASE_URL=postgres://a\n\n# keys\n", encoding="utf-8")
-    set_env_values({"OPENROUTER_API_KEY": "sk-or-123", "DATABASE_URL": "postgres://b"}, env_file)
+    env_file.write_text(
+        "# comment\nDATABASE_URL=postgres://a\n\n# keys\n", encoding="utf-8"
+    )
+    set_env_values(
+        {"OPENROUTER_API_KEY": "sk-or-123", "DATABASE_URL": "postgres://b"}, env_file
+    )
     text = env_file.read_text(encoding="utf-8")
     assert "# comment" in text and "# keys" in text
     values = read_env_values(env_file)
@@ -71,7 +75,9 @@ async def test_secrets_set_updates_lowercase_line_in_place(env_file: Path) -> No
     await secrets_set(  # type: ignore[arg-type]
         FakeGW(), {"key": "OPENROUTER_API_KEY", "value": "sk-fresh", "persist": True}
     )
-    assert env_file.read_text(encoding="utf-8").splitlines() == ["OPENROUTER_API_KEY=sk-fresh"]
+    assert env_file.read_text(encoding="utf-8").splitlines() == [
+        "OPENROUTER_API_KEY=sk-fresh"
+    ]
 
 
 def test_env_rejects_bad_keys(env_file: Path) -> None:
@@ -83,7 +89,9 @@ def test_env_rejects_bad_keys(env_file: Path) -> None:
         set_env_values({"": "x"}, env_file)
 
 
-def test_find_env_file_prefers_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_find_env_file_prefers_override(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from machina.security.env_file import find_env_file
 
     target = tmp_path / "custom.env"
@@ -116,6 +124,9 @@ async def test_secrets_set_persists_and_applies(env_file: Path) -> None:
         "set": True,
         "persisted": True,
         "envFile": str(env_file),
+        "effectiveSet": True,
+        "effectiveSource": "OPENROUTER_API_KEY",
+        "effectiveUpdated": True,
     }
     assert os.environ["OPENROUTER_API_KEY"] == "sk-or-abc"
     assert "sk-or-abc" in env_file.read_text(encoding="utf-8")
@@ -151,7 +162,13 @@ async def test_secrets_clear_blanks_env_and_file(env_file: Path) -> None:
         FakeGW(), {"key": "COHERE_API_KEY", "value": "co-123", "persist": True}
     )
     result = await secrets_clear(FakeGW(), {"key": "COHERE_API_KEY"})  # type: ignore[arg-type]
-    assert result == {"key": "COHERE_API_KEY", "set": False}
+    assert result == {
+        "key": "COHERE_API_KEY",
+        "set": False,
+        "effectiveSet": False,
+        "effectiveSource": "configuration",
+        "effectiveUpdated": True,
+    }
     assert "COHERE_API_KEY" not in os.environ
     from machina.security.env_file import read_env_values
 

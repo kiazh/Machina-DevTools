@@ -30,22 +30,15 @@ class TestBug12Bm25ILikeFallback:
     def searcher(self):
         return HybridSearch()
 
-    async def test_bm25_no_ilike_fallback_on_missing_column(self, searcher):
-        """When search_text column is missing, _bm25_search should return
-        empty results instead of attempting the broken ILIKE fallback."""
+    async def test_bm25_surfaces_missing_column_without_ilike_fallback(self, searcher):
+        """A failed FTS query is unavailable, never healthy empty evidence."""
         mock_db = AsyncMock()
-        # First call (FTS) raises UndefinedColumnError
         mock_db.fetch = AsyncMock(side_effect=asyncpg.UndefinedColumnError("column does not exist"))
 
-        results = await searcher._bm25_search(
-            session_id=uuid.uuid4(),
-            query_text="test query",
-            top_k=10,
-            db=mock_db,
-        )
-
-        # Should return empty list, not attempt ILIKE
-        assert results == []
+        with pytest.raises(asyncpg.UndefinedColumnError, match="column does not exist"):
+            await searcher._bm25_search(
+                session_id=uuid.uuid4(), query_text="test query", top_k=10, db=mock_db,
+            )
         # fetch should only be called once (the FTS attempt)
         assert mock_db.fetch.call_count == 1
 

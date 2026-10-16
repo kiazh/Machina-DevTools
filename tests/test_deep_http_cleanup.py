@@ -10,7 +10,7 @@ from machina.api.app import create_app
 from machina.core.models import AgentResponse, Session, StreamEvent
 
 
-async def test_sse_releases_turn_before_done_with_resistant_learning(monkeypatch):
+async def test_sse_retains_turn_until_resistant_learning_retires(monkeypatch):
     import machina.core.agent_factory as factory
     from machina import services
     from machina.core import turns
@@ -41,6 +41,7 @@ async def test_sse_releases_turn_before_done_with_resistant_learning(monkeypatch
         assert session_id == session.id
         assert token == "sse-owner"
         released.set()
+        return True
 
     monkeypatch.setenv("MACHINA_API_KEY", "cleanup-test-key")
     monkeypatch.setattr(session_manager, "get_fresh", AsyncMock(return_value=session))
@@ -63,9 +64,12 @@ async def test_sse_releases_turn_before_done_with_resistant_learning(monkeypatch
             assert request in done, "optional learning retained the SSE response past its deadline"
             response = await request
             assert response.status_code == 200
-            assert released.is_set()
-            assert '"content": "finished"' in response.text
-            assert "data: [DONE]" in response.text
+            assert not released.is_set()
+            assert not worker.done()
+            assert "turn.cleanup_pending" in response.text
+            assert '"type": "done"' not in response.text
+            assert "data: [DONE]" not in response.text
         finally:
             release.set()
             await asyncio.gather(worker, request, return_exceptions=True)
+            await asyncio.wait_for(released.wait(), 2)

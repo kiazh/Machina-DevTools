@@ -51,12 +51,18 @@ async def test_expired_owner_cannot_release_successor(workers):
     )
     new = await second.call("turn", session_id=sid)
     assert old["acquired"] and new["acquired"] and old["token"] != new["token"]
-    assert not (await first.call("release", session_id=sid, token=old["token"]))["released"]
+    assert not (await first.call("release", session_id=sid, token=old["token"]))[
+        "released"
+    ]
     assert (
-        await database.fetchval("SELECT claim_owner FROM sessions WHERE id = $1", uuid.UUID(sid))
+        await database.fetchval(
+            "SELECT claim_owner FROM sessions WHERE id = $1", uuid.UUID(sid)
+        )
         == new["token"]
     )
-    assert (await second.call("release", session_id=sid, token=new["token"]))["released"]
+    assert (await second.call("release", session_id=sid, token=new["token"]))[
+        "released"
+    ]
 
 
 async def test_two_job_workers_and_stale_finish(workers):
@@ -71,19 +77,27 @@ async def test_two_job_workers_and_stale_finish(workers):
         interval_seconds=10,
     )
     await database.execute(
-        "UPDATE jobs SET next_run_at = now() - interval '1 second' WHERE id = $1", job.id
+        "UPDATE jobs SET next_run_at = now() - interval '1 second' WHERE id = $1",
+        job.id,
     )
     results = await asyncio.gather(first.call("job"), second.call("job"))
     assert sorted(result["acquired"] for result in results) == [False, True]
     old = next(result for result in results if result["acquired"])
     await database.execute(
-        "UPDATE jobs SET next_run_at = now() - interval '1 second' WHERE id = $1", job.id
+        "UPDATE jobs SET next_run_at = now() - interval '1 second' WHERE id = $1",
+        job.id,
     )
     new = await second.call("job")
     assert new["acquired"] and new["token"] != old["token"]
-    assert not (await first.call("finish", job_id=str(job.id), token=old["token"]))["finished"]
-    assert (await second.call("finish", job_id=str(job.id), token=new["token"]))["finished"]
-    assert await database.fetchval("SELECT run_count FROM jobs WHERE id = $1", job.id) == 1
+    assert not (await first.call("finish", job_id=str(job.id), token=old["token"]))[
+        "finished"
+    ]
+    assert (await second.call("finish", job_id=str(job.id), token=new["token"]))[
+        "finished"
+    ]
+    assert (
+        await database.fetchval("SELECT run_count FROM jobs WHERE id = $1", job.id) == 1
+    )
 
 
 async def test_approval_consumed_once_across_processes(workers):
@@ -106,7 +120,11 @@ async def test_approval_consumed_once_across_processes(workers):
     results = await asyncio.gather(
         *(
             worker.call(
-                "approval", session_id=sid, request_id=request.request_id, digest=request.digest
+                "approval",
+                session_id=sid,
+                request_id=request.request_id,
+                digest=request.digest,
+                agent_id=request.agent_id,
             )
             for worker in processes
         )

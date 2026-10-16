@@ -139,6 +139,7 @@ async def test_cancel_during_release_releases_claim_and_terminates(monkeypatch):
         end_calls.append(released_token)
         release_started.set()
         await release_gate.wait()
+        return True
 
     monkeypatch.setattr("machina.core.turns.end_turn", slow_end)
 

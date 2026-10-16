@@ -13,7 +13,9 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 TEST_DSN = os.environ.get("MACHINA_TEST_DATABASE_URL", "")
-needs_test_db = pytest.mark.skipif(not TEST_DSN, reason="MACHINA_TEST_DATABASE_URL not set")
+needs_test_db = pytest.mark.skipif(
+    not TEST_DSN, reason="MACHINA_TEST_DATABASE_URL not set"
+)
 _MODULES_WITH_DB = [
     "machina.db.connection",
     "machina.core.session",
@@ -78,8 +80,18 @@ async def test_two_workers_one_execution_claim(isolated_db):
     await st.create_approval(req, principal="tui")
     assert await st.resolve_decision(req.request_id, "approved", principal="tui")
     results = await asyncio.gather(
-        st.claim_execution(req.request_id, digest=req.digest, session_id=str(s.id)),
-        st.claim_execution(req.request_id, digest=req.digest, session_id=str(s.id)),
+        st.claim_execution(
+            req.request_id,
+            digest=req.digest,
+            session_id=str(s.id),
+            agent_id=req.agent_id,
+        ),
+        st.claim_execution(
+            req.request_id,
+            digest=req.digest,
+            session_id=str(s.id),
+            agent_id=req.agent_id,
+        ),
     )
     assert sorted(results) == [False, True]
     assert await st.complete_execution(req.request_id, "completed") is True
@@ -95,9 +107,27 @@ async def test_crash_after_decision_then_retry(isolated_db):
     await st.create_approval(req, principal="tui")
     assert await st.resolve_decision(req.request_id, "approved", principal="tui")
     # Duplicate resolve and conflicting verdicts fail; denial path recorded.
-    assert await st.resolve_decision(req.request_id, "approved", principal="tui") is None
-    assert await st.claim_execution(req.request_id, digest=req.digest, session_id=str(s.id)) is True
-    assert await st.claim_execution(req.request_id, digest="changed", session_id=str(s.id)) is False
+    assert (
+        await st.resolve_decision(req.request_id, "approved", principal="tui") is None
+    )
+    assert (
+        await st.claim_execution(
+            req.request_id,
+            digest=req.digest,
+            session_id=str(s.id),
+            agent_id=req.agent_id,
+        )
+        is True
+    )
+    assert (
+        await st.claim_execution(
+            req.request_id,
+            digest="changed",
+            session_id=str(s.id),
+            agent_id=req.agent_id,
+        )
+        is False
+    )
     assert await st.complete_execution(req.request_id, "failed") is True
 
 
@@ -125,7 +155,9 @@ async def test_headless_pause_approve_resume_once(isolated_db):
     # A concurrent duplicate retry cannot claim again (no double effect).
     with pytest.raises(NeedsApproval):
         await brokermod.permission_broker.guard(_req(session_id=str(s.id)))
-    assert await brokermod.permission_broker.complete(req.request_id, "completed") is True
+    assert (
+        await brokermod.permission_broker.complete(req.request_id, "completed") is True
+    )
 
 
 @needs_test_db
@@ -155,7 +187,9 @@ async def test_once_does_not_authorize_repeat_or_change(isolated_db):
         await brokermod.permission_broker.guard(_req(session_id=str(s.id)))
     # Changed content → fresh approval.
     with pytest.raises(NeedsApproval):
-        await brokermod.permission_broker.guard(_req(session_id=str(s.id), content="other"))
+        await brokermod.permission_broker.guard(
+            _req(session_id=str(s.id), content="other")
+        )
 
 
 @needs_test_db
@@ -200,7 +234,9 @@ async def test_session_grant_allows_repeat_not_sibling_or_change(isolated_db):
         )
     # Changed content still asks.
     with pytest.raises(NeedsApproval):
-        await brokermod.permission_broker.guard(_req(session_id=str(s.id), content="changed"))
+        await brokermod.permission_broker.guard(
+            _req(session_id=str(s.id), content="changed")
+        )
 
 
 @needs_test_db

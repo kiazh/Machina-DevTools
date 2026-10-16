@@ -44,5 +44,17 @@ export PYTHONPATH="$MACHINA_REPO${PYTHONPATH:+:$PYTHONPATH}"
 export PYTHONDONTWRITEBYTECODE=1
 
 PYTHON="${PYTHON:-python3}"
+TEST_PYTHON="$(command -v "$PYTHON")" || { echo "error: Python interpreter not found" >&2; exit 2; }
+# Installer helpers spawn Python too; keep them on the selected environment.
+export PATH="$(dirname "$TEST_PYTHON"):$PATH"
+export VENV_PY="${VENV_PY:-$TEST_PYTHON}"
+
+# A suite must never read/write the operator's config, auth, or MCP inventory.
+# Individual fixtures can still supply their own home or dotenv explicitly.
+TEST_RUN_HOME="$(mktemp -d "${TMPDIR:-/tmp}/machina-devtools-home.XXXXXX")"
+trap 'rm -rf -- "$TEST_RUN_HOME"' EXIT
+mkdir -p "$TEST_RUN_HOME/.machina"
+: > "$TEST_RUN_HOME/.env"
 cd "$DEVTOOLS_ROOT"
-exec "$PYTHON" -m pytest "$@"
+env HOME="$TEST_RUN_HOME" MACHINA_HOME="$TEST_RUN_HOME/.machina" \
+    MACHINA_ENV_FILE="$TEST_RUN_HOME/.env" "$TEST_PYTHON" -m pytest "$@"

@@ -55,7 +55,9 @@ def _value(key: str) -> str:
 @pytest.mark.parametrize(
     "key", ["OPENCODE_API_KEY", "KIMI_API_KEY", "CUSTOM_API_KEY", "CUSTOM_BASE_URL"]
 )
-async def test_secrets_set_accepts_previously_refused_keys(env_file: Path, key: str) -> None:
+async def test_secrets_set_accepts_previously_refused_keys(
+    env_file: Path, key: str
+) -> None:
     """The D1 RED probe, now GREEN: set persists to env AND .env, clear removes."""
     from machina.security.env_file import read_env_values
 
@@ -66,12 +68,21 @@ async def test_secrets_set_accepts_previously_refused_keys(env_file: Path, key: 
         "set": True,
         "persisted": True,
         "envFile": str(env_file),
+        "effectiveSet": True,
+        "effectiveSource": key,
+        "effectiveUpdated": True,
     }
     assert os.environ.get(key) == value, "live process sees the key immediately"
     assert read_env_values(env_file).get(key) == value, "durable .env carries the key"
 
     cleared = await secrets_clear(_gw(), {"key": key})
-    assert cleared == {"key": key, "set": False}
+    assert cleared == {
+        "key": key,
+        "set": False,
+        "effectiveSet": False,
+        "effectiveSource": "configuration",
+        "effectiveUpdated": True,
+    }
     assert key not in os.environ
 
 
@@ -137,11 +148,13 @@ def test_allowlist_source_of_truth_stays_single() -> None:
         "CUSTOM_API_KEY",
         "CUSTOM_BASE_URL",
     } <= python_keys
-    text = (Path(__file__).resolve().parents[1] / "ui" / "src" / "features" / "keys.ts").read_text(
-        encoding="utf-8"
-    )
+    text = (
+        Path(__file__).resolve().parents[1] / "ui" / "src" / "features" / "keys.ts"
+    ).read_text(encoding="utf-8")
     ts_keys = set(re.findall(r'\["([A-Z][A-Z0-9_]+)",', text))
-    assert python_keys <= ts_keys, f"keys.ts is missing: {sorted(python_keys - ts_keys)}"
+    assert python_keys <= ts_keys, (
+        f"keys.ts is missing: {sorted(python_keys - ts_keys)}"
+    )
 
 
 async def test_control_plane_keys_still_refused(env_file: Path) -> None:

@@ -271,12 +271,10 @@ def test_growth_import_policy_bad_json_is_typed_error(
 # ─── providers models --refresh keeps the cache on empty success ────────────
 
 
-def test_models_refresh_empty_success_keeps_cache(
+def test_models_refresh_empty_success_clears_obsolete_cache(
     isolated_cli, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Seed a cached catalog, then refresh against an endpoint whose live
-    fetch succeeds but returns no models: exit stays 0, the cached list is
-    shown with an honest warning, and the store keeps the cached rows."""
+    """A successful empty catalog retires models no longer served."""
     from machina.security import providers as store
 
     cli = isolated_cli
@@ -285,11 +283,12 @@ def test_models_refresh_empty_success_keeps_cache(
     monkeypatch.setattr(store, "fetch_models", lambda *a, **k: [])
     result = runner.invoke(cli.app, ["providers", "models", "cachekeep", "--refresh"])
     assert result.exit_code == 0, result.output
-    assert "cached-model" in result.output
-    assert "cached list" in result.output
+    assert "cached-model" not in result.output
+    assert "No models for cachekeep" in result.output
     entry = store.get_provider_entry("cachekeep")
     assert entry is not None
-    assert [row["id"] for row in entry.get("models") or []] == ["cached-model"]
+    assert entry["models"] == []
+    assert entry["models_fetched_at"]
 
 
 def test_models_refresh_nonempty_success_replaces_cache(

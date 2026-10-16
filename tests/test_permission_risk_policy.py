@@ -91,11 +91,15 @@ DANGEROUS_OR_REVIEW_COMMANDS = [
 
 @pytest.mark.parametrize("command", DANGEROUS_OR_REVIEW_COMMANDS)
 def test_dangerous_or_review_commands_ask(workspace, command):
-    request = build_request(tool="terminal", **action_for_tool("terminal", {"command": command}))
+    request = build_request(
+        tool="terminal", **action_for_tool("terminal", {"command": command})
+    )
     assert decide(request).verdict == "pending"
 
 
-@pytest.mark.parametrize("path", [".env", ".env.local", ".ssh/id_rsa", ".aws/credentials"])
+@pytest.mark.parametrize(
+    "path", [".env", ".env.local", ".ssh/id_rsa", ".aws/credentials"]
+)
 @pytest.mark.parametrize("mode", ["ask", "workspace", "sandbox", "full"])
 def test_credentials_always_require_exact_approval(workspace, path, mode):
     request = build_request(operation="file.read", targets=[path], mode=mode)
@@ -103,7 +107,9 @@ def test_credentials_always_require_exact_approval(workspace, path, mode):
 
 
 def test_workspace_boundary_still_requires_approval(workspace):
-    request = build_request(operation="file.write", targets=["../outside.txt"], content="x")
+    request = build_request(
+        operation="file.write", targets=["../outside.txt"], content="x"
+    )
     assert decide(request).verdict == "pending"
 
 
@@ -111,7 +117,9 @@ def test_terminal_symlink_to_outside_still_requires_approval(workspace):
     outside = workspace.parent / "private.txt"
     outside.write_text("private")
     (workspace / "link").symlink_to(outside)
-    request = build_request(tool="terminal", **action_for_tool("terminal", {"command": "cat link"}))
+    request = build_request(
+        tool="terminal", **action_for_tool("terminal", {"command": "cat link"})
+    )
     assert decide(request).verdict == "pending"
 
 
@@ -248,7 +256,9 @@ async def test_broker_authorized_terminal_uses_project_cwd(workspace):
     from machina.permissions.broker import clear_execution_context, permission_broker
     from machina.tools.terminal import terminal
 
-    request = build_request(tool="terminal", **action_for_tool("terminal", {"command": "pwd"}))
+    request = build_request(
+        tool="terminal", **action_for_tool("terminal", {"command": "pwd"})
+    )
     try:
         await permission_broker.guard(request)
         assert (await terminal("pwd")).strip() == str(workspace)
@@ -261,7 +271,8 @@ async def test_project_test_runner_executes_without_card(workspace):
     from machina.tools.terminal import terminal
 
     request = build_request(
-        tool="terminal", **action_for_tool("terminal", {"command": "python -m pytest --version"})
+        tool="terminal",
+        **action_for_tool("terminal", {"command": "python -m pytest --version"}),
     )
     try:
         await permission_broker.guard(request)
@@ -293,7 +304,9 @@ async def test_project_test_runner_executes_without_card(workspace):
     ],
 )
 def test_recursive_search_commands_require_review(workspace, command):
-    request = build_request(tool="terminal", **action_for_tool("terminal", {"command": command}))
+    request = build_request(
+        tool="terminal", **action_for_tool("terminal", {"command": command})
+    )
     decision = decide(request)
     assert decision.verdict == "pending", (command, decision.reason)
     assert "opaque_execution_review" in decision.reason
@@ -314,14 +327,16 @@ def test_grep_d_option_cluster_with_non_recurse_value_stays_routine(workspace):
     # TOKEN as the value and must keep its routine classification.
     (workspace / "file").write_text("TOKEN=docs\n", encoding="utf-8")
     request = build_request(
-        tool="terminal", **action_for_tool("terminal", {"command": "grep -id TOKEN file"})
+        tool="terminal",
+        **action_for_tool("terminal", {"command": "grep -id TOKEN file"}),
     )
     assert decide(request).verdict == "allowed", "grep -id TOKEN file"
 
 
 def test_sensitive_search_operand_requires_credential_access(workspace):
     request = build_request(
-        tool="terminal", **action_for_tool("terminal", {"command": "rg REVIEW_TOKEN credentials"})
+        tool="terminal",
+        **action_for_tool("terminal", {"command": "rg REVIEW_TOKEN credentials"}),
     )
     decision = decide(request)
     assert decision.verdict == "pending"
@@ -375,18 +390,23 @@ def test_chatgpt_store_atomic_siblings_are_protected(workspace, monkeypatch):
         assert "credential_access" in decision.reason
 
 
-def test_terminal_read_of_the_chatgpt_store_requires_credential_access(workspace, monkeypatch):
+def test_terminal_read_of_the_chatgpt_store_requires_credential_access(
+    workspace, monkeypatch
+):
     _use_store_at(workspace, monkeypatch, workspace)
 
     request = build_request(
-        tool="terminal", **action_for_tool("terminal", {"command": "cat auth/chatgpt.json"})
+        tool="terminal",
+        **action_for_tool("terminal", {"command": "cat auth/chatgpt.json"}),
     )
     decision = decide(request)
     assert decision.verdict == "pending"
     assert "credential_access" in decision.reason
 
 
-def test_unrelated_file_named_chatgpt_json_stays_routine(workspace, monkeypatch, tmp_path):
+def test_unrelated_file_named_chatgpt_json_stays_routine(
+    workspace, monkeypatch, tmp_path
+):
     monkeypatch.delenv("MACHINA_CHATGPT_AUTH_FILE", raising=False)
     monkeypatch.setattr(config, "machina_home", str(tmp_path / "home"))
     docs = workspace / "docs"
@@ -421,9 +441,13 @@ def test_recursive_copy_reaching_protected_descendants_requires_review(workspace
     (target_git / "config").write_text("original\n", encoding="utf-8")
 
     def request(command: str):
-        return build_request(tool="terminal", **action_for_tool("terminal", {"command": command}))
+        return build_request(
+            tool="terminal", **action_for_tool("terminal", {"command": command})
+        )
 
-    assert decide(request("cp source/.git/config target/.git/config")).verdict == "pending"
+    assert (
+        decide(request("cp source/.git/config target/.git/config")).verdict == "pending"
+    )
     recursive = decide(request("cp -R source/. target"))
     assert recursive.verdict == "pending"
     assert "security_settings" in recursive.reason
@@ -437,7 +461,8 @@ def test_recursive_copy_without_protected_descendants_stays_routine(workspace):
     (plain / "notes.txt").write_text("hello\n", encoding="utf-8")
     (workspace / "drop").mkdir()
     request = build_request(
-        tool="terminal", **action_for_tool("terminal", {"command": "cp -R plain/ drop/"})
+        tool="terminal",
+        **action_for_tool("terminal", {"command": "cp -R plain/ drop/"}),
     )
     assert decide(request).verdict == "allowed"
 
@@ -466,7 +491,9 @@ def test_recursive_copy_without_protected_descendants_stays_routine(workspace):
 )
 def test_rg_value_options_cannot_hide_the_default_walk(workspace, command):
     (workspace / "patterns.txt").write_text("REVIEW_TOKEN\n", encoding="utf-8")
-    request = build_request(tool="terminal", **action_for_tool("terminal", {"command": command}))
+    request = build_request(
+        tool="terminal", **action_for_tool("terminal", {"command": command})
+    )
     decision = decide(request)
     assert decision.verdict == "pending", (command, decision.reason)
     assert "opaque_execution_review" in decision.reason
@@ -489,7 +516,9 @@ def test_rg_value_options_cannot_hide_the_default_walk(workspace, command):
 def test_rg_value_options_with_regular_file_operand_stay_routine(workspace, command):
     (workspace / "README.md").write_text("REVIEW_TOKEN=docs\n", encoding="utf-8")
     (workspace / "patterns.txt").write_text("REVIEW_TOKEN\n", encoding="utf-8")
-    request = build_request(tool="terminal", **action_for_tool("terminal", {"command": command}))
+    request = build_request(
+        tool="terminal", **action_for_tool("terminal", {"command": command})
+    )
     assert decide(request).verdict == "allowed", command
 
 
@@ -507,7 +536,8 @@ def test_recursive_copy_beyond_inspection_cap_requires_review(workspace):
     (deep_git / "config").write_text("attacker-controlled\n", encoding="utf-8")
     (workspace / "target").mkdir()
     request = build_request(
-        tool="terminal", **action_for_tool("terminal", {"command": "cp -R big/. target"})
+        tool="terminal",
+        **action_for_tool("terminal", {"command": "cp -R big/. target"}),
     )
     decision = decide(request)
     assert decision.verdict == "pending"
@@ -519,7 +549,9 @@ def test_recursive_copy_beyond_inspection_cap_requires_review(workspace):
 # (`cp -L`), so a link to a directory containing .git was copied without
 # approval. Descendants of a dereferenced link are written by the copy and
 # must be inspected; a link copied as a link (default / -P) writes none.
-def test_recursive_copy_dereferencing_symlink_to_protected_dir_requires_review(workspace):
+def test_recursive_copy_dereferencing_symlink_to_protected_dir_requires_review(
+    workspace,
+):
     real = workspace / "real"
     (real / ".git").mkdir(parents=True)
     (real / ".git" / "config").write_text("attacker-controlled\n", encoding="utf-8")
@@ -528,7 +560,9 @@ def test_recursive_copy_dereferencing_symlink_to_protected_dir_requires_review(w
     (workspace / "target").mkdir()
 
     def request(command):
-        return build_request(tool="terminal", **action_for_tool("terminal", {"command": command}))
+        return build_request(
+            tool="terminal", **action_for_tool("terminal", {"command": command})
+        )
 
     for command in ("cp -RL source/. target", "cp -R --dereference source/. target"):
         decision = decide(request(command))
@@ -548,7 +582,8 @@ def test_recursive_copy_of_link_named_git_requires_review(workspace):
     (source / ".git").symlink_to(real_git, target_is_directory=True)
     (workspace / "target2").mkdir()
     request = build_request(
-        tool="terminal", **action_for_tool("terminal", {"command": "cp -R source2/. target2"})
+        tool="terminal",
+        **action_for_tool("terminal", {"command": "cp -R source2/. target2"}),
     )
     decision = decide(request)
     assert decision.verdict == "pending"
@@ -557,12 +592,15 @@ def test_recursive_copy_of_link_named_git_requires_review(workspace):
     # here, so its reachable target is inspected too.
     protected = workspace / "protected"
     (protected / ".git").mkdir(parents=True)
-    (protected / ".git" / "config").write_text("attacker-controlled\n", encoding="utf-8")
+    (protected / ".git" / "config").write_text(
+        "attacker-controlled\n", encoding="utf-8"
+    )
     linkdir = workspace / "linkdir"
     linkdir.symlink_to(protected, target_is_directory=True)
     (workspace / "target3").mkdir()
     linked = build_request(
-        tool="terminal", **action_for_tool("terminal", {"command": "cp -RH linkdir target3"})
+        tool="terminal",
+        **action_for_tool("terminal", {"command": "cp -RH linkdir target3"}),
     )
     assert decide(linked).verdict == "pending"
 
@@ -574,13 +612,16 @@ def test_recursive_copy_with_dereferenced_symlink_cycle_terminates(workspace):
     (source / "self").symlink_to(source, target_is_directory=True)
     (workspace / "loop-target").mkdir()
     request = build_request(
-        tool="terminal", **action_for_tool("terminal", {"command": "cp -RL looped/. loop-target"})
+        tool="terminal",
+        **action_for_tool("terminal", {"command": "cp -RL looped/. loop-target"}),
     )
     assert decide(request).verdict == "allowed"
 
 
 def _terminal_request(command: str):
-    return build_request(tool="terminal", **action_for_tool("terminal", {"command": command}))
+    return build_request(
+        tool="terminal", **action_for_tool("terminal", {"command": command})
+    )
 
 
 # ─── R4-060: recursive `git grep` forms require the same review as grep/rg ──
@@ -726,9 +767,10 @@ def test_terminal_read_of_backup_credential_name_requires_review(workspace):
 
 def test_env_example_still_allowed_after_backup_families(workspace):
     for path in (".env.example", "docs/.env.example"):
-        assert decide(build_request(operation="file.read", targets=[path])).verdict == "allowed", (
-            path
-        )
+        assert (
+            decide(build_request(operation="file.read", targets=[path])).verdict
+            == "allowed"
+        ), path
 
 
 # ─── R4-061: bare -c/-C/-o calibration ─────────────────────────────────────
@@ -821,27 +863,32 @@ def test_recursive_copy_of_readable_sources_stays_routine(workspace):
     nested.mkdir(parents=True)
     (nested / "notes.txt").write_text("hello\n", encoding="utf-8")
     (workspace / "visible-dst").mkdir()
-    assert decide(_terminal_request("cp -R visible-src/. visible-dst")).verdict == "allowed"
+    assert (
+        decide(_terminal_request("cp -R visible-src/. visible-dst")).verdict
+        == "allowed"
+    )
 
 
-@pytest.mark.parametrize("failure", ["iterdir", "entry-stat"])
+@pytest.mark.parametrize("failure", ["scandir", "entry-stat"])
 def test_recursive_copy_tree_scan_failures_fail_closed(workspace, monkeypatch, failure):
     from pathlib import Path as _Path
 
     source = workspace / "flaky-src"
     (source / "nested").mkdir(parents=True)
     (workspace / "flaky-dst").mkdir()
-    real_iterdir = _Path.iterdir
+    import os
+
+    real_scandir = os.scandir
     real_is_dir = _Path.is_dir
 
-    if failure == "iterdir":
+    if failure == "scandir":
 
-        def broken_iterdir(self):
-            if self.name == "nested":
+        def broken_scandir(path):
+            if _Path(path).name == "nested":
                 raise PermissionError("injected unreadable directory")
-            return real_iterdir(self)
+            return real_scandir(path)
 
-        monkeypatch.setattr(_Path, "iterdir", broken_iterdir)
+        monkeypatch.setattr(os, "scandir", broken_scandir)
     else:
 
         def broken_is_dir(self):

@@ -31,7 +31,9 @@ SECRET = "sk-or-v1-8f3c1d9b7a25e64f0c185ac39e7b2d46f0819a3c5e72b40d"
 
 
 def _assert_no_secret(record: dict) -> None:
-    assert SECRET not in json.dumps(record, default=str), "raw secret leaked through view"
+    assert SECRET not in json.dumps(record, default=str), (
+        "raw secret leaked through view"
+    )
 
 
 def _request(session_id: str):
@@ -73,7 +75,7 @@ async def test_find_pending_redacts_target_and_preserves_fields(view_state):
     req = _request(session_id)
     rec = await store.create_approval(req, principal="headless")
 
-    found = await store.find_pending(session_id, req.digest)
+    found = await store.find_pending(session_id, req.digest, agent_id=req.agent_id)
     assert found is not None
     _assert_no_secret(found)
     # Selection + caller-dependent fields are unchanged.
@@ -88,9 +90,14 @@ async def test_find_approved_unclaimed_redacts_and_still_resumes(view_state):
     session_id = str(uuid.uuid4())
     req = _request(session_id)
     await store.create_approval(req, principal="headless")
-    assert await store.resolve_decision(req.request_id, "approved", principal="human") is not None
+    assert (
+        await store.resolve_decision(req.request_id, "approved", principal="human")
+        is not None
+    )
 
-    approved = await store.find_approved_unclaimed(session_id, req.digest)
+    approved = await store.find_approved_unclaimed(
+        session_id, req.digest, agent_id=req.agent_id
+    )
     assert approved is not None
     _assert_no_secret(approved)
     assert approved["status"] == "approved"
@@ -98,7 +105,10 @@ async def test_find_approved_unclaimed_redacts_and_still_resumes(view_state):
     assert approved["proposal"], "resume depends on a reviewable proposal"
     # The exact-action claim still authorizes the raw execution identity.
     assert await store.claim_execution(
-        approved["request_id"], digest=req.digest, session_id=session_id
+        approved["request_id"],
+        digest=req.digest,
+        session_id=session_id,
+        agent_id=req.agent_id,
     )
 
 
@@ -109,11 +119,19 @@ async def test_resume_helpers_keep_selection_semantics(view_state):
     await store.create_approval(req, principal="headless")
 
     # Wrong digest: never selected.
-    assert await store.find_pending(session_id, "0" * 64) is None
+    assert await store.find_pending(session_id, "0" * 64, agent_id="harness") is None
     # Still pending: not resumable as approved.
-    assert await store.find_approved_unclaimed(session_id, req.digest) is None
+    assert (
+        await store.find_approved_unclaimed(
+            session_id, req.digest, agent_id=req.agent_id
+        )
+        is None
+    )
     # Foreign session: never selected.
-    assert await store.find_pending(str(uuid.uuid4()), req.digest) is None
+    assert (
+        await store.find_pending(str(uuid.uuid4()), req.digest, agent_id=req.agent_id)
+        is None
+    )
 
 
 @pytest.mark.asyncio
@@ -161,7 +179,9 @@ async def test_durable_find_helpers_redact_raw_target(monkeypatch):
     }
 
     class FakeDb:
-        async def fetchrow(self, _query, *_args):
+        async def fetchrow(self, query, *args):
+            assert "agent_id = $3" in query
+            assert args[2] == row["agent_id"]
             return row
 
     async def fake_db():
@@ -169,14 +189,44 @@ async def test_durable_find_helpers_redact_raw_target(monkeypatch):
 
     monkeypatch.setattr(store, "_db", fake_db)
 
-    pending = await store.find_pending(row["session_id"], row["digest"])
+    pending = await store.find_pending(
+        row["session_id"], row["digest"], agent_id="harness"
+    )
     assert pending is not None
     _assert_no_secret(pending)
     assert pending["request_id"] == row["request_id"]
     assert pending["digest"] == row["digest"]
 
-    approved = await store.find_approved_unclaimed(row["session_id"], row["digest"])
+    approved = await store.find_approved_unclaimed(
+        row["session_id"], row["digest"], agent_id="harness"
+    )
     assert approved is not None
     _assert_no_secret(approved)
     assert approved["request_id"] == row["request_id"]
     assert approved["proposal"], "durable resume still needs the reviewable proposal"
+
+
+@pytest.mark.asyncio
+async def test_resume_and_claim_require_matching_actor(view_state):
+    session_id = str(uuid.uuid4())
+    req = _request(session_id)
+    await store.create_approval(req, principal="headless")
+    for actor in (None, "another-agent"):
+        assert await store.find_pending(session_id, req.digest, agent_id=actor) is None
+    assert await store.resolve_decision(
+        req.request_id, "approved", principal="headless"
+    )
+    for actor in (None, "another-agent"):
+        assert (
+            await store.find_approved_unclaimed(session_id, req.digest, agent_id=actor)
+            is None
+        )
+        assert not await store.claim_execution(
+            req.request_id, digest=req.digest, session_id=session_id, agent_id=actor
+        )
+    assert await store.find_approved_unclaimed(
+        session_id, req.digest, agent_id=req.agent_id
+    )
+    assert await store.claim_execution(
+        req.request_id, digest=req.digest, session_id=session_id, agent_id=req.agent_id
+    )

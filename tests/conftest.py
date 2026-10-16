@@ -6,25 +6,6 @@ import os
 import pytest
 import pytest_asyncio
 
-# Config keys that must never leak from the developer's real
-# ~/.machina/config.yaml into tests (keeps tests hermetic and prevents
-# accidental real API calls with a personal key).
-_SECRET_CONFIG_KEYS = (
-    "openrouter_api_key",
-    "openai_api_key",
-    "anthropic_api_key",
-    "google_api_key",
-    "mistral_api_key",
-    "groq_api_key",
-    "together_api_key",
-    "deepseek_api_key",
-    "xai_api_key",
-    "opencode_api_key",
-    "custom_api_key",
-    "cohere_api_key",
-    "database_url",
-)
-
 
 def pytest_collection_modifyitems(items):
     """Expose actual DB fixtures through the documented release selection."""
@@ -59,19 +40,22 @@ def isolate_config_secrets(monkeypatch):
     Individual tests can explicitly configure fake environment, file, or
     backend values using monkeypatch after this fixture runs.
     """
-    from machina.core.config import LEGACY_ENV_VARS, config
+    from machina.core.config import LEGACY_ENV_VARS, SECRET_KEYS, config
     from machina.security import secrets
 
     known_values = set(secrets._redaction_values)
     secrets._redaction_values.clear()
 
-    saved = {k: getattr(config, k) for k in _SECRET_CONFIG_KEYS}
+    # New provider keys are isolated automatically as the config evolves.
+    secret_keys = tuple(sorted(SECRET_KEYS))
+    saved = {k: getattr(config, k) for k in secret_keys}
     monkeypatch.setenv("MACHINA_SECRET_BACKEND", "")
-    for k in _SECRET_CONFIG_KEYS:
+    for k in secret_keys:
         setattr(config, k, "")
         # Config.get() falls back to dotenv-loaded environment values. Blank
         # those too so a fake-provider test cannot spend a developer's keys.
         monkeypatch.setenv(f"MACHINA_{k.upper()}", "")
+        monkeypatch.setenv(f"MACHINA_{k.upper()}_FILE", "")
         if k in LEGACY_ENV_VARS:
             monkeypatch.setenv(LEGACY_ENV_VARS[k], "")
             monkeypatch.setenv(f"{LEGACY_ENV_VARS[k]}_FILE", "")

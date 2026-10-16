@@ -26,10 +26,11 @@ from machina.core.models import ContextChunk, LLMResponse
 def sample_chunks() -> list[ContextChunk]:
     """Create a list of sample context chunks (newest first)."""
     now = datetime.now(UTC).replace(tzinfo=None)
+    session_id = uuid.uuid4()
     return [
         ContextChunk(
             id=uuid.uuid4(),
-            session_id=uuid.uuid4(),
+            session_id=session_id,
             agent_id="harness",
             chunk_type="user_message",
             payload={"content": "hello"},
@@ -38,7 +39,7 @@ def sample_chunks() -> list[ContextChunk]:
         ),
         ContextChunk(
             id=uuid.uuid4(),
-            session_id=uuid.uuid4(),
+            session_id=session_id,
             agent_id="harness",
             chunk_type="assistant_message",
             payload={"content": "Hi there!"},
@@ -47,25 +48,25 @@ def sample_chunks() -> list[ContextChunk]:
         ),
         ContextChunk(
             id=uuid.uuid4(),
-            session_id=uuid.uuid4(),
+            session_id=session_id,
             agent_id="harness",
-            chunk_type="tool_call",
-            payload={"tool": "read_file", "args": {"path": "/tmp/test"}},
+            chunk_type="result",
+            payload={"tool": "read_file", "status": "ok", "result": "file content here"},
             token_count=10,
             created_at=now - timedelta(minutes=2),
         ),
         ContextChunk(
             id=uuid.uuid4(),
-            session_id=uuid.uuid4(),
+            session_id=session_id,
             agent_id="harness",
-            chunk_type="result",
-            payload={"tool": "read_file", "status": "ok", "result": "file content here"},
+            chunk_type="tool_call",
+            payload={"tool": "read_file", "args": {"path": "/tmp/test"}},
             token_count=10,
             created_at=now - timedelta(minutes=3),
         ),
         ContextChunk(
             id=uuid.uuid4(),
-            session_id=uuid.uuid4(),
+            session_id=session_id,
             agent_id="harness",
             chunk_type="memory",
             payload={"content": "User prefers Python"},
@@ -74,7 +75,7 @@ def sample_chunks() -> list[ContextChunk]:
         ),
         ContextChunk(
             id=uuid.uuid4(),
-            session_id=uuid.uuid4(),
+            session_id=session_id,
             agent_id="harness",
             chunk_type="user_message",
             payload={"content": "what is the weather?"},
@@ -83,7 +84,7 @@ def sample_chunks() -> list[ContextChunk]:
         ),
         ContextChunk(
             id=uuid.uuid4(),
-            session_id=uuid.uuid4(),
+            session_id=session_id,
             agent_id="harness",
             chunk_type="assistant_message",
             payload={"content": "I don't know"},
@@ -292,8 +293,8 @@ class TestContextCompressor:
         """Test tool call/result pair identification."""
         compressor = ContextCompressor()
         pairs = compressor._identify_tool_pairs(sample_chunks)
-        # Should find the tool_call and result pair
-        assert len(pairs) > 0
+        # Newest-first history: the completed result precedes its older call.
+        assert pairs == {2: 3, 3: 2}
 
     def test_chunk_to_text_tool_call(self):
         """Test converting tool_call chunk to text."""

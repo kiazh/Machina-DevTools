@@ -143,7 +143,7 @@ async def test_maybe_auto_compact_eviction_failure_recorded(monkeypatch):
     recorded = []
     monkeypatch.setattr(svc, "record_failure", lambda op, e: recorded.append((op, e)))
 
-    session = SimpleNamespace(id=uuid.uuid4(), model="test-model", state={})
+    session = SimpleNamespace(id=uuid.uuid4(), model="test-model", provider="openrouter", agent_id="harness", state={})
     monkeypatch.setattr(session_module.session_manager, "get", AsyncMock(return_value=session))
     monkeypatch.setattr(session_module.session_manager, "update_state_fields", AsyncMock())
     monkeypatch.setattr(turns_module, "begin_mutation", AsyncMock(return_value="token-1"))
@@ -152,7 +152,11 @@ async def test_maybe_auto_compact_eviction_failure_recorded(monkeypatch):
         turns_module, "_db_claim_state", AsyncMock(return_value={"claim_owner": "token-1"})
     )
     monkeypatch.setattr(svc, "_estimate_next_request", AsyncMock(return_value=10_000))
-    monkeypatch.setattr("machina.core.context_windows.context_window_for", lambda _model: 1_000)
+    def capacity(model, provider):
+        assert (model, provider) == ("test-model", "openrouter")
+        return 1_000
+
+    monkeypatch.setattr("machina.core.context_windows.context_window_for", capacity)
     monkeypatch.setattr(svc.context_manager, "get_token_usage", AsyncMock(return_value=10_000))
     monkeypatch.setattr(
         svc,

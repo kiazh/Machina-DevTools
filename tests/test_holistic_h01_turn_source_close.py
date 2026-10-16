@@ -11,7 +11,7 @@ the hang and the missing ``end_turn``.
 These pins drive the same resistant finalizer through the public engine
 interface: cleanup must settle within the configured source bound, the
 unresolved work must be quarantined (never silently orphaned), and ownership
-release must run independently of source completion.
+release must wait until owned source work actually retires.
 """
 
 from __future__ import annotations
@@ -49,8 +49,8 @@ async def _resist_cancellation_until(release: asyncio.Event, entered: asyncio.Ev
             continue
 
 
-async def test_stream_and_engine_close_release_claim_with_resistant_finalizer(monkeypatch):
-    """A finalizer that cannot settle must not block ``close()``/the release."""
+async def test_stream_and_engine_close_defer_release_with_resistant_finalizer(monkeypatch):
+    """Bound close while keeping the claim until its finalizer retires."""
     released: list[str] = []
     release = asyncio.Event()
     finalizer_entered = asyncio.Event()
@@ -95,8 +95,8 @@ async def test_stream_and_engine_close_release_claim_with_resistant_finalizer(mo
         elapsed = loop.time() - started
 
         report = engine_close.result()
-        assert report.release_failed is False
-        assert released == ["owner-token"], "claim release must run before source completion"
+        assert report.release_failed is True
+        assert released == [], "claim must stay held until source completion"
         assert elapsed < 0.9, f"cleanup must be bounded, took {elapsed:.2f}s"
         assert finalizer_entered.is_set()
         assert not finalizer_done.is_set(), (
@@ -107,9 +107,10 @@ async def test_stream_and_engine_close_release_claim_with_resistant_finalizer(mo
         if pending:
             await asyncio.wait(pending, timeout=1.0)
         await asyncio.wait_for(finalizer_done.wait(), 1.0)
+        await _await_release(released)
 
 
-async def test_engine_close_releases_claim_when_active_driver_ignores_cancellation(monkeypatch):
+async def test_engine_close_defers_claim_when_active_driver_ignores_cancellation(monkeypatch):
     """A driver that absorbs cancellation while awaiting the source must not block close."""
     released: list[str] = []
     release = asyncio.Event()
@@ -140,12 +141,13 @@ async def test_engine_close_releases_claim_when_active_driver_ignores_cancellati
         assert engine_close in done, "close must bound the driver join"
 
         report = engine_close.result()
-        assert report.release_failed is False
-        assert released == ["owner-token"], "claim release must not wait on the resistant driver"
+        assert report.release_failed is True
+        assert released == [], "claim must stay held while the driver can perform effects"
     finally:
         release.set()
         await asyncio.wait(pending, timeout=1.0)
         await stream.aclose()
+        await _await_release(released)
 
 
 async def test_aclose_failure_is_reported_and_release_still_runs(monkeypatch):
@@ -181,3 +183,10 @@ async def test_aclose_failure_is_reported_and_release_still_runs(monkeypatch):
     assert report.release_failed is False
     assert released == ["owner-token"]
     assert "test.h01-error.source_close" in recorded
+
+
+async def _await_release(released):
+    async with asyncio.timeout(2):
+        while not released:
+            await asyncio.sleep(0.01)
+    assert released == ["owner-token"]

@@ -24,6 +24,9 @@ inside this repo:
   `../machina-harness` (same rules in `conftest.py` and `run-tests.sh`).
 * `run-tests.sh` puts the checkout on `PYTHONPATH` and disables bytecode
   writes. CI installs it instead: `pip install -e "$MACHINA_REPO[dev,connectors]"`.
+* The runner uses a disposable home and empty dotenv file to isolate user config,
+  credentials, and MCP inventory. It removes the home on exit and keeps installer
+  subprocesses on the interpreter selected with `PYTHON`.
 
 ## Quickstart
 

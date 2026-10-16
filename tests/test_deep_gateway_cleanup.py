@@ -41,7 +41,7 @@ async def test_gateway_honors_explicit_factory_with_stored_session_settings(monk
     assert completions[0]["text"] == "injected answer"
 
 
-async def test_gateway_completion_does_not_wait_for_resistant_learning(monkeypatch):
+async def test_gateway_defers_completion_while_resistant_learning_is_owned(monkeypatch):
     import machina.core.agent_factory as factory
     from machina import services
     from machina.core.session import session_manager
@@ -60,9 +60,21 @@ async def test_gateway_completion_does_not_wait_for_resistant_learning(monkeypat
     await started.wait()
     session = Session(id=uuid.uuid4())
     frames = []
+    released, provider_closed = asyncio.Event(), asyncio.Event()
+
+    async def end_turn(_sid, token):
+        assert token == "learning-owner"
+        released.set()
+        return True
+
+    class Provider:
+        async def close(self):
+            provider_closed.set()
 
     class Agent:
         _learning_tasks = {worker}
+        _owns_provider = True
+        provider = Provider()
 
         async def run_stream(self, *_args, **_kwargs):
             yield StreamEvent(type="done", response=AgentResponse(content="finished"))
@@ -70,19 +82,25 @@ async def test_gateway_completion_does_not_wait_for_resistant_learning(monkeypat
     monkeypatch.setattr(session_manager, "get_fresh", AsyncMock(return_value=session))
     monkeypatch.setattr(factory, "build_agent_for_session", AsyncMock(return_value=Agent()))
     monkeypatch.setattr(services, "maybe_auto_compact", AsyncMock())
+    monkeypatch.setattr("machina.core.turns.end_turn", end_turn)
     gateway = Gateway(frames.append, owns_db=False)
+    gateway._turn_tokens[str(session.id)] = "learning-owner"
     turn = asyncio.create_task(gateway._run_turn(session.id, "learning-turn", "hello"))
     try:
         done, _ = await asyncio.wait({turn}, timeout=2.5)
         assert turn in done, "optional learning retained the turn past its cleanup deadline"
         await turn
-        assert any(
-            f["params"]["type"] == "message.complete" and f["params"]["text"] == "finished"
-            for f in frames
-        )
+        kinds = [f["params"]["type"] for f in frames]
+        assert "turn.cleanup_pending" in kinds
+        assert "message.complete" not in kinds
+        assert not worker.done()
+        assert not released.is_set()
+        assert not provider_closed.is_set()
     finally:
         release.set()
         await asyncio.gather(worker, turn, return_exceptions=True)
+        await asyncio.wait_for(released.wait(), 2)
+        assert provider_closed.is_set()
 
 
 async def test_late_turn_cleanup_cannot_release_replacement_turn(monkeypatch):

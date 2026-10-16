@@ -88,7 +88,11 @@ def _pending_record(request_id: str, session_id: str, digest: str) -> dict:
 
 @pytest.mark.asyncio
 async def test_lost_race_does_not_relax_memory_to_approved(monkeypatch):
-    request_id, session_id, digest = uuid.uuid4().hex, str(uuid.uuid4()), uuid.uuid4().hex
+    request_id, session_id, digest = (
+        uuid.uuid4().hex,
+        str(uuid.uuid4()),
+        uuid.uuid4().hex,
+    )
     rec = _pending_record(request_id, session_id, digest)
     st._mem.approvals[request_id] = rec
     # Durable truth: another worker already denied this approval.
@@ -99,7 +103,9 @@ async def test_lost_race_does_not_relax_memory_to_approved(monkeypatch):
 
     monkeypatch.setattr(st, "_db", fake_db)
     try:
-        assert await st.resolve_decision(request_id, "approved", principal="tui") is None
+        assert (
+            await st.resolve_decision(request_id, "approved", principal="tui") is None
+        )
         assert rec["status"] == "denied", (
             "memory must mirror durable truth, not the attempted verdict"
         )
@@ -108,14 +114,23 @@ async def test_lost_race_does_not_relax_memory_to_approved(monkeypatch):
             return None
 
         monkeypatch.setattr(st, "_db", no_db)
-        assert await st.claim_execution(request_id, digest=digest, session_id=session_id) is False
+        assert (
+            await st.claim_execution(
+                request_id, digest=digest, session_id=session_id, agent_id="h"
+            )
+            is False
+        )
     finally:
         st._mem.approvals.pop(request_id, None)
 
 
 @pytest.mark.asyncio
 async def test_durable_write_failure_leaves_memory_pending(monkeypatch):
-    request_id, session_id, digest = uuid.uuid4().hex, str(uuid.uuid4()), uuid.uuid4().hex
+    request_id, session_id, digest = (
+        uuid.uuid4().hex,
+        str(uuid.uuid4()),
+        uuid.uuid4().hex,
+    )
     rec = _pending_record(request_id, session_id, digest)
     st._mem.approvals[request_id] = rec
     db = _Db(
@@ -136,14 +151,23 @@ async def test_durable_write_failure_leaves_memory_pending(monkeypatch):
             return None
 
         monkeypatch.setattr(st, "_db", no_db)
-        assert await st.claim_execution(request_id, digest=digest, session_id=session_id) is False
+        assert (
+            await st.claim_execution(
+                request_id, digest=digest, session_id=session_id, agent_id="h"
+            )
+            is False
+        )
     finally:
         st._mem.approvals.pop(request_id, None)
 
 
 @pytest.mark.asyncio
 async def test_claim_mirrors_durable_success_and_blocks_memory_replay(monkeypatch):
-    request_id, session_id, digest = uuid.uuid4().hex, str(uuid.uuid4()), uuid.uuid4().hex
+    request_id, session_id, digest = (
+        uuid.uuid4().hex,
+        str(uuid.uuid4()),
+        uuid.uuid4().hex,
+    )
     rec = _pending_record(request_id, session_id, digest)
     rec["status"] = "approved"
     st._mem.approvals[request_id] = rec
@@ -154,21 +178,35 @@ async def test_claim_mirrors_durable_success_and_blocks_memory_replay(monkeypatc
 
     monkeypatch.setattr(st, "_db", fake_db)
     try:
-        assert await st.claim_execution(request_id, digest=digest, session_id=session_id) is True
+        assert (
+            await st.claim_execution(
+                request_id, digest=digest, session_id=session_id, agent_id="h"
+            )
+            is True
+        )
         assert rec["status"] == "claimed" and rec["consumed"] is True
 
         async def no_db():
             return None
 
         monkeypatch.setattr(st, "_db", no_db)
-        assert await st.claim_execution(request_id, digest=digest, session_id=session_id) is False
+        assert (
+            await st.claim_execution(
+                request_id, digest=digest, session_id=session_id, agent_id="h"
+            )
+            is False
+        )
     finally:
         st._mem.approvals.pop(request_id, None)
 
 
 @pytest.mark.asyncio
 async def test_lost_claim_prevents_memory_path_replay(monkeypatch):
-    request_id, session_id, digest = uuid.uuid4().hex, str(uuid.uuid4()), uuid.uuid4().hex
+    request_id, session_id, digest = (
+        uuid.uuid4().hex,
+        str(uuid.uuid4()),
+        uuid.uuid4().hex,
+    )
     rec = _pending_record(request_id, session_id, digest)
     rec["status"] = "approved"
     st._mem.approvals[request_id] = rec
@@ -179,19 +217,31 @@ async def test_lost_claim_prevents_memory_path_replay(monkeypatch):
 
     monkeypatch.setattr(st, "_db", fake_db)
     try:
-        assert await st.claim_execution(request_id, digest=digest, session_id=session_id) is False
+        assert (
+            await st.claim_execution(
+                request_id, digest=digest, session_id=session_id, agent_id="h"
+            )
+            is False
+        )
 
         async def no_db():
             return None
 
         monkeypatch.setattr(st, "_db", no_db)
-        assert await st.claim_execution(request_id, digest=digest, session_id=session_id) is False
+        assert (
+            await st.claim_execution(
+                request_id, digest=digest, session_id=session_id, agent_id="h"
+            )
+            is False
+        )
     finally:
         st._mem.approvals.pop(request_id, None)
 
 
 @pytest.mark.asyncio
-async def test_durable_origin_approval_never_authorized_from_memory_fallback(monkeypatch):
+async def test_durable_origin_approval_never_authorized_from_memory_fallback(
+    monkeypatch,
+):
     """Audit: stale durable mirror must not outlive the DB.
 
     A record created while the DB was reachable is DB-authoritative. Even when
@@ -229,13 +279,21 @@ async def test_durable_origin_approval_never_authorized_from_memory_fallback(mon
 
         monkeypatch.setattr(st, "_db", no_db)
         assert (
-            await st.claim_execution(req.request_id, digest=req.digest, session_id=req.session_id)
+            await st.claim_execution(
+                req.request_id,
+                digest=req.digest,
+                session_id=req.session_id,
+                agent_id=req.agent_id,
+            )
             is False
         )
         # Decisions are refused too: a memory-only approval verdict must never
         # stand in for the durable authority.
         rec["status"] = "pending"
-        assert await st.resolve_decision(req.request_id, "approved", principal="tui") is None
+        assert (
+            await st.resolve_decision(req.request_id, "approved", principal="tui")
+            is None
+        )
         assert rec["status"] == "pending"
         assert rec.get("consumed") is False
     finally:
@@ -265,9 +323,17 @@ async def test_memory_only_approval_still_uses_memory_authority(monkeypatch):
         await st.create_approval(req, "tui")
         rec = st._mem.approvals[req.request_id]
         assert rec.get("durable") is False
-        assert await st.resolve_decision(req.request_id, "approved", principal="tui") is not None
         assert (
-            await st.claim_execution(req.request_id, digest=req.digest, session_id=req.session_id)
+            await st.resolve_decision(req.request_id, "approved", principal="tui")
+            is not None
+        )
+        assert (
+            await st.claim_execution(
+                req.request_id,
+                digest=req.digest,
+                session_id=req.session_id,
+                agent_id=req.agent_id,
+            )
             is True
         )
     finally:
@@ -275,7 +341,9 @@ async def test_memory_only_approval_still_uses_memory_authority(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_approval_records_are_redacted_in_proposal_display_and_listing(monkeypatch):
+async def test_approval_records_are_redacted_in_proposal_display_and_listing(
+    monkeypatch,
+):
     """Audit: stored proposals/display/listings must not persist raw credentials."""
     import json
 
@@ -284,7 +352,14 @@ async def test_approval_records_are_redacted_in_proposal_display_and_listing(mon
     secret = "review-fixture-bearer-8931"
     req = build_request(
         operation="process.exec",
-        argv=["curl", "-X", "POST", "-H", f"Authorization: Bearer {secret}", "https://example.com"],
+        argv=[
+            "curl",
+            "-X",
+            "POST",
+            "-H",
+            f"Authorization: Bearer {secret}",
+            "https://example.com",
+        ],
         cwd=".",
         mode="ask",
         backend="host",
@@ -319,7 +394,9 @@ async def test_approval_records_are_redacted_in_proposal_display_and_listing(mon
     try:
         response = await approvals_route.list_approvals(uuid.UUID(req.session_id))
         assert secret not in json.dumps(response)
-        gateway_listing = await approvals_list(_GrantGateway(session_id=req.session_id), {})
+        gateway_listing = await approvals_list(
+            _GrantGateway(session_id=req.session_id), {}
+        )
         assert secret not in json.dumps(gateway_listing)
     finally:
         st._mem.approvals.pop(req.request_id, None)
@@ -406,7 +483,9 @@ async def test_resolve_route_and_gateway_store_reviewed_capabilities(tmp_path):
             },
         )
         grants2 = await st.list_grants(session2)
-        capabilities2 = {cap for g in grants2 for cap in str(g["capability"]).split(",")}
+        capabilities2 = {
+            cap for g in grants2 for cap in str(g["capability"]).split(",")
+        }
         assert "credential_access" in capabilities2
         assert decide(request(session2), grants2).verdict == "allowed"
     finally:

@@ -131,7 +131,9 @@ async def test_models_list_resolves_the_opened_session_route(sandbox, monkeypatc
     payload = json.loads(FIXTURE.read_text(encoding="utf-8"))
     models = catalog.parse_catalog(payload, source="live")
     monkeypatch.setattr(catalog, "fetch_catalog_for_account", lambda **kwargs: models)
-    session = Session(id=uuid.uuid4(), title="resumed", model="gpt-6.1-sol", provider="chatgpt")
+    session = Session(
+        id=uuid.uuid4(), title="resumed", model="gpt-6.1-sol", provider="chatgpt"
+    )
     monkeypatch.setattr(feature.session_manager, "get", AsyncMock(return_value=session))
 
     gw = _gw(provider="openrouter", model="openrouter/free")
@@ -147,7 +149,9 @@ async def test_models_list_explicit_session_and_provider_win(sandbox):
 
     from machina.core.models import Session
 
-    session = Session(id=uuid.uuid4(), title="resumed", model="gpt-6.1-sol", provider="chatgpt")
+    session = Session(
+        id=uuid.uuid4(), title="resumed", model="gpt-6.1-sol", provider="chatgpt"
+    )
     gw = _gw(provider="openrouter", model="openrouter/free")
     gw.get_session = AsyncMock(return_value=session)
     # Explicit session identity resolves the pinned provider.
@@ -155,12 +159,16 @@ async def test_models_list_explicit_session_and_provider_win(sandbox):
     assert out["provider"] == "chatgpt"
     assert gw.get_session.await_count == 1
     # An explicit provider parameter still wins (cross-provider listings).
-    out = await feature.models_list(gw, {"sessionId": str(session.id), "provider": "openai"})
+    out = await feature.models_list(
+        gw, {"sessionId": str(session.id), "provider": "openai"}
+    )
     assert out["provider"] == "openai"
     assert out["source"] == "none"
 
 
-async def test_models_list_falls_back_when_the_opened_session_is_gone(sandbox, monkeypatch):
+async def test_models_list_falls_back_when_the_opened_session_is_gone(
+    sandbox, monkeypatch
+):
     import uuid
     from unittest.mock import AsyncMock
 
@@ -199,7 +207,9 @@ async def test_set_effort_non_chatgpt_keeps_wire_vocabulary(sandbox):
     assert config.get("reasoning_effort") == "high"
 
     with pytest.raises(RpcError) as excinfo:
-        await feature.models_set_effort(_gw(provider="openai", model="gpt-4o"), {"effort": "xhigh"})
+        await feature.models_set_effort(
+            _gw(provider="openai", model="gpt-4o"), {"effort": "xhigh"}
+        )
     assert "supported: low, medium, high" in str(excinfo.value)
 
 
@@ -225,7 +235,9 @@ async def test_set_effort_unset_aliases_clear_outside_chatgpt(sandbox):
         assert config.get("reasoning_effort") == "", alias
 
 
-async def test_set_effort_validates_against_the_opened_session_route(sandbox, monkeypatch):
+async def test_set_effort_validates_against_the_opened_session_route(
+    sandbox, monkeypatch
+):
     """Round-3 F10: effort levels validate against the resumed session's
     pinned model (``max`` is valid there, invalid for the gw defaults)."""
     import uuid
@@ -234,7 +246,9 @@ async def test_set_effort_validates_against_the_opened_session_route(sandbox, mo
     from machina.core.models import Session
 
     _seed_live_catalog(monkeypatch)
-    session = Session(id=uuid.uuid4(), title="resumed", model="gpt-6-luna", provider="chatgpt")
+    session = Session(
+        id=uuid.uuid4(), title="resumed", model="gpt-6-luna", provider="chatgpt"
+    )
     monkeypatch.setattr(feature.session_manager, "get", AsyncMock(return_value=session))
     gw = _gw(provider="openrouter", model="openrouter/free")
     gw.opened_session_id = lambda: session.id
@@ -297,7 +311,9 @@ async def test_providers_add_saves_key_and_pulls_models(sandbox, monkeypatch):
     assert "sk-secret" in env_text
 
 
-async def test_providers_add_reports_fetch_failure_but_keeps_entry(sandbox, monkeypatch):
+async def test_providers_add_reports_fetch_failure_but_keeps_entry(
+    sandbox, monkeypatch
+):
     from machina.security import providers as store
 
     def failing(base_url, api_key=""):
@@ -316,7 +332,8 @@ async def test_providers_add_reports_fetch_failure_but_keeps_entry(sandbox, monk
 async def test_providers_add_rejects_reserved_names(sandbox):
     with pytest.raises(RpcError):
         await feature.providers_add(
-            _gw(provider="openrouter"), {"name": "openai", "baseUrl": "http://127.0.0.1:1/v1"}
+            _gw(provider="openrouter"),
+            {"name": "openai", "baseUrl": "http://127.0.0.1:1/v1"},
         )
 
 
@@ -411,11 +428,21 @@ async def test_secrets_accept_provider_env_keys(sandbox, monkeypatch):
         _FakeGW(),
         {"key": "MACHINA_PROVIDER_ACME_API_KEY"},  # type: ignore[arg-type]
     )
-    assert cleared == {"key": "MACHINA_PROVIDER_ACME_API_KEY", "set": False}
+    assert cleared == {
+        "key": "MACHINA_PROVIDER_ACME_API_KEY",
+        "set": False,
+        "effectiveSet": False,
+        "effectiveSource": "configuration",
+        "effectiveUpdated": True,
+    }
     assert "MACHINA_PROVIDER_ACME_API_KEY" not in os.environ
     assert read_env_values().get("MACHINA_PROVIDER_ACME_API_KEY", "") == ""
 
-    for key in ("MACHINA_GATEWAY_TOKEN", "MACHINA_PROVIDER_ACME", "MACHINA_PROVIDER_API_KEY"):
+    for key in (
+        "MACHINA_GATEWAY_TOKEN",
+        "MACHINA_PROVIDER_ACME",
+        "MACHINA_PROVIDER_API_KEY",
+    ):
         with pytest.raises(RpcError):
             await secrets_set(_FakeGW(), {"key": key, "value": "x"})  # type: ignore[arg-type]
 
@@ -448,11 +475,17 @@ async def test_session_set_model_accepts_named_provider(sandbox, monkeypatch):
     from machina.security import providers as store
 
     store.add_provider("acme", "http://127.0.0.1:9000/v1")
-    session = SimpleNamespace(id=uuid.uuid4(), agent_id="harness", model=None, provider="acme")
+    session = SimpleNamespace(
+        id=uuid.uuid4(), agent_id="harness", model=None, provider="acme"
+    )
     monkeypatch.setattr(feature.session_manager, "set_model", AsyncMock())
     monkeypatch.setattr(feature.session_manager, "get", AsyncMock(return_value=session))
-    gw = SimpleNamespace(require_db=lambda: None, get_session=AsyncMock(return_value=session))
-    result = await feature.session_set_model(gw, {"sessionId": str(session.id), "provider": "acme"})
+    gw = SimpleNamespace(
+        require_db=lambda: None, get_session=AsyncMock(return_value=session)
+    )
+    result = await feature.session_set_model(
+        gw, {"sessionId": str(session.id), "provider": "acme"}
+    )
     assert result["provider"] == "acme"
 
 
@@ -476,7 +509,10 @@ async def test_resumed_session_route_drives_models_and_effort(sandbox, monkeypat
     models = catalog.parse_catalog(payload, source="live")
     monkeypatch.setattr(catalog, "fetch_catalog_for_account", lambda **kwargs: models)
     session = Session(
-        id=uuid.uuid4(), title="resumed account chat", model="gpt-6.1-sol", provider="chatgpt"
+        id=uuid.uuid4(),
+        title="resumed account chat",
+        model="gpt-6.1-sol",
+        provider="chatgpt",
     )
     monkeypatch.setattr(
         "machina.gateway.server.session_manager.get", AsyncMock(return_value=session)

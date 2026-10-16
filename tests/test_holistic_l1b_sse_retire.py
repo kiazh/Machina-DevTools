@@ -8,15 +8,10 @@ cancellation-resistant *step* wedged the transport first: ``close_turn()``
 never ran, so the owned provider stayed open and the session claim was never
 released (its renewal loop kept renewing it).
 
-These pins drive the real REST streaming route (``create_app`` endpoint, real
-``TurnEngine``) against a step that absorbs every cancellation:
-
-- the wedged step must not wedge ``retire_execution``: within the transport's
-  ``RETIRE_JOIN_TIMEOUT_SECONDS`` bound ``close_turn()`` retires the turn and
-  the step is quarantined (still strongly referenced) instead of awaited;
-- a step that does settle is still joined before retirement (no early release
-  for resistant-but-settling work), and
-- a well-behaved cancellable step keeps the existing direct close path.
+These pins drive the real REST streaming route against resistant steps.
+Foreground cleanup is bounded and reports cleanup_pending; quarantined work
+retains its provider and claim until actual retirement. Settling and normally
+cancellable steps still close their provider before releasing ownership.
 """
 
 from __future__ import annotations
@@ -187,29 +182,22 @@ async def test_wedged_step_retire_join_is_bounded(monkeypatch):
         assert cleanup_pending, frames
         assert agent.entered.is_set(), "the stream step never started"
 
-        retired_in_time = True
-        try:
-            await asyncio.wait_for(env.retired.wait(), 1.5)
-        except TimeoutError:
-            retired_in_time = False
-        quarantined = agent.step_task in background_tasks._quarantined_joins
-        claim = await env.turns.try_begin_turn(session.id)
-        if claim is not None:
-            await env.real_end(session.id, claim)
+        # Passing the foreground join deadline quarantines the step, but it
+        # does not prove that the step has stopped producing effects.
+        await asyncio.sleep(0.3)
+        assert agent.step_task in background_tasks._quarantined_joins
+        assert not env.retired.is_set()
+        assert await env.turns.try_begin_turn(session.id) is None
+        assert not agent.provider.closed.is_set()
+        assert not agent.stopped.is_set()
 
-        assert retired_in_time, (
-            "retire_execution did not reach close_turn within the bound: a wedged "
-            "step must be quarantined, never awaited unbounded"
-        )
-        assert quarantined, "the wedged step was not quarantined (cancelled + kept referenced)"
-        assert claim is not None, "the session claim stayed held while the step was wedged"
-        assert agent.provider.closed.is_set(), "close_turn did not close the owned provider"
-        assert not agent.stopped.is_set(), "the step must still be wedged when the turn retires"
-        # H01 rule: with the step still executing, the stream generator must
-        # not be aclosed (that would raise); retirement still ends cleanly.
-        retire_task = await _await_retire_task(agent)
-        assert retire_task is not None and retire_task.done(), "retirement did not finish"
-        assert retire_task.exception() is None, repr(retire_task.exception())
+        await _settle_wedged_step(agent)
+        await asyncio.wait_for(env.retired.wait(), 2.0)
+        assert agent.stopped.is_set()
+        assert agent.provider.closed.is_set()
+        claim = await env.turns.try_begin_turn(session.id)
+        assert claim is not None
+        await env.real_end(session.id, claim)
     finally:
         # Always release the double so its quarantined task can unwind; on the
         # pre-fix hang this also lets the unbounded retire finish before the

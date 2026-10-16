@@ -106,7 +106,8 @@ class _FakeEngine:
     def flush_tail(self) -> str:
         return ""
 
-    async def close(self, *, cancelled: bool):  # noqa: ANN001
+    async def close(self, *, cancelled: bool, retirement_task=None):  # noqa: ANN001
+        assert retirement_task is None or retirement_task.done()
         self.closed = True
         return SimpleNamespace(release_failed=False)
 
