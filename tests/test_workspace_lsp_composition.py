@@ -15,8 +15,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from machina.gateway.features import workspace as ws
 from machina.workspace.lsp import LspManager
+from machina.workspace.models import WorkspaceError
 
 
 class FakeGateway:
@@ -70,8 +73,8 @@ async def test_untrusted_open_leaves_the_service_managerless(tmp_path):
     assert getattr(gw, "_workspace_lsp_manager", None) is None
     service = gw.workspace_service
     assert service._lsp_manager is None
-    status = await service.lsp_status()
-    assert status.get("servers") == []
+    with pytest.raises(WorkspaceError, match="not trusted"):
+        await service.lsp_status()
 
 
 async def test_reopen_with_a_different_root_replaces_the_manager(tmp_path):

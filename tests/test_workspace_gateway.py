@@ -443,10 +443,13 @@ async def test_intelligence_without_manager_is_truthful(tmp_path):
 
 
 async def test_lsp_status_and_control_without_manager(tmp_path):
-    # Untrusted workspaces never get language servers (plan §14): the truthful
-    # missing contract now lives on this path, not on the trusted default.
+    # Untrusted workspaces never get language servers (plan §14): status now
+    # refuses like control does; the truthful missing contract lives on the
+    # trusted-but-managerless path.
     gw, _, wid = await _opened(tmp_path, trust=False)
-    assert await ws.workspace_lsp_status(gw, {"workspaceId": wid}) == {"servers": []}
+    refused_status = await ws.workspace_lsp_status(gw, {"workspaceId": wid})
+    assert refused_status["refused"]["reason"] == "denied"
+    assert "trusted" in refused_status["refused"]["message"]
 
     refused = await ws.workspace_lsp_control(
         gw, {"workspaceId": wid, "action": "start", "profile": "python"}
