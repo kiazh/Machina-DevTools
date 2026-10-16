@@ -108,6 +108,8 @@ def test_all_feature_methods_accessible_after_split():
         "workspace.lspStatus",
         "workspace.lspControl",
         "workspace.close",
+        "workspace.quickOpen",
+        "workspace.quickOpenCancel",
     }
     assert set(METHODS) == expected
 
