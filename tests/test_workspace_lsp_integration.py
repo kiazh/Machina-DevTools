@@ -168,7 +168,10 @@ async def test_open_does_not_spawn_and_first_document_open_starts_lazily(tmp_pat
         retried = service.document_open(uri, "python", 1, "x = 1\n")
         assert retried.state == "ready"
         assert retried.server_generation == connection.generation
-        assert [m for m in methods if m == "textDocument/didOpen"] == ["textDocument/didOpen"]
+        # Re-read the log AFTER the retry: asserting on the pre-retry snapshot
+        # would pass even if the retry sent a duplicate didOpen (pass-2 fix).
+        after_retry = [entry["method"] for entry in await _records(connection)]
+        assert after_retry.count("textDocument/didOpen") == 1
 
         status = (await service.lsp_status())["servers"]
         assert len(status) == 1

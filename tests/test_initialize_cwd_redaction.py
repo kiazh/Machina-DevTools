@@ -18,11 +18,16 @@ from machina.gateway.server import Gateway
 
 # ``initialize`` connects the database, so these tests need a DSN. DevTools CI
 # and local runs set MACHINA_TEST_DATABASE_URL; a DSN-less environment skips
-# with an explicit reason instead of failing on DATABASE_UNAVAILABLE.
-pytestmark = pytest.mark.skipif(
-    not os.environ.get("MACHINA_TEST_DATABASE_URL"),
-    reason="initialize connects the database (set MACHINA_TEST_DATABASE_URL)",
-)
+# with an explicit reason instead of failing on DATABASE_UNAVAILABLE. The
+# explicit ``db`` marker classifies them correctly under ``-m db`` selecting
+# (Release test: "mark DB-backed tests explicitly" when not using db_pool).
+pytestmark = [
+    pytest.mark.db,
+    pytest.mark.skipif(
+        not os.environ.get("MACHINA_TEST_DATABASE_URL"),
+        reason="initialize connects the database (set MACHINA_TEST_DATABASE_URL)",
+    ),
+]
 
 
 class _Harness:
