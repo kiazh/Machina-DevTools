@@ -161,7 +161,7 @@ _CORE_IMPORT_CEILINGS = {
 # machina/research/benchmark.py's architecture section (round-2 review N6:
 # the hand-mirrored literal drifted once already). Moves only with the delta
 # table documented inside test_deferred_import_count_ratchet.
-DEFERRED_IMPORT_CAP = 725
+DEFERRED_IMPORT_CAP = 726
 
 
 def test_module_level_core_imports_only_shrink():
@@ -316,6 +316,12 @@ def test_deferred_import_count_ratchet():
     #   registry's module-level machina imports pinned to the
     #   ports+observability seam (test_architecture_pairs) while paying a
     #   single census unit.
+    #   A3 planned-step disclosure (2026-10-16, deterministic-skills): 725 ->
+    #   726 (+1). skills/runtime.py binds ``machina.core.config`` inside
+    #   ``_disclosure_planner_enabled`` so the skills layer reads the rollback
+    #   switch lazily and the planned-step modules
+    #   (skills/planned_steps.py, skills/sections.py) stay stdlib-only leaves
+    #   imported at module level.
     # Procedure: this number may only move with a delta table like the above
     # in this comment; silent growth fails the suite by design.
     total = sum(_deferred_import_count(p) for p in ROOT.rglob("*.py"))
