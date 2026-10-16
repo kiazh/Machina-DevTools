@@ -1,0 +1,384 @@
+{
+  "schema": "machina.request_projection.corpus.v1",
+  "cases": {
+    "multi_round": {
+      "budget_tokens": 1500,
+      "safety_headroom_tokens": 40,
+      "min_recent_groups": 1,
+      "pins": {
+        "objective": [
+          "Ship the shared budgeted request projector in shadow mode."
+        ],
+        "constraints": [
+          "Pinned constraints must exact-survive; never prefix-truncate them.",
+          "Stdlib only; no provider calls; do not edit hot files."
+        ],
+        "read_only_scope": [
+          "read_only: machina/core/agent.py, machina/core/projection.py"
+        ]
+      },
+      "messages": [
+        {
+          "unit_id": "m0",
+          "role": "system",
+          "content": "You are the B1 implementer subagent."
+        },
+        {
+          "unit_id": "m1",
+          "role": "user",
+          "content": "Implement the request projector (B1)."
+        },
+        {
+          "unit_id": "m2",
+          "role": "assistant",
+          "content": "",
+          "tool_calls": [
+            {
+              "id": "call_1",
+              "type": "function",
+              "function": {
+                "name": "read_file",
+                "arguments": "{\"path\": \"src/module_1.py\"}"
+              }
+            }
+          ]
+        },
+        {
+          "unit_id": "m3",
+          "role": "tool",
+          "content": "round1 line 001: deterministic filler for projection fixtures (round1-001)\nround1 line 002: deterministic filler for projection fixtures (round1-002)\nround1 line 003: deterministic filler for projection fixtures (round1-003)\nround1 line 004: deterministic filler for projection fixtures (round1-004)\nround1 line 005: deterministic filler for projection fixtures (round1-005)\nround1 line 006: deterministic filler for projection fixtures (round1-006)\nround1 line 007: deterministic filler for projection fixtures (round1-007)\nround1 line 008: deterministic filler for projection fixtures (round1-008)\nround1 line 009: deterministic filler for projection fixtures (round1-009)\nround1 line 010: deterministic filler for projection fixtures (round1-010)\nround1 line 011: deterministic filler for projection fixtures (round1-011)\nround1 line 012: deterministic filler for projection fixtures (round1-012)\nround1 line 013: deterministic filler for projection fixtures (round1-013)\nround1 line 014: deterministic filler for projection fixtures (round1-014)\nround1 line 015: deterministic filler for projection fixtures (round1-015)\nround1 line 016: deterministic filler for projection fixtures (round1-016)\nround1 line 017: deterministic filler for projection fixtures (round1-017)\nround1 line 018: deterministic filler for projection fixtures (round1-018)\nround1 line 019: deterministic filler for projection fixtures (round1-019)\nround1 line 020: deterministic filler for projection fixtures (round1-020)\nround1 line 021: deterministic filler for projection fixtures (round1-021)\nround1 line 022: deterministic filler for projection fixtures (round1-022)\nround1 line 023: deterministic filler for projection fixtures (round1-023)\nround1 line 024: deterministic filler for projection fixtures (round1-024)",
+          "tool_call_id": "call_1",
+          "artifact_handle": "art-r1"
+        },
+        {
+          "unit_id": "m4",
+          "role": "assistant",
+          "content": "",
+          "tool_calls": [
+            {
+              "id": "call_2",
+              "type": "function",
+              "function": {
+                "name": "read_file",
+                "arguments": "{\"path\": \"src/module_2.py\"}"
+              }
+            }
+          ]
+        },
+        {
+          "unit_id": "m5",
+          "role": "tool",
+          "content": "round2 line 001: deterministic filler for projection fixtures (round2-001)\nround2 line 002: deterministic filler for projection fixtures (round2-002)\nround2 line 003: deterministic filler for projection fixtures (round2-003)\nround2 line 004: deterministic filler for projection fixtures (round2-004)\nround2 line 005: deterministic filler for projection fixtures (round2-005)\nround2 line 006: deterministic filler for projection fixtures (round2-006)\nround2 line 007: deterministic filler for projection fixtures (round2-007)\nround2 line 008: deterministic filler for projection fixtures (round2-008)\nround2 line 009: deterministic filler for projection fixtures (round2-009)\nround2 line 010: deterministic filler for projection fixtures (round2-010)\nround2 line 011: deterministic filler for projection fixtures (round2-011)\nround2 line 012: deterministic filler for projection fixtures (round2-012)\nround2 line 013: deterministic filler for projection fixtures (round2-013)\nround2 line 014: deterministic filler for projection fixtures (round2-014)\nround2 line 015: deterministic filler for projection fixtures (round2-015)\nround2 line 016: deterministic filler for projection fixtures (round2-016)\nround2 line 017: deterministic filler for projection fixtures (round2-017)\nround2 line 018: deterministic filler for projection fixtures (round2-018)\nround2 line 019: deterministic filler for projection fixtures (round2-019)\nround2 line 020: deterministic filler for projection fixtures (round2-020)\nround2 line 021: deterministic filler for projection fixtures (round2-021)\nround2 line 022: deterministic filler for projection fixtures (round2-022)\nround2 line 023: deterministic filler for projection fixtures (round2-023)\nround2 line 024: deterministic filler for projection fixtures (round2-024)",
+          "tool_call_id": "call_2",
+          "artifact_handle": "art-r2"
+        },
+        {
+          "unit_id": "m6",
+          "role": "assistant",
+          "content": "",
+          "tool_calls": [
+            {
+              "id": "call_3",
+              "type": "function",
+              "function": {
+                "name": "read_file",
+                "arguments": "{\"path\": \"src/module_3.py\"}"
+              }
+            }
+          ]
+        },
+        {
+          "unit_id": "m7",
+          "role": "tool",
+          "content": "round3 line 001: deterministic filler for projection fixtures (round3-001)\nround3 line 002: deterministic filler for projection fixtures (round3-002)\nround3 line 003: deterministic filler for projection fixtures (round3-003)\nround3 line 004: deterministic filler for projection fixtures (round3-004)\nround3 line 005: deterministic filler for projection fixtures (round3-005)\nround3 line 006: deterministic filler for projection fixtures (round3-006)\nround3 line 007: deterministic filler for projection fixtures (round3-007)\nround3 line 008: deterministic filler for projection fixtures (round3-008)\nround3 line 009: deterministic filler for projection fixtures (round3-009)\nround3 line 010: deterministic filler for projection fixtures (round3-010)\nround3 line 011: deterministic filler for projection fixtures (round3-011)\nround3 line 012: deterministic filler for projection fixtures (round3-012)\nround3 line 013: deterministic filler for projection fixtures (round3-013)\nround3 line 014: deterministic filler for projection fixtures (round3-014)\nround3 line 015: deterministic filler for projection fixtures (round3-015)\nround3 line 016: deterministic filler for projection fixtures (round3-016)\nround3 line 017: deterministic filler for projection fixtures (round3-017)\nround3 line 018: deterministic filler for projection fixtures (round3-018)\nround3 line 019: deterministic filler for projection fixtures (round3-019)\nround3 line 020: deterministic filler for projection fixtures (round3-020)\nround3 line 021: deterministic filler for projection fixtures (round3-021)\nround3 line 022: deterministic filler for projection fixtures (round3-022)\nround3 line 023: deterministic filler for projection fixtures (round3-023)\nround3 line 024: deterministic filler for projection fixtures (round3-024)",
+          "tool_call_id": "call_3",
+          "artifact_handle": "art-r3"
+        },
+        {
+          "unit_id": "m8",
+          "role": "assistant",
+          "content": "",
+          "tool_calls": [
+            {
+              "id": "call_4",
+              "type": "function",
+              "function": {
+                "name": "read_file",
+                "arguments": "{\"path\": \"src/module_4.py\"}"
+              }
+            }
+          ]
+        },
+        {
+          "unit_id": "m9",
+          "role": "tool",
+          "content": "round4 line 001: deterministic filler for projection fixtures (round4-001)\nround4 line 002: deterministic filler for projection fixtures (round4-002)\nround4 line 003: deterministic filler for projection fixtures (round4-003)\nround4 line 004: deterministic filler for projection fixtures (round4-004)\nround4 line 005: deterministic filler for projection fixtures (round4-005)\nround4 line 006: deterministic filler for projection fixtures (round4-006)\nround4 line 007: deterministic filler for projection fixtures (round4-007)\nround4 line 008: deterministic filler for projection fixtures (round4-008)\nround4 line 009: deterministic filler for projection fixtures (round4-009)\nround4 line 010: deterministic filler for projection fixtures (round4-010)\nround4 line 011: deterministic filler for projection fixtures (round4-011)\nround4 line 012: deterministic filler for projection fixtures (round4-012)\nround4 line 013: deterministic filler for projection fixtures (round4-013)\nround4 line 014: deterministic filler for projection fixtures (round4-014)\nround4 line 015: deterministic filler for projection fixtures (round4-015)\nround4 line 016: deterministic filler for projection fixtures (round4-016)\nround4 line 017: deterministic filler for projection fixtures (round4-017)\nround4 line 018: deterministic filler for projection fixtures (round4-018)\nround4 line 019: deterministic filler for projection fixtures (round4-019)\nround4 line 020: deterministic filler for projection fixtures (round4-020)\nround4 line 021: deterministic filler for projection fixtures (round4-021)\nround4 line 022: deterministic filler for projection fixtures (round4-022)\nround4 line 023: deterministic filler for projection fixtures (round4-023)\nround4 line 024: deterministic filler for projection fixtures (round4-024)",
+          "tool_call_id": "call_4",
+          "artifact_handle": "art-r4"
+        },
+        {
+          "unit_id": "m10",
+          "role": "assistant",
+          "content": "",
+          "tool_calls": [
+            {
+              "id": "call_5",
+              "type": "function",
+              "function": {
+                "name": "read_file",
+                "arguments": "{\"path\": \"src/module_5.py\"}"
+              }
+            }
+          ]
+        },
+        {
+          "unit_id": "m11",
+          "role": "tool",
+          "content": "latest verdict: 3 passed, 0 failed; module_5.py imports cleanly",
+          "tool_call_id": "call_5"
+        }
+      ],
+      "expected": {
+        "original_tokens": 2176
+      },
+      "note": "full-original basis 2176; 4 older rounds are artifact-backed"
+    },
+    "parallel_batch": {
+      "budget_tokens": 900,
+      "safety_headroom_tokens": 30,
+      "min_recent_groups": 1,
+      "pins": {
+        "constraints": [
+          "Treat the workspace as read-only."
+        ]
+      },
+      "messages": [
+        {
+          "unit_id": "m0",
+          "role": "user",
+          "content": "Review the three modules in parallel."
+        },
+        {
+          "unit_id": "m1",
+          "role": "assistant",
+          "content": "",
+          "tool_calls": [
+            {
+              "id": "call_old",
+              "type": "function",
+              "function": {
+                "name": "read_file",
+                "arguments": "{\"path\": \"src/legacy.py\"}"
+              }
+            }
+          ]
+        },
+        {
+          "unit_id": "m2",
+          "role": "tool",
+          "content": "legacy line 001: deterministic filler for projection fixtures (legacy-001)\nlegacy line 002: deterministic filler for projection fixtures (legacy-002)\nlegacy line 003: deterministic filler for projection fixtures (legacy-003)\nlegacy line 004: deterministic filler for projection fixtures (legacy-004)\nlegacy line 005: deterministic filler for projection fixtures (legacy-005)\nlegacy line 006: deterministic filler for projection fixtures (legacy-006)\nlegacy line 007: deterministic filler for projection fixtures (legacy-007)\nlegacy line 008: deterministic filler for projection fixtures (legacy-008)\nlegacy line 009: deterministic filler for projection fixtures (legacy-009)\nlegacy line 010: deterministic filler for projection fixtures (legacy-010)\nlegacy line 011: deterministic filler for projection fixtures (legacy-011)\nlegacy line 012: deterministic filler for projection fixtures (legacy-012)\nlegacy line 013: deterministic filler for projection fixtures (legacy-013)\nlegacy line 014: deterministic filler for projection fixtures (legacy-014)\nlegacy line 015: deterministic filler for projection fixtures (legacy-015)\nlegacy line 016: deterministic filler for projection fixtures (legacy-016)\nlegacy line 017: deterministic filler for projection fixtures (legacy-017)\nlegacy line 018: deterministic filler for projection fixtures (legacy-018)\nlegacy line 019: deterministic filler for projection fixtures (legacy-019)\nlegacy line 020: deterministic filler for projection fixtures (legacy-020)\nlegacy line 021: deterministic filler for projection fixtures (legacy-021)\nlegacy line 022: deterministic filler for projection fixtures (legacy-022)\nlegacy line 023: deterministic filler for projection fixtures (legacy-023)\nlegacy line 024: deterministic filler for projection fixtures (legacy-024)\nlegacy line 025: deterministic filler for projection fixtures (legacy-025)\nlegacy line 026: deterministic filler for projection fixtures (legacy-026)\nlegacy line 027: deterministic filler for projection fixtures (legacy-027)\nlegacy line 028: deterministic filler for projection fixtures (legacy-028)\nlegacy line 029: deterministic filler for projection fixtures (legacy-029)\nlegacy line 030: deterministic filler for projection fixtures (legacy-030)\nlegacy line 031: deterministic filler for projection fixtures (legacy-031)\nlegacy line 032: deterministic filler for projection fixtures (legacy-032)\nlegacy line 033: deterministic filler for projection fixtures (legacy-033)\nlegacy line 034: deterministic filler for projection fixtures (legacy-034)\nlegacy line 035: deterministic filler for projection fixtures (legacy-035)\nlegacy line 036: deterministic filler for projection fixtures (legacy-036)",
+          "tool_call_id": "call_old",
+          "artifact_handle": "art-old"
+        },
+        {
+          "unit_id": "m3",
+          "role": "assistant",
+          "content": "",
+          "tool_calls": [
+            {
+              "id": "call_p1",
+              "type": "function",
+              "function": {
+                "name": "read_file",
+                "arguments": "{\"path\": \"src/one.py\"}"
+              }
+            },
+            {
+              "id": "call_p2",
+              "type": "function",
+              "function": {
+                "name": "read_file",
+                "arguments": "{\"path\": \"src/two.py\"}"
+              }
+            },
+            {
+              "id": "call_p3",
+              "type": "function",
+              "function": {
+                "name": "read_file",
+                "arguments": "{\"path\": \"src/three.py\"}"
+              }
+            }
+          ]
+        },
+        {
+          "unit_id": "m4",
+          "role": "tool",
+          "content": "p1 line 001: deterministic filler for projection fixtures (p1-001)\np1 line 002: deterministic filler for projection fixtures (p1-002)\np1 line 003: deterministic filler for projection fixtures (p1-003)\np1 line 004: deterministic filler for projection fixtures (p1-004)\np1 line 005: deterministic filler for projection fixtures (p1-005)\np1 line 006: deterministic filler for projection fixtures (p1-006)\np1 line 007: deterministic filler for projection fixtures (p1-007)\np1 line 008: deterministic filler for projection fixtures (p1-008)\np1 line 009: deterministic filler for projection fixtures (p1-009)\np1 line 010: deterministic filler for projection fixtures (p1-010)\np1 line 011: deterministic filler for projection fixtures (p1-011)\np1 line 012: deterministic filler for projection fixtures (p1-012)\np1 line 013: deterministic filler for projection fixtures (p1-013)\np1 line 014: deterministic filler for projection fixtures (p1-014)\np1 line 015: deterministic filler for projection fixtures (p1-015)\np1 line 016: deterministic filler for projection fixtures (p1-016)\np1 line 017: deterministic filler for projection fixtures (p1-017)\np1 line 018: deterministic filler for projection fixtures (p1-018)",
+          "tool_call_id": "call_p1",
+          "artifact_handle": "art-p1"
+        },
+        {
+          "unit_id": "m5",
+          "role": "tool",
+          "content": "p2 line 001: deterministic filler for projection fixtures (p2-001)\np2 line 002: deterministic filler for projection fixtures (p2-002)\np2 line 003: deterministic filler for projection fixtures (p2-003)\np2 line 004: deterministic filler for projection fixtures (p2-004)\np2 line 005: deterministic filler for projection fixtures (p2-005)\np2 line 006: deterministic filler for projection fixtures (p2-006)\np2 line 007: deterministic filler for projection fixtures (p2-007)\np2 line 008: deterministic filler for projection fixtures (p2-008)\np2 line 009: deterministic filler for projection fixtures (p2-009)\np2 line 010: deterministic filler for projection fixtures (p2-010)\np2 line 011: deterministic filler for projection fixtures (p2-011)\np2 line 012: deterministic filler for projection fixtures (p2-012)\np2 line 013: deterministic filler for projection fixtures (p2-013)\np2 line 014: deterministic filler for projection fixtures (p2-014)\np2 line 015: deterministic filler for projection fixtures (p2-015)\np2 line 016: deterministic filler for projection fixtures (p2-016)\np2 line 017: deterministic filler for projection fixtures (p2-017)\np2 line 018: deterministic filler for projection fixtures (p2-018)",
+          "tool_call_id": "call_p2",
+          "artifact_handle": "art-p2"
+        },
+        {
+          "unit_id": "m6",
+          "role": "tool",
+          "content": "p3 line 001: deterministic filler for projection fixtures (p3-001)\np3 line 002: deterministic filler for projection fixtures (p3-002)\np3 line 003: deterministic filler for projection fixtures (p3-003)\np3 line 004: deterministic filler for projection fixtures (p3-004)\np3 line 005: deterministic filler for projection fixtures (p3-005)\np3 line 006: deterministic filler for projection fixtures (p3-006)\np3 line 007: deterministic filler for projection fixtures (p3-007)\np3 line 008: deterministic filler for projection fixtures (p3-008)\np3 line 009: deterministic filler for projection fixtures (p3-009)\np3 line 010: deterministic filler for projection fixtures (p3-010)\np3 line 011: deterministic filler for projection fixtures (p3-011)\np3 line 012: deterministic filler for projection fixtures (p3-012)\np3 line 013: deterministic filler for projection fixtures (p3-013)\np3 line 014: deterministic filler for projection fixtures (p3-014)\np3 line 015: deterministic filler for projection fixtures (p3-015)\np3 line 016: deterministic filler for projection fixtures (p3-016)\np3 line 017: deterministic filler for projection fixtures (p3-017)\np3 line 018: deterministic filler for projection fixtures (p3-018)",
+          "tool_call_id": "call_p3",
+          "artifact_handle": "art-p3"
+        }
+      ],
+      "expected": {
+        "original_tokens": 1789
+      },
+      "note": "parallel batch is the newest group; the legacy round is older"
+    },
+    "protected_native": {
+      "budget_tokens": 900,
+      "safety_headroom_tokens": 20,
+      "min_recent_groups": 1,
+      "pins": {
+        "core_instructions": [
+          "Replay signed provider blocks verbatim; never reorder them."
+        ],
+        "constraints": [
+          "Anthropic signed thinking must survive or the request must fail."
+        ]
+      },
+      "messages": [
+        {
+          "unit_id": "m0",
+          "role": "user",
+          "content": "Continue the signed tool loop."
+        },
+        {
+          "unit_id": "m1",
+          "role": "assistant",
+          "content": "",
+          "tool_calls": [
+            {
+              "id": "call_n1",
+              "type": "function",
+              "function": {
+                "name": "read_file",
+                "arguments": "{\"path\": \"src/signed.py\"}"
+              }
+            }
+          ],
+          "protected": true,
+          "native_blocks": [
+            {
+              "type": "thinking",
+              "thinking": "I should read the signed module next.",
+              "signature": "sig-abc123"
+            },
+            {
+              "type": "tool_use",
+              "id": "call_n1",
+              "name": "read_file",
+              "input": {
+                "path": "src/signed.py"
+              }
+            }
+          ]
+        },
+        {
+          "unit_id": "m2",
+          "role": "tool",
+          "content": "signed result: 1 passed",
+          "tool_call_id": "call_n1",
+          "protected": true
+        },
+        {
+          "unit_id": "m3",
+          "role": "assistant",
+          "content": "",
+          "tool_calls": [
+            {
+              "id": "call_n2",
+              "type": "function",
+              "function": {
+                "name": "read_file",
+                "arguments": "{\"path\": \"src/other.py\"}"
+              }
+            }
+          ]
+        },
+        {
+          "unit_id": "m4",
+          "role": "tool",
+          "content": "other line 001: deterministic filler for projection fixtures (other-001)\nother line 002: deterministic filler for projection fixtures (other-002)\nother line 003: deterministic filler for projection fixtures (other-003)\nother line 004: deterministic filler for projection fixtures (other-004)\nother line 005: deterministic filler for projection fixtures (other-005)\nother line 006: deterministic filler for projection fixtures (other-006)\nother line 007: deterministic filler for projection fixtures (other-007)\nother line 008: deterministic filler for projection fixtures (other-008)\nother line 009: deterministic filler for projection fixtures (other-009)\nother line 010: deterministic filler for projection fixtures (other-010)\nother line 011: deterministic filler for projection fixtures (other-011)\nother line 012: deterministic filler for projection fixtures (other-012)\nother line 013: deterministic filler for projection fixtures (other-013)\nother line 014: deterministic filler for projection fixtures (other-014)\nother line 015: deterministic filler for projection fixtures (other-015)\nother line 016: deterministic filler for projection fixtures (other-016)\nother line 017: deterministic filler for projection fixtures (other-017)\nother line 018: deterministic filler for projection fixtures (other-018)\nother line 019: deterministic filler for projection fixtures (other-019)\nother line 020: deterministic filler for projection fixtures (other-020)",
+          "tool_call_id": "call_n2",
+          "artifact_handle": "art-other"
+        }
+      ],
+      "expected": {
+        "original_tokens": 536
+      },
+      "note": "m1 (native signed) + m2 are protected; m3/m4 are the newest group"
+    },
+    "oversized_latest": {
+      "budget_tokens": 700,
+      "safety_headroom_tokens": 20,
+      "min_recent_groups": 1,
+      "pins": {
+        "objective": [
+          "Finish the reduction of the latest oversized batch."
+        ]
+      },
+      "messages": [
+        {
+          "unit_id": "m0",
+          "role": "user",
+          "content": "Reduce the two huge results."
+        },
+        {
+          "unit_id": "m1",
+          "role": "assistant",
+          "content": "",
+          "tool_calls": [
+            {
+              "id": "call_b1",
+              "type": "function",
+              "function": {
+                "name": "read_file",
+                "arguments": "{\"path\": \"src/big_one.txt\"}"
+              }
+            },
+            {
+              "id": "call_b2",
+              "type": "function",
+              "function": {
+                "name": "read_file",
+                "arguments": "{\"path\": \"src/big_two.txt\"}"
+              }
+            }
+          ]
+        },
+        {
+          "unit_id": "m2",
+          "role": "tool",
+          "content": "big1 line 001: deterministic filler for projection fixtures (big1-001)\nbig1 line 002: deterministic filler for projection fixtures (big1-002)\nbig1 line 003: deterministic filler for projection fixtures (big1-003)\nbig1 line 004: deterministic filler for projection fixtures (big1-004)\nbig1 line 005: deterministic filler for projection fixtures (big1-005)\nbig1 line 006: deterministic filler for projection fixtures (big1-006)\nbig1 line 007: deterministic filler for projection fixtures (big1-007)\nbig1 line 008: deterministic filler for projection fixtures (big1-008)\nbig1 line 009: deterministic filler for projection fixtures (big1-009)\nbig1 line 010: deterministic filler for projection fixtures (big1-010)\nbig1 line 011: deterministic filler for projection fixtures (big1-011)\nbig1 line 012: deterministic filler for projection fixtures (big1-012)\nbig1 line 013: deterministic filler for projection fixtures (big1-013)\nbig1 line 014: deterministic filler for projection fixtures (big1-014)\nbig1 line 015: deterministic filler for projection fixtures (big1-015)\nbig1 line 016: deterministic filler for projection fixtures (big1-016)\nbig1 line 017: deterministic filler for projection fixtures (big1-017)\nbig1 line 018: deterministic filler for projection fixtures (big1-018)\nbig1 line 019: deterministic filler for projection fixtures (big1-019)\nbig1 line 020: deterministic filler for projection fixtures (big1-020)\nbig1 line 021: deterministic filler for projection fixtures (big1-021)\nbig1 line 022: deterministic filler for projection fixtures (big1-022)\nbig1 line 023: deterministic filler for projection fixtures (big1-023)\nbig1 line 024: deterministic filler for projection fixtures (big1-024)\nbig1 line 025: deterministic filler for projection fixtures (big1-025)\nbig1 line 026: deterministic filler for projection fixtures (big1-026)\nbig1 line 027: deterministic filler for projection fixtures (big1-027)\nbig1 line 028: deterministic filler for projection fixtures (big1-028)\nbig1 line 029: deterministic filler for projection fixtures (big1-029)\nbig1 line 030: deterministic filler for projection fixtures (big1-030)\nbig1 line 031: deterministic filler for projection fixtures (big1-031)\nbig1 line 032: deterministic filler for projection fixtures (big1-032)\nbig1 line 033: deterministic filler for projection fixtures (big1-033)\nbig1 line 034: deterministic filler for projection fixtures (big1-034)\nbig1 line 035: deterministic filler for projection fixtures (big1-035)\nbig1 line 036: deterministic filler for projection fixtures (big1-036)\nbig1 line 037: deterministic filler for projection fixtures (big1-037)\nbig1 line 038: deterministic filler for projection fixtures (big1-038)\nbig1 line 039: deterministic filler for projection fixtures (big1-039)\nbig1 line 040: deterministic filler for projection fixtures (big1-040)\nbig1 line 041: deterministic filler for projection fixtures (big1-041)\nbig1 line 042: deterministic filler for projection fixtures (big1-042)\nbig1 line 043: deterministic filler for projection fixtures (big1-043)\nbig1 line 044: deterministic filler for projection fixtures (big1-044)\nbig1 line 045: deterministic filler for projection fixtures (big1-045)\nbig1 line 046: deterministic filler for projection fixtures (big1-046)\nbig1 line 047: deterministic filler for projection fixtures (big1-047)\nbig1 line 048: deterministic filler for projection fixtures (big1-048)\nbig1 line 049: deterministic filler for projection fixtures (big1-049)\nbig1 line 050: deterministic filler for projection fixtures (big1-050)\nbig1 line 051: deterministic filler for projection fixtures (big1-051)\nbig1 line 052: deterministic filler for projection fixtures (big1-052)\nbig1 line 053: deterministic filler for projection fixtures (big1-053)\nbig1 line 054: deterministic filler for projection fixtures (big1-054)\nbig1 line 055: deterministic filler for projection fixtures (big1-055)\nbig1 line 056: deterministic filler for projection fixtures (big1-056)\nbig1 line 057: deterministic filler for projection fixtures (big1-057)\nbig1 line 058: deterministic filler for projection fixtures (big1-058)\nbig1 line 059: deterministic filler for projection fixtures (big1-059)\nbig1 line 060: deterministic filler for projection fixtures (big1-060)\nbig1 line 061: deterministic filler for projection fixtures (big1-061)\nbig1 line 062: deterministic filler for projection fixtures (big1-062)\nbig1 line 063: deterministic filler for projection fixtures (big1-063)\nbig1 line 064: deterministic filler for projection fixtures (big1-064)\nbig1 line 065: deterministic filler for projection fixtures (big1-065)\nbig1 line 066: deterministic filler for projection fixtures (big1-066)\nbig1 line 067: deterministic filler for projection fixtures (big1-067)\nbig1 line 068: deterministic filler for projection fixtures (big1-068)\nbig1 line 069: deterministic filler for projection fixtures (big1-069)\nbig1 line 070: deterministic filler for projection fixtures (big1-070)\nbig1 line 071: deterministic filler for projection fixtures (big1-071)\nbig1 line 072: deterministic filler for projection fixtures (big1-072)\nbig1 line 073: deterministic filler for projection fixtures (big1-073)\nbig1 line 074: deterministic filler for projection fixtures (big1-074)\nbig1 line 075: deterministic filler for projection fixtures (big1-075)\nbig1 line 076: deterministic filler for projection fixtures (big1-076)\nbig1 line 077: deterministic filler for projection fixtures (big1-077)\nbig1 line 078: deterministic filler for projection fixtures (big1-078)\nbig1 line 079: deterministic filler for projection fixtures (big1-079)\nbig1 line 080: deterministic filler for projection fixtures (big1-080)\nbig1 line 081: deterministic filler for projection fixtures (big1-081)\nbig1 line 082: deterministic filler for projection fixtures (big1-082)\nbig1 line 083: deterministic filler for projection fixtures (big1-083)\nbig1 line 084: deterministic filler for projection fixtures (big1-084)\nbig1 line 085: deterministic filler for projection fixtures (big1-085)\nbig1 line 086: deterministic filler for projection fixtures (big1-086)\nbig1 line 087: deterministic filler for projection fixtures (big1-087)\nbig1 line 088: deterministic filler for projection fixtures (big1-088)\nbig1 line 089: deterministic filler for projection fixtures (big1-089)\nbig1 line 090: deterministic filler for projection fixtures (big1-090)\nbig1 line 091: deterministic filler for projection fixtures (big1-091)\nbig1 line 092: deterministic filler for projection fixtures (big1-092)\nbig1 line 093: deterministic filler for projection fixtures (big1-093)\nbig1 line 094: deterministic filler for projection fixtures (big1-094)\nbig1 line 095: deterministic filler for projection fixtures (big1-095)\nbig1 line 096: deterministic filler for projection fixtures (big1-096)",
+          "tool_call_id": "call_b1",
+          "artifact_handle": "art-b1"
+        },
+        {
+          "unit_id": "m3",
+          "role": "tool",
+          "content": "big2 line 001: deterministic filler for projection fixtures (big2-001)\nbig2 line 002: deterministic filler for projection fixtures (big2-002)\nbig2 line 003: deterministic filler for projection fixtures (big2-003)\nbig2 line 004: deterministic filler for projection fixtures (big2-004)\nbig2 line 005: deterministic filler for projection fixtures (big2-005)\nbig2 line 006: deterministic filler for projection fixtures (big2-006)\nbig2 line 007: deterministic filler for projection fixtures (big2-007)\nbig2 line 008: deterministic filler for projection fixtures (big2-008)\nbig2 line 009: deterministic filler for projection fixtures (big2-009)\nbig2 line 010: deterministic filler for projection fixtures (big2-010)\nbig2 line 011: deterministic filler for projection fixtures (big2-011)\nbig2 line 012: deterministic filler for projection fixtures (big2-012)\nbig2 line 013: deterministic filler for projection fixtures (big2-013)\nbig2 line 014: deterministic filler for projection fixtures (big2-014)\nbig2 line 015: deterministic filler for projection fixtures (big2-015)\nbig2 line 016: deterministic filler for projection fixtures (big2-016)\nbig2 line 017: deterministic filler for projection fixtures (big2-017)\nbig2 line 018: deterministic filler for projection fixtures (big2-018)\nbig2 line 019: deterministic filler for projection fixtures (big2-019)\nbig2 line 020: deterministic filler for projection fixtures (big2-020)\nbig2 line 021: deterministic filler for projection fixtures (big2-021)\nbig2 line 022: deterministic filler for projection fixtures (big2-022)\nbig2 line 023: deterministic filler for projection fixtures (big2-023)\nbig2 line 024: deterministic filler for projection fixtures (big2-024)\nbig2 line 025: deterministic filler for projection fixtures (big2-025)\nbig2 line 026: deterministic filler for projection fixtures (big2-026)\nbig2 line 027: deterministic filler for projection fixtures (big2-027)\nbig2 line 028: deterministic filler for projection fixtures (big2-028)\nbig2 line 029: deterministic filler for projection fixtures (big2-029)\nbig2 line 030: deterministic filler for projection fixtures (big2-030)\nbig2 line 031: deterministic filler for projection fixtures (big2-031)\nbig2 line 032: deterministic filler for projection fixtures (big2-032)\nbig2 line 033: deterministic filler for projection fixtures (big2-033)\nbig2 line 034: deterministic filler for projection fixtures (big2-034)\nbig2 line 035: deterministic filler for projection fixtures (big2-035)\nbig2 line 036: deterministic filler for projection fixtures (big2-036)\nbig2 line 037: deterministic filler for projection fixtures (big2-037)\nbig2 line 038: deterministic filler for projection fixtures (big2-038)\nbig2 line 039: deterministic filler for projection fixtures (big2-039)\nbig2 line 040: deterministic filler for projection fixtures (big2-040)\nbig2 line 041: deterministic filler for projection fixtures (big2-041)\nbig2 line 042: deterministic filler for projection fixtures (big2-042)\nbig2 line 043: deterministic filler for projection fixtures (big2-043)\nbig2 line 044: deterministic filler for projection fixtures (big2-044)\nbig2 line 045: deterministic filler for projection fixtures (big2-045)\nbig2 line 046: deterministic filler for projection fixtures (big2-046)\nbig2 line 047: deterministic filler for projection fixtures (big2-047)\nbig2 line 048: deterministic filler for projection fixtures (big2-048)\nbig2 line 049: deterministic filler for projection fixtures (big2-049)\nbig2 line 050: deterministic filler for projection fixtures (big2-050)\nbig2 line 051: deterministic filler for projection fixtures (big2-051)\nbig2 line 052: deterministic filler for projection fixtures (big2-052)\nbig2 line 053: deterministic filler for projection fixtures (big2-053)\nbig2 line 054: deterministic filler for projection fixtures (big2-054)\nbig2 line 055: deterministic filler for projection fixtures (big2-055)\nbig2 line 056: deterministic filler for projection fixtures (big2-056)\nbig2 line 057: deterministic filler for projection fixtures (big2-057)\nbig2 line 058: deterministic filler for projection fixtures (big2-058)\nbig2 line 059: deterministic filler for projection fixtures (big2-059)\nbig2 line 060: deterministic filler for projection fixtures (big2-060)\nbig2 line 061: deterministic filler for projection fixtures (big2-061)\nbig2 line 062: deterministic filler for projection fixtures (big2-062)\nbig2 line 063: deterministic filler for projection fixtures (big2-063)\nbig2 line 064: deterministic filler for projection fixtures (big2-064)\nbig2 line 065: deterministic filler for projection fixtures (big2-065)\nbig2 line 066: deterministic filler for projection fixtures (big2-066)\nbig2 line 067: deterministic filler for projection fixtures (big2-067)\nbig2 line 068: deterministic filler for projection fixtures (big2-068)\nbig2 line 069: deterministic filler for projection fixtures (big2-069)\nbig2 line 070: deterministic filler for projection fixtures (big2-070)\nbig2 line 071: deterministic filler for projection fixtures (big2-071)\nbig2 line 072: deterministic filler for projection fixtures (big2-072)\nbig2 line 073: deterministic filler for projection fixtures (big2-073)\nbig2 line 074: deterministic filler for projection fixtures (big2-074)\nbig2 line 075: deterministic filler for projection fixtures (big2-075)\nbig2 line 076: deterministic filler for projection fixtures (big2-076)\nbig2 line 077: deterministic filler for projection fixtures (big2-077)\nbig2 line 078: deterministic filler for projection fixtures (big2-078)\nbig2 line 079: deterministic filler for projection fixtures (big2-079)\nbig2 line 080: deterministic filler for projection fixtures (big2-080)\nbig2 line 081: deterministic filler for projection fixtures (big2-081)\nbig2 line 082: deterministic filler for projection fixtures (big2-082)\nbig2 line 083: deterministic filler for projection fixtures (big2-083)\nbig2 line 084: deterministic filler for projection fixtures (big2-084)\nbig2 line 085: deterministic filler for projection fixtures (big2-085)\nbig2 line 086: deterministic filler for projection fixtures (big2-086)\nbig2 line 087: deterministic filler for projection fixtures (big2-087)\nbig2 line 088: deterministic filler for projection fixtures (big2-088)\nbig2 line 089: deterministic filler for projection fixtures (big2-089)\nbig2 line 090: deterministic filler for projection fixtures (big2-090)\nbig2 line 091: deterministic filler for projection fixtures (big2-091)\nbig2 line 092: deterministic filler for projection fixtures (big2-092)\nbig2 line 093: deterministic filler for projection fixtures (big2-093)\nbig2 line 094: deterministic filler for projection fixtures (big2-094)\nbig2 line 095: deterministic filler for projection fixtures (big2-095)\nbig2 line 096: deterministic filler for projection fixtures (big2-096)",
+          "tool_call_id": "call_b2",
+          "artifact_handle": "art-b2"
+        }
+      ],
+      "expected": {
+        "original_tokens": 3541
+      },
+      "note": "latest group is oversized; only verified views can make it fit"
+    }
+  }
+}
