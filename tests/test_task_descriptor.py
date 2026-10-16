@@ -138,6 +138,39 @@ def test_explain_how_someone_would_build_a_website_stays_explanation():
     assert d.task_families == ()
 
 
+def test_marketing_site_paraphrase_is_web_build_with_unresolved_stack():
+    d = _descriptor("spin up a marketing site")
+    assert d.task_class == "implement"
+    assert d.task_families == ("web-build",)
+    assert d.stack_provenance() == "unknown"
+    assert "stack" in d.unresolved_fields
+    assert d.operation_scope == "mutating"
+    assert not set(d.requested_capabilities) & BACKEND_CAPABILITIES
+
+
+def test_homepage_paraphrase_is_web_build_with_unresolved_stack():
+    d = _descriptor("create a simple homepage for my band")
+    assert d.task_class == "implement"
+    assert d.task_families == ("web-build",)
+    assert d.stack_provenance() == "unknown"
+    assert "stack" in d.unresolved_fields
+    assert d.operation_scope == "mutating"
+    assert not set(d.requested_capabilities) & BACKEND_CAPABILITIES
+
+
+def test_qualified_web_nouns_stay_phrase_level_and_bare_site_still_never_matches():
+    from machina.core.intent import web_build_request
+
+    assert web_build_request("spin up a marketing site")
+    assert web_build_request("create a simple homepage for my band")
+    # The web-noun vocabulary stays a closed phrase list (spec §8.2): bare
+    # "site" alone is not a web-build noun, and the familiar negatives keep
+    # their observed decisions.
+    assert not web_build_request("build a site")
+    assert not web_build_request("compare my stock portfolio")
+    assert not web_build_request("walk me through how a band site gets made")
+
+
 def test_readonly_website_review_preserves_the_constraint():
     d = _descriptor("review this website, do not edit")
     assert d.task_class == "review-readonly"
@@ -173,6 +206,34 @@ def test_explicit_vue_switch_supersedes_inherited_react():
     assert d.inherited_stack == {"frameworks": ("react",)}
     assert d.effective_stack() == {"frameworks": ("vue",)}
     assert d.stack_provenance() == "known"
+
+
+def test_explicit_svelte_switch_supersedes_inherited_react():
+    d = _descriptor("switch the frontend to Svelte", task_state=REACT_STATE)
+    assert d.task_class == "implement"
+    assert d.explicit_stack == {"frameworks": ("svelte",)}
+    assert d.inherited_stack == {"frameworks": ("react",)}
+    assert d.effective_stack() == {"frameworks": ("svelte",)}
+    assert d.stack_provenance() == "known"
+
+
+def test_explicit_solid_switch_is_recognized_but_the_bare_token_does_not_route():
+    switched = _descriptor("switch the frontend to Solid", task_state=REACT_STATE)
+    assert switched.task_class == "implement"
+    assert switched.explicit_stack == {"frameworks": ("solid",)}
+    assert switched.effective_stack() == {"frameworks": ("solid",)}
+
+    bare = _descriptor("solid")
+    assert bare.task_class == "ambiguous"
+    assert bare.task_families == ()
+    assert bare.explicit_stack == {}
+
+
+def test_bare_svelte_token_does_not_route_to_a_coding_workflow():
+    d = _descriptor("svelte")
+    assert d.task_class == "ambiguous"
+    assert d.task_families == ()
+    assert "coding" not in d.task_families
 
 
 def test_explicit_stack_wins_over_recent_context_without_task_state():
@@ -241,6 +302,38 @@ def test_negated_intent_with_want_to_is_a_constraint_not_permission():
     d = _descriptor("I don't want to change the website")
     assert "no-edit" in d.constraints
     assert d.operation_scope == "read-only"
+
+
+def test_negated_build_with_explain_clause_is_an_explanation_with_a_constraint():
+    d = _descriptor("don't build anything, just explain how sites work")
+    assert d.task_class == "explain"
+    assert "web-build" not in d.task_families
+    assert d.operation_scope == "read-only"
+    assert "read-only" in d.constraints
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "don't build anything",
+        "do not build anything yet",
+        "no need to build a homepage",
+    ],
+)
+def test_negated_build_is_a_constraint_not_a_build_request(query):
+    d = _descriptor(query)
+    assert d.task_class == "ambiguous"
+    assert "web-build" not in d.task_families
+    assert d.operation_scope == "read-only"
+    assert "read-only" in d.constraints
+
+
+def test_negated_follow_on_after_a_build_keeps_the_build():
+    d = _descriptor("build a website but don't deploy yet")
+    assert d.task_class == "implement"
+    assert d.task_families == ("web-build",)
+    assert "no-deploy" in d.constraints
+    assert d.operation_scope == "mutating"
 
 
 def test_explicit_release_allows_editing_again():

@@ -453,7 +453,14 @@ async def test_preview_route_is_call_free_and_never_touches_provider(
         "token_basis",
         "diagnostics",
     }
-    assert result["disclosure"]["included_tokens"] >= 0
+    disclosure = result["disclosure"]
+    assert disclosure["included_tokens"] == (
+        sum(entry["estimate_tokens"] for entry in disclosure["chosen"])
+        + sum(entry["estimate_tokens"] for entry in disclosure["whole_body"])
+    )
+    # This fixture is metadata-less: the disclosure loads whole-body blocks,
+    # so the reported estimate is > 0 (F2 follow-up; it used to read 0).
+    assert disclosure["included_tokens"] > 0
     assert result["budget"] == feature.SKILLS_PREVIEW_BUDGET
     assert result["tokenBasis"] == result["disclosure"]["token_basis"]
     json.dumps(result)
@@ -547,7 +554,8 @@ async def test_preview_route_context_is_bounded_and_typed(tmp_path, monkeypatch)
 async def test_section_returns_exact_versioned_passage_and_continuation(
     tmp_path, monkeypatch
 ):
-    from machina.skills.sections import content_fingerprint, index_sections
+    from machina.skills.search import content_revision
+    from machina.skills.sections import index_sections
 
     reg = _registry(tmp_path)
     monkeypatch.setattr(feature, "_registry", lambda: reg)
@@ -555,7 +563,7 @@ async def test_section_returns_exact_versioned_passage_and_continuation(
 
     body = reg.get_skill_content("deploy-guide")
     section_text = index_sections(body).find("run-tests").text
-    revision = content_fingerprint(body)
+    revision = content_revision(reg.get("deploy-guide"))
 
     first = await feature.skills_section(
         gw, {"skillId": "deploy-guide", "section": "run-tests", "budget": 20}
@@ -593,7 +601,7 @@ async def test_section_returns_exact_versioned_passage_and_continuation(
 
 async def test_section_declared_binding(tmp_path, monkeypatch):
     from machina.skills.metadata import SectionMetadata, SkillMetadata
-    from machina.skills.sections import content_fingerprint
+    from machina.skills.search import content_revision
 
     reg = _registry(tmp_path)
     _attach_metadata(
@@ -621,21 +629,19 @@ async def test_section_declared_binding(tmp_path, monkeypatch):
         or "First run the focused suite" in result["text"]
     )
     assert "Roll back" not in result["text"]
-    assert result["contentRevision"] == content_fingerprint(
-        reg.get_skill_content("deploy-guide")
-    )
+    assert result["contentRevision"] == content_revision(reg.get("deploy-guide"))
 
 
 async def test_section_stale_revision_never_serves_a_different_passage(
     tmp_path, monkeypatch
 ):
-    from machina.skills.sections import content_fingerprint
+    from machina.skills.search import content_revision
 
     reg = _registry(tmp_path)
     monkeypatch.setattr(feature, "_registry", lambda: reg)
     gw = FakeGateway()
 
-    revision = content_fingerprint(reg.get_skill_content("deploy-guide"))
+    revision = content_revision(reg.get("deploy-guide"))
     stale = await feature.skills_section(
         gw,
         {
@@ -659,6 +665,76 @@ async def test_section_stale_revision_never_serves_a_different_passage(
         },
     )
     assert stale_offset["stale"] is True and stale_offset["text"] == ""
+
+
+async def test_section_revision_is_the_search_candidate_join(tmp_path, monkeypatch):
+    """F1 follow-up: search and section reads share one content revision identity.
+
+    ``skills.search`` exposes the canonical skill content revision
+    (``machina.skills.search.content_revision``); the version-bound read binds
+    against the same value — as does ``machina.skills.revisions`` — so the
+    revision shown by search is fresh on the first read, and a content edit
+    between fetch and read still surfaces as genuinely stale.
+    """
+    from machina.skills import revisions
+    from machina.skills.search import content_revision
+
+    reg = _registry(tmp_path)
+    monkeypatch.setattr(feature, "_registry", lambda: reg)
+    gw = FakeGateway()
+
+    search = await feature.skills_search(gw, {"query": "deploy releases"})
+    candidate = search["candidates"][0]
+    assert candidate["skillId"] == "deploy-guide"
+    skill = reg.get("deploy-guide")
+    revision = content_revision(skill)
+    assert candidate["contentRevision"] == revision
+    assert revisions.RevisionRegistry.for_skill(skill).content == revision
+
+    read = await feature.skills_section(
+        gw,
+        {
+            "skillId": candidate["skillId"],
+            "contentRevision": candidate["contentRevision"],
+            "section": "run-tests",
+            "budget": 40,
+        },
+    )
+    assert read["stale"] is False
+    assert read["contentRevision"] == revision
+    assert read["text"]
+
+    # A content edit moves search, the section identity, and the registry
+    # revision together; the pre-edit revision stays genuinely stale.
+    reg.update_skill("deploy-guide", content=GUIDE_CONTENT + "\n## Later\n\nMore.\n")
+    moved = content_revision(reg.get("deploy-guide"))
+    assert moved != revision
+    edited = await feature.skills_search(gw, {"query": "deploy releases"})
+    moved_candidate = next(c for c in edited["candidates"] if c["skillId"] == "deploy-guide")
+    assert moved_candidate["contentRevision"] == moved
+
+    stale = await feature.skills_section(
+        gw,
+        {
+            "skillId": "deploy-guide",
+            "contentRevision": revision,
+            "section": "run-tests",
+            "budget": 40,
+        },
+    )
+    assert stale["stale"] is True
+    assert stale["text"] == ""
+    assert stale["contentRevision"] == moved
+    fresh = await feature.skills_section(
+        gw,
+        {
+            "skillId": "deploy-guide",
+            "contentRevision": moved,
+            "section": "run-tests",
+            "budget": 40,
+        },
+    )
+    assert fresh["stale"] is False and fresh["text"]
 
 
 async def test_section_offset_mode_and_unknown_sections(tmp_path, monkeypatch):
@@ -861,13 +937,14 @@ def test_native_skill_read_legacy_offsets_byte_identical(tmp_path, monkeypatch):
 
 
 def test_native_skill_read_section_exact_continuation_and_stale(tmp_path, monkeypatch):
-    from machina.skills.sections import content_fingerprint, index_sections
+    from machina.skills.search import content_revision
+    from machina.skills.sections import index_sections
     from machina.tools.skills import skill_read
 
     reg = _tool_registry(tmp_path, monkeypatch)
     body = reg.get_skill_content("deploy-guide")
     section_text = index_sections(body).find("run-tests").text
-    revision = content_fingerprint(body)
+    revision = content_revision(reg.get("deploy-guide"))
     marker = f"revision {revision}:\n"
 
     whole = skill_read("deploy-guide", section="run-tests")

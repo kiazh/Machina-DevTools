@@ -452,6 +452,51 @@ def test_disclosure_plan_exposes_revisioned_contract_fields(tmp_path):
     assert plan.to_dict()["current_stage"] == "verify"
 
 
+def test_f2_included_tokens_counts_whole_body_fallback_blocks(tmp_path):
+    """F2 follow-up: a metadata-less disclosure reports the blocks it loads.
+
+    Before the fix ``included_tokens`` summed chosen sections only, so the
+    legacy whole-body fallback (every skill in the current catalog) reported
+    0 while the assembled context still carried the excerpt. Each whole-body
+    unit is now measured as the assembled block —
+    ``"\\n### {skill_id}\\n{body}\\n"`` (the shape
+    ``runtime._planned_disclosure`` emits) — under the plan's own token
+    counter, and ``included_tokens`` sums chosen sections plus whole-body
+    units.
+    """
+    import json
+
+    from machina.core.assembler import get_token_count
+    from machina.skills.planned_steps import plan_disclosure
+    from machina.skills.runtime import automatic_skill_context
+    from machina.skills.workflow import plan_workflow
+
+    skills, _raw = _whole_body_registry(tmp_path, with_emoji=False)
+    content = skills.get_skill_content("deploy")
+    block = f"\n### deploy\n{content}\n"
+    text = automatic_skill_context("help me deploy", skills=skills, budget=OK_BUDGET)
+    assert text.endswith(block), "the whole-body unit fits this budget uncut"
+
+    workflow = plan_workflow("help me deploy", skills=skills)
+    plan = plan_disclosure(
+        workflow.steps,
+        skill_for=skills.get,
+        content_for=skills.get_skill_content,
+        budget=OK_BUDGET,
+        catalog_revision=workflow.catalog_revision,
+        token_count=get_token_count,
+        token_basis="assembler.get_token_count",
+    )
+    assert plan.chosen == ()
+    assert [unit.skill_id for unit in plan.whole_body] == ["deploy"]
+    # The estimate equals the assembled whole-body block under the same
+    # counter: > 0, and the reported basis is the assembler's own.
+    assert plan.included_tokens == get_token_count(block) > 0
+    assert plan.whole_body[0].estimate_tokens == plan.included_tokens
+    assert plan.token_basis == "assembler.get_token_count"
+    json.dumps(plan.to_dict())
+
+
 def test_task_constraints_render_before_optional_sections(tmp_path):
     from machina.skills.runtime import automatic_skill_context
 

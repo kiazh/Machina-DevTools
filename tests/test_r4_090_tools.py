@@ -351,7 +351,7 @@ _FIVE_TOOLS = {
     "web_extract": ({"url"}, ["url"]),
     "search_files": ({"pattern", "path", "file_glob"}, ["pattern"]),
     "skill_list": ({"query", "offset"}, []),
-    "skill_read": ({"skill_name", "offset", "limit", "query"}, ["skill_name"]),
+    "skill_read": ({"skill_name", "offset", "limit", "query", "section", "revision"}, ["skill_name"]),
 }
 
 
@@ -382,6 +382,12 @@ def test_five_tools_declare_typed_parameters_with_ranges_and_defaults():
     limit = registry.get_tool("skill_read").parameters["properties"]["limit"]
     assert (limit["minimum"], limit["maximum"], limit["default"]) == (1, 8000, 800)
     assert "default" in registry.get_tool("skill_read").parameters["properties"]["offset"]
+
+    # A5 section reads: version-bound passages ride on the same tool (both
+    # optional, both defaulted — legacy offset reads stay the default path).
+    skill_read_props = registry.get_tool("skill_read").parameters["properties"]
+    assert (skill_read_props["section"]["type"], skill_read_props["section"]["default"]) == ("string", "")
+    assert (skill_read_props["revision"]["type"], skill_read_props["revision"]["default"]) == ("string", "")
 
     search = registry.get_tool("search_files").parameters["properties"]
     assert "200" in search["pattern"]["description"]
