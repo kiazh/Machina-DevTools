@@ -415,13 +415,25 @@ async def test_totals_aggregation(monkeypatch):
 
     class FakeRow:
         def __getitem__(self, key):
-            return {"requests": 10, "tokens": 500, "unknown_calls": 3}[key]
+            return {
+                "requests": 10,
+                "tokens": 500,
+                "cache_read_tokens": 40,
+                "cache_write_tokens": 10,
+                "unknown_calls": 3,
+            }[key]
 
     fetchrow = AsyncMock(return_value=FakeRow())
     monkeypatch.setattr("machina.core.usage.db", SimpleNamespace(fetchrow=fetchrow))
     store = UsageStore()
     result = await store.totals()
-    assert result == {"requests": 10, "accounted_tokens": 500, "unknown_calls": 3}
+    assert result == {
+        "requests": 10,
+        "accounted_tokens": 500,
+        "cache_read_tokens": 40,
+        "cache_write_tokens": 10,
+        "unknown_calls": 3,
+    }
 
 
 @pytest.mark.asyncio

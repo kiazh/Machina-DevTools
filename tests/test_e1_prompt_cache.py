@@ -5,8 +5,10 @@ schemas) is ~3.4k tokens and ~71% of a fixture turn's resent bytes are the
 identical prefix. When ``prompt_cache_enabled`` is on, the two stable-prefix
 ends get an Anthropic-style ephemeral ``cache_control`` breakpoint:
 
-* the final system content block, and
-* the last tool schema entry.
+* the final system content block (when a system message exists),
+* the last tool schema entry, and
+* the conversation tail (the final message's last content block) so
+  within-turn tool continuations reuse the growing prefix.
 
 Scope: ``AnthropicProvider`` natively; OpenRouter only for models routed to
 Anthropic (``anthropic`` in the model id, using OpenRouter's documented
@@ -429,7 +431,7 @@ async def test_off_direct_and_ollama_wire_payloads_frozen(make):
 # ─── ON path: AnthropicProvider ─────────────────────────────────────────────
 
 
-async def test_enabled_anthropic_marks_system_tail_and_last_tool_only(make):
+async def test_enabled_anthropic_marks_system_tools_and_conversation_tail(make):
     _enable_prompt_cache()
     recorder = _Recorder(_anthropic_response())
     provider = make.anthropic(recorder)
@@ -440,13 +442,19 @@ async def test_enabled_anthropic_marks_system_tail_and_last_tool_only(make):
     assert payload["system"] == [{"type": "text", "text": SYSTEM_TEXT, "cache_control": EPHEMERAL}]
     assert payload["tools"][-1]["cache_control"] == EPHEMERAL
     assert all("cache_control" not in tool for tool in payload["tools"][:-1])
-    assert "cache_control" not in json.dumps(payload["messages"])
-    assert recorder.body.decode("utf-8").count('"cache_control"') == 2
+    # Conversation-tail breakpoint: each tool-continuation request appends
+    # messages, so the previous request's tail is a reusable prefix.
+    assert payload["messages"][-1] == {
+        "role": "user",
+        "content": [{"type": "text", "text": "hello", "cache_control": EPHEMERAL}],
+    }
+    assert recorder.body.decode("utf-8").count('"cache_control"') == 3
 
-    # ON = OFF golden + exactly the two markers.
+    # ON = OFF golden + exactly the three markers.
     expected = copy.deepcopy(GOLDEN_ANTHROPIC_COMPLETE)
     expected["system"] = payload["system"]
     expected["tools"][-1] = payload["tools"][-1]
+    expected["messages"] = payload["messages"]
     assert payload == expected
 
 
@@ -463,10 +471,11 @@ async def test_enabled_anthropic_stream_matches_complete_breakpoints(make):
     assert stream_payload["stream"] is True
     assert stream_payload["system"] == complete_payload["system"]
     assert stream_payload["tools"] == complete_payload["tools"]
-    assert stream_recorder.body.decode("utf-8").count('"cache_control"') == 2
+    assert stream_payload["messages"] == complete_payload["messages"]
+    assert stream_recorder.body.decode("utf-8").count('"cache_control"') == 3
 
 
-async def test_enabled_anthropic_without_system_marks_nothing(make):
+async def test_enabled_anthropic_without_system_marks_conversation_tail(make):
     _enable_prompt_cache()
     recorder = _Recorder(_anthropic_response())
     provider = make.anthropic(recorder)
@@ -476,10 +485,13 @@ async def test_enabled_anthropic_without_system_marks_nothing(make):
     payload = recorder.payload
     assert "system" not in payload
     assert "tools" not in payload
-    assert "cache_control" not in recorder.body.decode("utf-8")
+    assert payload["messages"] == [
+        {"role": "user", "content": [{"type": "text", "text": "hi", "cache_control": EPHEMERAL}]}
+    ]
+    assert recorder.body.decode("utf-8").count('"cache_control"') == 1
 
 
-async def test_enabled_anthropic_system_only_marks_system(make):
+async def test_enabled_anthropic_system_only_marks_system_and_tail(make):
     _enable_prompt_cache()
     recorder = _Recorder(_anthropic_response())
     provider = make.anthropic(recorder)
@@ -489,7 +501,8 @@ async def test_enabled_anthropic_system_only_marks_system(make):
     payload = recorder.payload
     assert payload["system"][0]["cache_control"] == EPHEMERAL
     assert "tools" not in payload
-    assert recorder.body.decode("utf-8").count('"cache_control"') == 1
+    assert payload["messages"][-1]["content"][-1]["cache_control"] == EPHEMERAL
+    assert recorder.body.decode("utf-8").count('"cache_control"') == 2
 
 
 # ─── ON path: OpenRouter (Anthropic-routed only) ────────────────────────────
@@ -545,7 +558,7 @@ async def test_enabled_openrouter_non_anthropic_model_untouched(make):
     assert recorder.body == _wire(GOLDEN_OR_OTHER_MODEL)
 
 
-async def test_enabled_openrouter_without_system_still_marks_last_tool(make):
+async def test_enabled_openrouter_without_system_marks_tail_and_last_tool(make):
     _enable_prompt_cache()
     recorder = _Recorder(_openai_response())
     provider = make.openrouter(recorder)
@@ -553,9 +566,11 @@ async def test_enabled_openrouter_without_system_still_marks_last_tool(make):
     await provider.complete([{"role": "user", "content": "hi"}], tools=TOOLS)
 
     payload = recorder.payload
-    assert payload["messages"] == [{"role": "user", "content": "hi"}]
+    assert payload["messages"] == [
+        {"role": "user", "content": [{"type": "text", "text": "hi", "cache_control": EPHEMERAL}]}
+    ]
     assert payload["tools"][-1]["cache_control"] == EPHEMERAL
-    assert recorder.body.decode("utf-8").count('"cache_control"') == 1
+    assert recorder.body.decode("utf-8").count('"cache_control"') == 2
 
 
 async def test_enabled_openrouter_does_not_mutate_caller_messages(make):

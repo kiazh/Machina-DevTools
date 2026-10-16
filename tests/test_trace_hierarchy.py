@@ -159,8 +159,9 @@ class _FakeConn:
     async def fetchrow(self, sql, *args):
         if sql.strip().upper().startswith("INSERT"):
             rid = uuid.uuid4()
-            # INSERT args: session, agent, provider, model, reserved, ancestors...
-            self._outer.reserved[rid] = args[4]
+            # INSERT args (ledger v2): session, agent, provider, model,
+            # purpose, reserved, ancestors... ($4 serves as requested_model).
+            self._outer.reserved[rid] = args[5]
             return {"id": rid}
         return None  # lineage lookup
 

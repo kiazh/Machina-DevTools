@@ -399,7 +399,10 @@ class _UsageConn:
 
     async def fetchrow(self, query, *args):
         if "RETURNING id" in query:
-            self.reserved_seen.append(args[4])
+            # INSERT args (ledger v2): session, agent, provider, model,
+            # purpose, reserved, ancestors... ($4 serves as requested_model).
+            assert args[4] == "agent"
+            self.reserved_seen.append(args[5])
             return {"id": uuid.uuid4()}
         if "ancestor_session_ids" in query:
             return {"session_ids": [], "agent_ids": []}

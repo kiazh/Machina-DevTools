@@ -110,6 +110,10 @@ def test_all_feature_methods_accessible_after_split():
         "workspace.close",
         "workspace.quickOpen",
         "workspace.quickOpenCancel",
+        # Pinned now-playing bar (2026-10-16): system now-playing detection
+        # for the TUI music bar.
+        "nowplaying.get",
+        "nowplaying.command",
     }
     assert set(METHODS) == expected
 

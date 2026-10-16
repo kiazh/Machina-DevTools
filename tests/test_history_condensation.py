@@ -105,7 +105,10 @@ async def test_loop_condenses_earlier_terminal_output(tmp_path, monkeypatch):
         pytest.fail("ordinary workflow requested approval")
 
     set_approval_handler(unexpected_approval)
-    (tmp_path / "work" / "big.txt").write_text("H" * 400 + "M" * 400 + "T" * 400)
+    # 903 chars keeps the append-time cap (1000) out of play so this test
+    # exercises in-loop condensation of stale rounds specifically; reducer
+    # views for over-cap results are covered in test_te_views_integration.py.
+    (tmp_path / "work" / "big.txt").write_text("H" * 400 + "M" * 150 + "T" * 350)
 
     class Provider:
         calls = []
