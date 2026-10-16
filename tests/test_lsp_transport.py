@@ -42,8 +42,13 @@ def test_headers_are_ascii_crlf_with_byte_length():
     assert header.isascii()
     assert encoded[len(header) + 4 :] == body
     assert int(header.split(b":")[1]) == len(body)
+    # ensure_ascii=True (lone-surrogate safety: an unpaired surrogate must
+    # never make encode raise): non-ASCII is escaped, so the body is pure
+    # ASCII and its byte length equals its text length.
+    assert body.isascii()
     body_text = body.decode("utf-8")
-    assert len(body_text) < len(body)  # multi-byte characters
+    assert len(body_text) == len(body)
+    assert "\\u00e9" in body_text  # é escaped, not raw UTF-8
     assert json.loads(body_text)["params"]["t"] == "héllo 🦀"
 
 
