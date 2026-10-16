@@ -162,7 +162,11 @@ async def test_true_request_overflow_stops_before_provider_call(monkeypatch, str
         response = events[-1].response
     else:
         response = await agent.run(session.id, "work", verbose=False)
-    assert "model context window" in response.content.lower()
+    # Default is wired since the Track B rollout gate: a true overflow is
+    # refused by the projector with the structured capacity message (safe
+    # options included), still before any provider call.
+    assert "exceeds the effective" in response.content
+    assert "Safe options:" in response.content
     call.assert_not_awaited()
 
 

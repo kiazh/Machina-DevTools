@@ -254,9 +254,9 @@ def _tool_result(messages: list[dict], call_id: str) -> dict:
 
 def test_request_projection_flag_is_registered_typed_and_savable(tmp_path):
     assert "request_projection_enabled" in DEFAULTS
-    assert DEFAULTS["request_projection_enabled"] is False
-    assert Config().request_projection_enabled is False
-    assert config.get("request_projection_enabled") is False
+    assert DEFAULTS["request_projection_enabled"] is True
+    assert Config().request_projection_enabled is True
+    assert config.get("request_projection_enabled") is True
     assert validate_value("request_projection_enabled", "on") is True
     assert validate_value("request_projection_enabled", "off") is False
     with pytest.raises(ValueError):
@@ -282,6 +282,9 @@ async def test_flag_off_logs_bounded_shadow_and_payloads_stay_byte_identical(
     store = _VerifiedStore()
     monkeypatch.setattr("machina.core.tool_views.artifact_store", store)
     monkeypatch.setattr("machina.core.request_gate.artifact_store", store)
+    # Rollout gate: the production default is now ON, so this shadow-parity
+    # test states the flag it exercises explicitly.
+    config.set("request_projection_enabled", False)
 
     caplog.set_level(logging.INFO, logger="agent.request_projection.shadow")
     shadow_provider = _ScriptedProvider(_script())
