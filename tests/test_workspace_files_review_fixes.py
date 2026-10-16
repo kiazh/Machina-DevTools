@@ -2,12 +2,14 @@
 
 Covers three findings:
 
-1. TOCTOU (HIGH): ``WorkspaceFiles.read_text``/``_disk_revision`` only compared
-   dev+ino against the lstat of the resolved path, so an ancestor directory
-   swapped to an outside symlink between ``resolve()`` and ``open()`` passed
-   containment (descriptor and lstat path both pointed at the same outside
-   file). The fixes re-resolve the realpath after the open and re-enforce
-   ``is_relative_to(self.root)``, mirroring ``machina/tools/file.py``.
+1. TOCTOU (HIGH): the earlier post-open realpath re-check was itself
+   race-unsafe — ``os.path.realpath`` is non-strict and can return the
+   unresolved path while its walk races an in-root symlink toggle, so
+   ``resolve()`` and ``_verify_containment()`` both passed while ``open()``
+   followed the swapped symlink. ``read_text``/``_disk_revision`` now open
+   the root once and walk every component with ``dir_fd``-anchored
+   ``O_NOFOLLOW|O_DIRECTORY`` opens; the two race tests below fire the swap
+   at the component-open seam (no timing dependence, no dev/ino luck).
 2. Pagination (MED): ``list_dir`` derived ``next_cursor`` from
    ``scan_truncated or offset+limit < len(entries)``, so a directory larger
    than ``MAX_LIST_SCAN`` eventually emitted a cursor the next call refused as
@@ -53,14 +55,16 @@ def _real(path: Path | str) -> Path:
     return Path(os.path.realpath(path))
 
 
-def _swap_ancestor_hook(root: Path, ancestor: str, outside: Path, target: str):
-    """Deterministic race hook: swap an ancestor to an outside symlink right
-    before the guarded ``open`` of *target*, then delegate to the real open."""
+def _swap_ancestor_hook(root: Path, ancestor: str, outside: Path):
+    """Deterministic race hook: swap the *ancestor* directory for an outside
+    symlink exactly when the descriptor walk opens that component (the
+    guarded seam), before the real ``openat`` runs. The ``ELOOP``/``ENOTDIR``
+    refusal is then forced — no dev/ino luck is involved."""
     real_open = fmod._os_open
     state = {"swapped": False}
 
     def hook(path, flags, *args, **kwargs):
-        if not state["swapped"] and os.fspath(path) == target:
+        if not state["swapped"] and os.fspath(path) == ancestor and "dir_fd" in kwargs:
             os.rename(root / ancestor, root / f".{ancestor}.parked")
             os.symlink(outside, root / ancestor, target_is_directory=True)
             state["swapped"] = os.path.islink(root / ancestor)
@@ -90,8 +94,9 @@ def test_verify_containment_helper_inside_allowed_outside_refused(tmp_path):
 
 def test_read_text_ancestor_swap_between_resolve_and_open_refused(tmp_path, monkeypatch):
     """The exact window: the ancestor becomes an outside symlink after
-    resolve() but before open(). dev+ino still matches (both refer to the
-    outside file); only the post-open realpath re-check can refuse it."""
+    resolve() but before the descriptor walk opens that component. The
+    ``O_NOFOLLOW|O_DIRECTORY`` openat fails with ELOOP/ENOTDIR, so the read
+    is refused before any bytes can flow (dev/ino cannot be consulted)."""
     _require_symlinks(tmp_path)
     root = _real(tmp_path) / "ws"
     (root / "a" / "b").mkdir(parents=True)
@@ -101,15 +106,14 @@ def test_read_text_ancestor_swap_between_resolve_and_open_refused(tmp_path, monk
     (outside / "b" / "file.txt").write_text("SECRET")
     files = WorkspaceFiles(root)
 
-    target = os.fspath(root / "a" / "b" / "file.txt")
-    hook, state = _swap_ancestor_hook(root, "a", outside, target)
+    hook, state = _swap_ancestor_hook(root, "a", outside)
     monkeypatch.setattr(fmod, "_os_open", hook)
 
     with pytest.raises(WorkspaceError) as error:
         files.read_text("a/b/file.txt")
-    assert state["swapped"], "swap seam (open) was never reached"
+    assert state["swapped"], "swap seam (component openat) was never reached"
     assert error.value.reason == "denied"
-    assert "TOCTOU" in error.value.message
+    assert "symlink" in error.value.message
 
 
 def test_save_text_ancestor_swap_during_disk_revision_refused(tmp_path, monkeypatch):
@@ -125,15 +129,14 @@ def test_save_text_ancestor_swap_during_disk_revision_refused(tmp_path, monkeypa
     outside_file.write_text("SECRET")
     files = WorkspaceFiles(root)
 
-    target = os.fspath(root / "a" / "b" / "file.txt")
-    hook, state = _swap_ancestor_hook(root, "a", outside, target)
+    hook, state = _swap_ancestor_hook(root, "a", outside)
     monkeypatch.setattr(fmod, "_os_open", hook)
 
     with pytest.raises(WorkspaceError) as error:
         asyncio.run(files.save_text("a/b/file.txt", "ATTACKER"))
-    assert state["swapped"], "swap seam (open) was never reached"
+    assert state["swapped"], "swap seam (component openat) was never reached"
     assert error.value.reason == "denied"
-    assert "TOCTOU" in error.value.message
+    assert "symlink" in error.value.message
     assert outside_file.read_text() == "SECRET"
 
 
