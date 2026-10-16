@@ -161,7 +161,7 @@ _CORE_IMPORT_CEILINGS = {
 # machina/research/benchmark.py's architecture section (round-2 review N6:
 # the hand-mirrored literal drifted once already). Moves only with the delta
 # table documented inside test_deferred_import_count_ratchet.
-DEFERRED_IMPORT_CAP = 742
+DEFERRED_IMPORT_CAP = 750
 
 
 def test_module_level_core_imports_only_shrink():
@@ -335,6 +335,25 @@ def test_deferred_import_count_ratchet():
     #   +1). That lane's share is counted here so the tree-wide guard stays
     #   honest; its own landing note may restate it. Cap 726 -> 742 to match
     #   the measured tree; reconcile if the A5 share is re-attributed.
+    #   Install-time skill metadata (2026-10-16, install-metadata lane):
+    #   743 -> 749 (+6; the shared worktree already measured 743 before this
+    #   change — the A5 note's 742 undercounted by one, counted here so the
+    #   tree-wide guard stays honest). Deferred imports added:
+    #     +3 skills/enrich.py — default_agent_seam binds machina.core.config,
+    #        machina.core.provider, and machina.core.usage inside the returned
+    #        callable so the skills layer never imports the provider stack
+    #        eagerly (the module-level skills core-import ceiling stays at 4).
+    #     +1 skills/registry.py — SkillHub.install binds skills.enrich inside
+    #        the method (same idiom as delete_skill -> repo_install), keeping
+    #        the registry's module-level imports pinned to the
+    #        ports+observability seam (test_architecture_pairs).
+    #     +1 gateway/features/skills.py — the learn handler binds skills.enrich
+    #        in the async metadata helper.
+    #     +1 cli/__init__.py — the ``learn`` command binds skills.enrich after
+    #        publishing the skill. tools/repo.py uses a module-level import.
+    #   750 = 749 + 1 observed on the shared worktree from a concurrent lane
+    #   (machina/cli/launcher.py, 0 -> 1 deferred import), counted here so the
+    #   tree-wide guard stays honest rather than attributing it elsewhere.
     # Procedure: this number may only move with a delta table like the above
     # in this comment; silent growth fails the suite by design.
     total = sum(_deferred_import_count(p) for p in ROOT.rglob("*.py"))
