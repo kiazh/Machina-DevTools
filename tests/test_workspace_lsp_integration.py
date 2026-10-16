@@ -1129,3 +1129,37 @@ def test_symbols_cap_bounds_both_views_exactly():
 def test_sanitize_log_text_strips_control_characters():
     assert sanitize_log_text("a\x1b[31mb\x07c\x00d") == "abcd"
     assert len(sanitize_log_text("x" * 1000, limit=10)) == 10
+
+
+async def test_did_open_sends_the_documents_protocol_language(tmp_path):
+    """didOpen languageId follows the DOCUMENT, not the profile language.
+
+    CodeRabbit pass-1 finding: sending the canonical profile language (e.g.
+    "typescript" for every TS-family file) makes servers treat .tsx/.jsx/.js
+    with the wrong grammar family. The extension map carries the precise
+    protocol ids; the profile language still selects the server (unchanged).
+    """
+    manager = _manager(tmp_path)
+    async with _workspace(tmp_path, manager) as (service, _, _events):
+        cases = (
+            ("app.tsx", "typescriptreact", "typescriptreact"),
+            ("widget.jsx", "javascriptreact", "javascriptreact"),
+            ("esm.mjs", "javascript", "javascript"),
+            ("legacy.cts", "typescript", "typescript"),
+            ("main.py", "python", "python"),
+        )
+        for name, declared, expected in cases:
+            uri = (tmp_path / name).as_uri()
+            service.document_open(uri, declared, 1, "x = 1\n")
+            await _flush(service, uri)
+        connection = await manager.ensure_started("typescript")
+        records = _by_method(await _records(connection), "textDocument/didOpen")
+        sent = {r["textDocument"]["uri"]: r["textDocument"]["languageId"] for r in records}
+        for name, _declared, expected in cases:
+            if name.endswith(".py"):
+                continue  # python goes to its own profile connection
+            assert sent[(tmp_path / name).as_uri()] == expected, name
+        python_connection = await manager.ensure_started("python")
+        py_records = _by_method(await _records(python_connection), "textDocument/didOpen")
+        py_sent = {r["textDocument"]["uri"]: r["textDocument"]["languageId"] for r in py_records}
+        assert py_sent[(tmp_path / "main.py").as_uri()] == "python"
