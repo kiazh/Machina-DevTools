@@ -10,8 +10,10 @@ with legacy rows reading as unknown, never silently complete.
 
 from __future__ import annotations
 
+import copy
 import uuid
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -279,7 +281,11 @@ async def test_artifact_tools_page_authorized_originals(db_pool, monkeypatch):
         token = agents_module.current_session_id.set(session_id)
         token_agent = agents_module.current_agent_id.set("harness")
         try:
-            from machina.tools.artifacts import artifact_describe, artifact_read, artifact_search
+            from machina.tools.artifacts import (
+                artifact_describe,
+                artifact_read,
+                artifact_search,
+            )
 
             page = await artifact_read(artifact_id, offset=0, limit=30)
             assert page.startswith(f"[artifact {artifact_id} kind=:tool:terminal chars 0-30 of ")
@@ -498,3 +504,213 @@ def test_artifact_disclosure_is_upstream_aware():
     unknown = artifact_disclosure("abc-123", 4242, upstream_truncated=None, complete=None)
     assert "exact original" not in unknown
     assert "artifact_read" in unknown
+
+
+# ─── B2: model-facing tool surface (describe completeness, search window) ───
+#
+# The tools must not flatten the store's honesty: describe surfaces the
+# completeness/revision binding and search states its scan window so an empty
+# page can never read as a definitive absence (B0 G5 / spec §14.6, C07/C09).
+
+
+class _ToolStore:
+    """Store double for the tool-surface contract (no DB)."""
+
+    def __init__(self, *, meta: dict | None = None, page: dict | None = None) -> None:
+        self.meta = meta or {}
+        self.page = page or {}
+        self.describe_calls: list[tuple] = []
+        self.search_calls: list[dict] = []
+
+    async def describe(self, artifact_id, *, session_id, agent_id):
+        self.describe_calls.append((artifact_id, session_id, agent_id))
+        return dict(self.meta)
+
+    async def search_page(
+        self, query, *, session_id, agent_id, artifact_id=None, limit=5, cursor=None
+    ):
+        self.search_calls.append(
+            {
+                "query": query,
+                "artifact_id": artifact_id,
+                "limit": limit,
+                "cursor": cursor,
+            }
+        )
+        return copy.deepcopy(self.page)
+
+
+@pytest.fixture
+def tool_scope(monkeypatch):
+    """Active session/agent scope for the artifact tools without a database."""
+    import machina.tools.agents as agents_module
+
+    monkeypatch.setattr(
+        agents_module, "db", SimpleNamespace(fetchval=AsyncMock(return_value="harness"))
+    )
+    token = agents_module.current_session_id.set(uuid.uuid4())
+    token_agent = agents_module.current_agent_id.set("harness")
+    yield
+    agents_module.current_session_id.reset(token)
+    agents_module.current_agent_id.reset(token_agent)
+
+
+_DESCRIBE_META = {
+    "artifact_id": "abc-123",
+    "kind": "tool:read_file",
+    "status": "completed",
+    "source_version": "machina:test",
+    "content_revision": "sha256:deadbeef",
+    "complete": True,
+    "upstream_truncated": False,
+    "stored_truncated": False,
+    "record_count": 3,
+    "content_bytes": 100,
+    "token_estimate": 25,
+    "created_at": "2026-10-16T00:00:00+00:00",
+    "expires_at": None,
+    "access_count": 2,
+}
+
+
+def _kv(text: str) -> dict[str, str]:
+    return dict(line.split("=", 1) for line in text.splitlines() if "=" in line)
+
+
+@pytest.mark.asyncio
+async def test_artifact_describe_surfaces_completeness_revision_and_counts(
+    tool_scope, monkeypatch
+):
+    from machina.tools import artifacts as artifact_tools
+
+    store = _ToolStore(meta=_DESCRIBE_META)
+    monkeypatch.setattr(artifact_tools, "artifact_store", store)
+    fields = _kv(await artifact_tools.artifact_describe("abc-123"))
+    assert store.describe_calls[0][0] == "abc-123"
+    assert fields["source_version"] == "machina:test"
+    assert fields["content_revision"] == "sha256:deadbeef"
+    assert fields["complete"] == "True"
+    assert fields["upstream_truncated"] == "False"
+    assert fields["stored_truncated"] == "False"
+    assert fields["record_count"] == "3"
+    # Legacy fields stay present.
+    assert fields["content_bytes"] == "100"
+    assert fields["token_estimate"] == "25"
+    assert fields["access_count"] == "2"
+
+
+@pytest.mark.asyncio
+async def test_artifact_describe_reads_tri_state_unknown_never_complete(tool_scope, monkeypatch):
+    from machina.tools import artifacts as artifact_tools
+
+    legacy = dict(
+        _DESCRIBE_META,
+        source_version=None,
+        content_revision=None,
+        complete=None,
+        upstream_truncated=None,
+        stored_truncated=None,
+        record_count=None,
+    )
+    monkeypatch.setattr(artifact_tools, "artifact_store", _ToolStore(meta=legacy))
+    fields = _kv(await artifact_tools.artifact_describe("legacy"))
+    assert fields["complete"] == "unknown"
+    assert fields["upstream_truncated"] == "unknown"
+    assert fields["stored_truncated"] == "unknown"
+    assert fields["record_count"] == "unknown"
+    assert fields["source_version"] == "unknown"
+    assert fields["content_revision"] == "unknown"
+
+
+def _search_page(*, matches=None, scanned=50, scan_limit=50, truncated=False, cursor=None):
+    return {
+        "matches": matches or [],
+        "query": "RUN_MARKER",
+        "scope": {"kind": "session", "session_id": "s", "artifact_id": None},
+        "order": "created_at_desc,id_desc",
+        "scanned": scanned,
+        "scan_limit": scan_limit,
+        "scan_truncated": truncated,
+        "next_cursor": cursor,
+    }
+
+
+@pytest.mark.asyncio
+async def test_artifact_search_discloses_scan_window_and_cursor(tool_scope, monkeypatch):
+    from machina.tools import artifacts as artifact_tools
+
+    match = {
+        "artifact_id": "a1",
+        "kind": "tool:terminal",
+        "total_chars": 100,
+        "position": 3,
+        "excerpt": "RUN_MARKER here",
+    }
+    store = _ToolStore(
+        page=_search_page(matches=[match], scanned=50, scan_limit=50, truncated=True, cursor="CUR-1")
+    )
+    monkeypatch.setattr(artifact_tools, "artifact_store", store)
+    output = await artifact_tools.artifact_search("RUN_MARKER")
+    # Legacy match lines unchanged, with the window appended.
+    assert "pos=3" in output and "RUN_MARKER" in output
+    assert "scanned=50 scan_limit=50 scan_truncated=true" in output
+    assert "next_cursor=CUR-1" in output
+    # Legacy call shape: no cursor supplied, limit default preserved.
+    assert store.search_calls[0]["cursor"] is None
+    assert store.search_calls[0]["limit"] == 5
+
+
+@pytest.mark.asyncio
+async def test_artifact_search_empty_page_discloses_the_unscanned_window(tool_scope, monkeypatch):
+    from machina.tools import artifacts as artifact_tools
+
+    monkeypatch.setattr(
+        artifact_tools,
+        "artifact_store",
+        _ToolStore(page=_search_page(scanned=50, scan_limit=50, truncated=True, cursor="CUR-2")),
+    )
+    output = await artifact_tools.artifact_search("never-there")
+    assert output != "No artifact matches."
+    assert "an unscanned artifact may still match" in output
+    assert "next_cursor=CUR-2" in output
+    assert "scan_truncated=true" in output
+
+
+@pytest.mark.asyncio
+async def test_artifact_search_empty_complete_scan_is_definitive_but_disclosed(
+    tool_scope, monkeypatch
+):
+    from machina.tools import artifacts as artifact_tools
+
+    monkeypatch.setattr(
+        artifact_tools,
+        "artifact_store",
+        _ToolStore(page=_search_page(scanned=7, scan_limit=50, truncated=False, cursor=None)),
+    )
+    output = await artifact_tools.artifact_search("never-there")
+    assert "every readable artifact in scope was scanned" in output
+    assert "scanned=7 scan_limit=50 scan_truncated=false" in output
+    assert "next_cursor" not in output
+
+
+@pytest.mark.asyncio
+async def test_artifact_search_scoped_empty_keeps_legacy_text_and_params(tool_scope, monkeypatch):
+    from machina.tools import artifacts as artifact_tools
+
+    artifact_id = str(uuid.uuid4())
+    store = _ToolStore(page=_search_page(scanned=1, scan_limit=50, truncated=False, cursor=None))
+    monkeypatch.setattr(artifact_tools, "artifact_store", store)
+    assert await artifact_tools.artifact_search("never-there", artifact_id=artifact_id) == (
+        "No artifact matches."
+    )
+    assert store.search_calls[0]["artifact_id"] == artifact_id
+
+
+@pytest.mark.asyncio
+async def test_artifact_search_cursor_resumes_the_same_evidence_basis(tool_scope, monkeypatch):
+    from machina.tools import artifacts as artifact_tools
+
+    store = _ToolStore(page=_search_page(scanned=10, scan_limit=50, truncated=False))
+    monkeypatch.setattr(artifact_tools, "artifact_store", store)
+    await artifact_tools.artifact_search("RUN_MARKER", cursor="CUR-9")
+    assert store.search_calls[0]["cursor"] == "CUR-9"

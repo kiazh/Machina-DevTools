@@ -93,9 +93,12 @@ async def test_run_llm_error_logs_traceback(monkeypatch, caplog):
 @pytest.mark.asyncio
 async def test_stream_context_exceeded_schedules_consolidation(monkeypatch):
     agent, calls = _agent(monkeypatch)
-    import machina.core.agent as mod
 
-    monkeypatch.setattr(mod, "_request_context_tokens", lambda *a, **k: 10**9)
+    # B2: the capacity guard lives in the shared per-request seam
+    # (machina.core.request_gate), so the counter patch targets it.
+    monkeypatch.setattr(
+        "machina.core.request_gate._request_context_tokens", lambda *a, **k: 10**9
+    )
     sid = uuid.uuid4()
     events = [e async for e in agent.run_stream(sid, "hi", verbose=False)]
     assert any(
