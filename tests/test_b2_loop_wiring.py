@@ -478,12 +478,22 @@ async def test_wired_refusal_is_structured_with_no_provider_call_in_both_loops(
     assert "Pinned content alone exceeds the effective request budget." in response.content
     assert "Safe options:" in response.content
     assert "larger context window" in response.content
-    assert len(audits) == 1
-    args, kwargs = audits[0]
-    assert args == ("agent_request_context_exceeded",)
+    assert len(audits) == 2
+    events = [args[0] for args, _kwargs in audits]
+    assert events.count("agent_request_context_exceeded") == 1
+    assert events.count("request_projection_decision") == 1
+    _event, kwargs = next(a for a in audits if a[0] == ("agent_request_context_exceeded",))
     assert kwargs["refusal"] == "pins_exceed_capacity"
     assert kwargs["context_window"] == 1
     assert kwargs["request_tokens"] > 1
+    # §14.7: the same refusal is observable as a bounded decision record.
+    _event, decision = next(a for a in audits if a[0] == ("request_projection_decision",))
+    assert decision["mode"] == "wired"
+    assert decision["would_fit"] is False
+    assert decision["refusal"] == "pins_exceed_capacity"
+    assert decision["degraded"] is False
+    assert decision["effective_budget_tokens"] == 1
+    assert decision["request_tokens"] > 1
 
     stream_provider = _ScriptedProvider(_script())
     events = [
