@@ -97,6 +97,17 @@ def test_all_feature_methods_accessible_after_split():
         "mode.revoke",
         "approvals.list",
         "approvals.resolve",
+        "workspace.open",
+        "workspace.list",
+        "workspace.read",
+        "workspace.save",
+        "workspace.documentOpen",
+        "workspace.documentChange",
+        "workspace.documentClose",
+        "workspace.intelligence",
+        "workspace.lspStatus",
+        "workspace.lspControl",
+        "workspace.close",
     }
     assert set(METHODS) == expected
 
