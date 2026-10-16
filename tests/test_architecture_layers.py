@@ -554,7 +554,14 @@ def test_god_file_ceilings_only_fall(relative_path, ceiling):
 # 4780 = 5501 - 720 for the vendor-compliance removal (claude.py + gemini.py
 #        deleted) - 8 (factory.py branches/imports) - 2 (__init__.py exports)
 #        + 9 (specs.py: the Kimi Code spec + registry comment, same wave).
-_PROVIDER_PACKAGE_TOTAL_CEILING = 5447
+# 5470 = 5447 + 23, measured on the settled tree after the review-fix wave
+#        (2026-10-16):
+#       +4 core/provider/prompt_cache.py (371 -> 375; cache-profile wiring
+#          follow-ups from the token-efficiency wave),
+#       +19 core/provider/usage_map.py (221 -> 240; the reduced-view usage
+#          precedence fix + the reviewed prompt-total reconciliation rule:
+#          hit/miss-only partitions now always sum to prompt_tokens).
+_PROVIDER_PACKAGE_TOTAL_CEILING = 5470
 
 
 def test_provider_package_total_only_falls():
