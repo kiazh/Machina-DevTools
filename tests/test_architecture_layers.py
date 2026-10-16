@@ -161,7 +161,7 @@ _CORE_IMPORT_CEILINGS = {
 # machina/research/benchmark.py's architecture section (round-2 review N6:
 # the hand-mirrored literal drifted once already). Moves only with the delta
 # table documented inside test_deferred_import_count_ratchet.
-DEFERRED_IMPORT_CAP = 726
+DEFERRED_IMPORT_CAP = 742
 
 
 def test_module_level_core_imports_only_shrink():
@@ -322,6 +322,19 @@ def test_deferred_import_count_ratchet():
     #   switch lazily and the planned-step modules
     #   (skills/planned_steps.py, skills/sections.py) stay stdlib-only leaves
     #   imported at module level.
+    #   A4 revisions/events (2026-10-16, deterministic-skills): +1 in this
+    #   lane (727) — skills/registry.py gains ``SkillRegistry.revisions()``
+    #   through one deferred binding to skills/revisions.py, so the registry's
+    #   module-level imports stay pinned to the ports+observability seam
+    #   (test_architecture_pairs). The revision identities/generation guards
+    #   (skills/revisions.py) and the observed-event ring (skills/events.py)
+    #   are imported at module level and add nothing; the guarded section-cache
+    #   publication adds nothing (module-level import in skills/sections.py).
+    #   Measured on this shared worktree: 742 = 727 + 15 from the A5 backend
+    #   lane (commit 0908f68: gateway/features/skills.py +14, tools/skills.py
+    #   +1). That lane's share is counted here so the tree-wide guard stays
+    #   honest; its own landing note may restate it. Cap 726 -> 742 to match
+    #   the measured tree; reconcile if the A5 share is re-attributed.
     # Procedure: this number may only move with a delta table like the above
     # in this comment; silent growth fails the suite by design.
     total = sum(_deferred_import_count(p) for p in ROOT.rglob("*.py"))
