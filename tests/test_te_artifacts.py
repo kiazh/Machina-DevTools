@@ -2,8 +2,10 @@
 
 Covers the store contract: verbatim originals, paging that reports the true
 total, re-authorized reads across the delegation tree, honest expiry, quota
-refusals that never evict live evidence, and fail-open behavior when storage
-is unavailable.
+refusals that never evict live evidence, fail-open behavior when storage is
+unavailable, and (B0) completeness metadata: ``complete``,
+``upstream_truncated``, ``stored_truncated``, counts, and content revision —
+with legacy rows reading as unknown, never silently complete.
 """
 
 from __future__ import annotations
@@ -305,3 +307,194 @@ async def test_artifact_tools_page_authorized_originals(db_pool, monkeypatch):
 def test_artifact_disclosure_shape_is_stable():
     text = artifact_disclosure("abc-123", 4242)
     assert "abc-123" in text and "4242" in text and "artifact_read" in text
+
+
+# ─── B0: completeness metadata (G1) ─────────────────────────────────────────
+
+
+async def test_schema_completeness_columns_exist_and_are_nullable(db_pool):
+    rows = await db_pool.fetch(
+        "SELECT column_name, is_nullable FROM information_schema.columns "
+        "WHERE table_name = 'tool_artifacts' AND column_name = ANY($1::text[])",
+        [
+            "complete",
+            "upstream_truncated",
+            "stored_truncated",
+            "record_count",
+            "content_revision",
+        ],
+    )
+    found = {row["column_name"]: row["is_nullable"] for row in rows}
+    assert set(found) == {
+        "complete",
+        "upstream_truncated",
+        "stored_truncated",
+        "record_count",
+        "content_revision",
+    }
+    # Old rows read as unknown, never silently complete.
+    assert all(value == "YES" for value in found.values())
+
+
+async def test_store_records_and_describe_reads_completeness(artifact_env):
+    stored = await artifact_store.store(
+        "tool:read_file",
+        "content",
+        session_id=artifact_env.session_id,
+        agent_id="harness",
+        source_version="machina:test",
+        content_revision="rev-7",
+        complete=True,
+        upstream_truncated=False,
+        record_count=3,
+    )
+    assert stored is not None
+    assert stored["complete"] is True
+    assert stored["upstream_truncated"] is False
+    assert stored["stored_truncated"] is False
+    assert stored["content_revision"] == "rev-7"
+    assert stored["record_count"] == 3
+
+    meta = await artifact_store.describe(
+        stored["artifact_id"], session_id=artifact_env.session_id, agent_id="harness"
+    )
+    assert meta["complete"] is True
+    assert meta["upstream_truncated"] is False
+    assert meta["stored_truncated"] is False
+    assert meta["content_revision"] == "rev-7"
+    assert meta["record_count"] == 3
+    assert meta["source_version"] == "machina:test"
+
+
+async def test_store_derives_a_deterministic_content_revision(artifact_env):
+    first = await artifact_store.store(
+        "tool:terminal", "same content", session_id=artifact_env.session_id, agent_id="harness"
+    )
+    second = await artifact_store.store(
+        "tool:terminal", "same content", session_id=artifact_env.session_id, agent_id="harness"
+    )
+    assert first["content_revision"].startswith("sha256:")
+    assert first["content_revision"] == second["content_revision"]
+
+
+async def test_store_validates_revision_and_flag_input(artifact_env):
+    stored = await artifact_store.store(
+        "tool:terminal",
+        "validated",
+        session_id=artifact_env.session_id,
+        agent_id="harness",
+        source_version=123,  # non-string: unknown, never a fabricated version
+        content_revision="   ",  # blank: derive from content instead of storing junk
+        complete="yes",  # non-bool: unknown
+        upstream_truncated=1,  # non-bool: unknown
+        record_count=-5,  # negative: unknown
+    )
+    assert stored is not None
+    meta = await artifact_store.describe(
+        stored["artifact_id"], session_id=artifact_env.session_id, agent_id="harness"
+    )
+    assert meta["source_version"] is None
+    assert meta["content_revision"].startswith("sha256:")
+    assert meta["complete"] is None
+    assert meta["upstream_truncated"] is None
+    assert meta["record_count"] is None
+
+
+async def test_store_derives_complete_from_upstream_flag(artifact_env):
+    complete = await artifact_store.store(
+        "tool:terminal",
+        "derived-complete",
+        session_id=artifact_env.session_id,
+        agent_id="harness",
+        upstream_truncated=False,
+    )
+    partial = await artifact_store.store(
+        "tool:terminal",
+        "derived-partial",
+        session_id=artifact_env.session_id,
+        agent_id="harness",
+        upstream_truncated=True,
+    )
+    assert complete["complete"] is True
+    assert partial["complete"] is False
+
+
+async def test_legacy_rows_read_unknown_not_complete(artifact_env):
+    artifact_id = uuid.uuid4()
+    await artifact_env.pool.execute(
+        "INSERT INTO tool_artifacts (id, session_id, agent_id, kind, content, content_bytes) "
+        "VALUES ($1, $2, 'harness', 'tool:terminal', 'legacy row', 10)",
+        artifact_id,
+        artifact_env.session_id,
+    )
+    meta = await artifact_store.describe(
+        str(artifact_id), session_id=artifact_env.session_id, agent_id="harness"
+    )
+    assert meta["complete"] is None
+    assert meta["upstream_truncated"] is None
+    assert meta["stored_truncated"] is None
+    assert meta["content_revision"] is None
+    assert (
+        await artifact_store.lookup(
+            str(artifact_id), session_id=artifact_env.session_id, agent_id="harness"
+        )
+        is None
+    )
+
+
+async def test_lookup_contract_shape_and_honest_gates(artifact_env):
+    complete = await artifact_store.store(
+        "tool:read_file",
+        "R" * 1200,
+        session_id=artifact_env.session_id,
+        agent_id="harness",
+        complete=True,
+        upstream_truncated=False,
+    )
+    found = await artifact_store.lookup(
+        complete["artifact_id"], session_id=artifact_env.session_id, agent_id="harness"
+    )
+    assert set(found) == {"available", "complete", "handle", "revision", "summary_view"}
+    assert found["available"] is True
+    assert found["complete"] is True
+    assert found["handle"] == complete["artifact_id"]
+    assert isinstance(found["revision"], str)
+    assert isinstance(found["summary_view"], str)
+    assert found["summary_view"]
+
+    partial = await artifact_store.store(
+        "tool:terminal",
+        "T" * 1200,
+        session_id=artifact_env.session_id,
+        agent_id="harness",
+        upstream_truncated=True,
+        complete=False,
+    )
+    assert (
+        await artifact_store.lookup(
+            partial["artifact_id"], session_id=artifact_env.session_id, agent_id="harness"
+        )
+        is None
+    )
+
+    await artifact_env.pool.execute(
+        "UPDATE tool_artifacts SET expires_at = now() - interval '1 hour' WHERE id = $1",
+        uuid.UUID(complete["artifact_id"]),
+    )
+    assert (
+        await artifact_store.lookup(
+            complete["artifact_id"], session_id=artifact_env.session_id, agent_id="harness"
+        )
+        is None
+    )
+
+
+def test_artifact_disclosure_is_upstream_aware():
+    upstream = artifact_disclosure(
+        "abc-123", 4242, upstream_truncated=True, complete=False
+    )
+    assert "truncated" in upstream
+    assert "exact original" not in upstream
+    unknown = artifact_disclosure("abc-123", 4242, upstream_truncated=None, complete=None)
+    assert "exact original" not in unknown
+    assert "artifact_read" in unknown
