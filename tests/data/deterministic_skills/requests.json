@@ -1,0 +1,176 @@
+[
+  {
+    "id": "S03-make-me-a-website",
+    "kind": "routing",
+    "input": "make me a website",
+    "required": {
+      "task_family": "web-build",
+      "stack_resolution": "unresolved",
+      "constraints_preserved": [],
+      "must_not": ["infer_react", "infer_database", "infer_deploy", "claim_stack_resolved"]
+    }
+  },
+  {
+    "id": "S04-build-a-landing-page",
+    "kind": "routing",
+    "input": "build a landing page",
+    "required": {
+      "task_family": "web-build",
+      "stack_resolution": "unresolved",
+      "constraints_preserved": [],
+      "must_not": ["infer_database", "infer_payment", "infer_deploy"]
+    }
+  },
+  {
+    "id": "S02-what-is-a-website",
+    "kind": "explain",
+    "input": "what is a website?",
+    "required": {
+      "task_family": null,
+      "stack_resolution": "not_applicable",
+      "constraints_preserved": [],
+      "must_not": ["start_implementation", "select_implementation_workflow"]
+    }
+  },
+  {
+    "id": "S02b-explain-how-to-build-a-website",
+    "kind": "explain",
+    "input": "explain how someone would build a website",
+    "required": {
+      "task_family": null,
+      "stack_resolution": "not_applicable",
+      "constraints_preserved": [],
+      "must_not": ["start_implementation", "assume_this_project"]
+    }
+  },
+  {
+    "id": "S07-review-this-website-read-only",
+    "kind": "review",
+    "input": "review this website, do not edit",
+    "required": {
+      "task_family": "frontend-review",
+      "stack_resolution": "not_applicable",
+      "constraints_preserved": ["read_only", "do_not_edit"],
+      "must_not": ["mutate_files", "implement_fixes", "drop_read_only_constraint"]
+    }
+  },
+  {
+    "id": "S04b-build-a-portfolio-website",
+    "kind": "routing",
+    "input": "build a portfolio website",
+    "required": {
+      "task_family": "web-build",
+      "stack_resolution": "unresolved",
+      "constraints_preserved": [],
+      "must_not": ["infer_react", "infer_backend", "route_as_stock_portfolio"]
+    }
+  },
+  {
+    "id": "S05-compare-my-stock-portfolio",
+    "kind": "routing",
+    "input": "compare my stock portfolio",
+    "required": {
+      "task_family": null,
+      "stack_resolution": "not_applicable",
+      "constraints_preserved": [],
+      "must_not": ["route_to_web_build"]
+    }
+  },
+  {
+    "id": "S08-add-tests-after-active-python-work",
+    "kind": "continuation",
+    "input": "add tests",
+    "context": {
+      "active_task": {
+        "task_family": "python-testing",
+        "stack": {"languages": ["python"]}
+      }
+    },
+    "required": {
+      "task_family": "python-testing",
+      "stack_resolution": "inherited",
+      "constraints_preserved": [],
+      "must_not": ["resurrect_unrelated_task", "drop_active_task_state"]
+    }
+  },
+  {
+    "id": "S08b-add-tests-without-state",
+    "kind": "routing",
+    "input": "add tests",
+    "required": {
+      "task_family": null,
+      "stack_resolution": "unresolved",
+      "constraints_preserved": [],
+      "must_not": ["assume_python", "inherit_stale_task_state", "invent_active_task"]
+    }
+  },
+  {
+    "id": "S09-switch-implementation-to-vue",
+    "kind": "stack-override",
+    "input": "switch the implementation to Vue",
+    "context": {
+      "inherited_stack": {"frameworks": ["react"], "source": "prior_turns"}
+    },
+    "required": {
+      "task_family": null,
+      "stack_resolution": "explicit",
+      "constraints_preserved": ["explicit_stack_vue"],
+      "must_not": ["keep_inherited_react", "request_stack_clarification"]
+    }
+  },
+  {
+    "id": "S10-go-ahead-without-state",
+    "kind": "ambiguous",
+    "input": "go ahead",
+    "required": {
+      "task_family": null,
+      "stack_resolution": "not_applicable",
+      "constraints_preserved": [],
+      "must_not": ["invent_task", "resume_stale_task", "activate_technology_workflow"]
+    }
+  },
+  {
+    "id": "S06-quoted-request-inside-router-question",
+    "kind": "ambiguous",
+    "input": "does the router classify \"make me a website\" as web-build?",
+    "required": {
+      "task_family": null,
+      "stack_resolution": "not_applicable",
+      "constraints_preserved": [],
+      "must_not": ["create_website", "treat_quoted_text_as_request", "route_to_web_build"]
+    }
+  },
+  {
+    "id": "S11-bare-go-token",
+    "kind": "ambiguous",
+    "input": "go",
+    "required": {
+      "task_family": null,
+      "stack_resolution": "unresolved",
+      "constraints_preserved": [],
+      "must_not": ["resolve_language_from_bare_token", "activate_language_workflow"]
+    }
+  },
+  {
+    "id": "S11-bare-rust-token",
+    "kind": "ambiguous",
+    "input": "rust",
+    "required": {
+      "task_family": null,
+      "stack_resolution": "unresolved",
+      "constraints_preserved": [],
+      "must_not": ["resolve_language_from_bare_token", "activate_language_workflow"]
+    }
+  },
+  {
+    "id": "S11-bare-swift-token",
+    "kind": "ambiguous",
+    "input": "swift",
+    "required": {
+      "task_family": null,
+      "stack_resolution": "unresolved",
+      "constraints_preserved": [],
+      "must_not": ["resolve_language_from_bare_token", "activate_language_workflow"]
+    }
+  }
+]
