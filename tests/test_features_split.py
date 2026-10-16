@@ -65,6 +65,10 @@ def test_all_feature_methods_accessible_after_split():
         "skills.learn",
         "skills.delete",
         "skills.curator",
+        # A5 bounded deterministic catalog surface (2026-10-16, spec §12.1/§12.2)
+        "skills.search",
+        "skills.preview_route",
+        "skills.section",
         "learning.list",
         "learning.approve",
         "learning.reject",
