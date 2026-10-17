@@ -119,14 +119,28 @@ def test_url_validation_matrix():
 def test_clone_uses_safe_args_and_no_prompts(tmp_path, monkeypatch):
     seen = {}
 
-    def fake_run(args, **kwargs):
+    class FakeProcess:
+        returncode = 0
+
+        def poll(self):
+            return 0
+
+        def communicate(self):
+            return "", ""
+
+        def kill(self):
+            return None
+
+        def wait(self, timeout=None):
+            return 0
+
+    def fake_popen(args, **kwargs):
         seen["args"] = args
         seen["env"] = kwargs.get("env", {})
-        seen["timeout"] = kwargs.get("timeout")
         Path(args[-1]).mkdir(parents=True, exist_ok=True)
-        return subprocess.CompletedProcess(args, 0, "", "")
+        return FakeProcess()
 
-    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
     monkeypatch.setattr(subprocess, "check_output", lambda *a, **k: "abc123\n")
     source = parse_repo_url("https://github.com/o/r")
     target, revision = clone_repo(source)
@@ -136,8 +150,41 @@ def test_clone_uses_safe_args_and_no_prompts(tmp_path, monkeypatch):
     assert "--no-recurse-submodules" in seen["args"]
     assert "protocol.file.allow=never" in " ".join(seen["args"])
     assert seen["env"].get("GIT_TERMINAL_PROMPT") == "0"
-    assert seen["timeout"] == repo_install.CLONE_TIMEOUT
     assert seen["args"][-2] == "https://github.com/o/r.git"
+
+
+def test_clone_is_killed_when_the_size_limit_is_crossed(tmp_path, monkeypatch):
+    class HangingProcess:
+        def __init__(self):
+            self.killed = False
+
+        def poll(self):
+            return None
+
+        def communicate(self):
+            return "", ""
+
+        def kill(self):
+            self.killed = True
+
+        def wait(self, timeout=None):
+            return 0
+
+    process = HangingProcess()
+
+    def fake_popen(args, **kwargs):
+        target = Path(args[-1])
+        target.mkdir(parents=True, exist_ok=True)
+        (target / "large.bin").write_bytes(b"x" * 4096)
+        return process
+
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    monkeypatch.setattr(repo_install, "MAX_CLONE_BYTES", 1024)
+    source = repo_install.RepoSource(owner="o", repo="r", url=str(tmp_path / "upstream"))
+
+    with pytest.raises(RepoInstallError, match="size limit"):
+        clone_repo(source, _allow_file=True)
+    assert process.killed is True
 
 
 def test_local_clone_roundtrip_without_network(tmp_path):
