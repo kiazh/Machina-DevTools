@@ -302,3 +302,37 @@ def test_rsi_outcome_summary_ignores_raw_response_and_redacts_tool_identifiers()
     ]
     assert secret not in str(summary)
     assert summary["terminal"] == "completed"
+
+
+@pytest.mark.parametrize("restore", ["manual", "rejected_trial"])
+async def test_promoted_trial_preserves_earned_policy_on_later_restore(rsi_store, db_pool, restore):
+    from machina.memory import rsi
+
+    store, owner = rsi_store
+    await store.teach(owner, "style", "tone", "Trial one", origin="agent")
+    before = (await store.get(owner))["policy"]
+    # Keep one pending auto-observation in the stable evidence snapshot too.
+    pending = await store.begin(owner, None, "fix Python", 4000)
+    await store.complete(owner, pending["id"])
+    for _ in range(3):
+        episode = await store.begin(owner, None, "fix Python", 4000)
+        await store.complete(owner, episode["id"])
+        assert await store.feedback(owner, episode["id"], 1)
+    status = await store.rsi_status(owner)
+    assert status["trial"] is None
+    stable = status["revision"]
+    earned = (await store.get(owner))["policy"]
+    assert earned != before
+    async with db_pool.acquire() as conn:
+        evidence = await rsi.pending_policy_episodes(conn, owner)
+    await store.teach(owner, "style", "tone", "Trial two", origin="agent")
+    if restore == "manual":
+        assert await store.rollback(owner, stable)
+    else:
+        for _ in range(3):
+            episode = await store.begin(owner, None, "fix Python", 4000)
+            await store.complete(owner, episode["id"])
+            assert await store.feedback(owner, episode["id"], -1)
+    assert (await store.get(owner))["policy"] == earned
+    async with db_pool.acquire() as conn:
+        assert await rsi.pending_policy_episodes(conn, owner) == evidence
