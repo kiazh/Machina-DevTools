@@ -37,7 +37,9 @@ def _jwt(payload: dict) -> str:
     return f"{b64({'alg': 'none', 'typ': 'JWT'})}.{b64(payload)}.sig"
 
 
-def _tokens(*, account: str = "acct-123", refresh: str = "rt-old", exp_in: float = 3600.0) -> dict:
+def _tokens(
+    *, account: str = "acct-123", refresh: str = "rt-old", exp_in: float = 3600.0
+) -> dict:
     auth = {"https://api.openai.com/auth": {"chatgpt_account_id": account}}
     return {
         "access_token": _jwt({**auth, "exp": time.time() + exp_in}),
@@ -88,7 +90,9 @@ class _Harness:
         return await self.gw._methods[method](params or {})
 
     def events(self) -> list[dict]:
-        return [frame["params"] for frame in self.frames if frame.get("method") == "event"]
+        return [
+            frame["params"] for frame in self.frames if frame.get("method") == "event"
+        ]
 
 
 def _free_port() -> int:
@@ -178,7 +182,9 @@ def _counting_login(monkeypatch, port: int, calls: list[str]) -> None:
     monkeypatch.setattr(chatgpt_auth, "login_url", wrapped)
 
 
-async def test_login_returns_url_immediately_and_emits_completed(fake_home, monkeypatch):
+async def test_login_returns_url_immediately_and_emits_completed(
+    fake_home, monkeypatch
+):
     port = _free_port()
     _install_login(monkeypatch, port)
     fixed_expiry = time.time() + 7200
@@ -186,7 +192,11 @@ async def test_login_returns_url_immediately_and_emits_completed(fake_home, monk
 
     def fake_exchange(code, *, code_verifier, redirect_uri, **kwargs):
         seen.update(code=code, code_verifier=code_verifier, redirect_uri=redirect_uri)
-        return {**_tokens(account="acct-gw"), "account_id": "acct-gw", "expires_at": fixed_expiry}
+        return {
+            **_tokens(account="acct-gw"),
+            "account_id": "acct-gw",
+            "expires_at": fixed_expiry,
+        }
 
     monkeypatch.setattr(chatgpt_auth, "exchange_code", fake_exchange)
     harness = _Harness()
@@ -195,12 +205,16 @@ async def test_login_returns_url_immediately_and_emits_completed(fake_home, monk
     pending = feature._PENDING
     assert pending is not None
 
-    assert result == {"url": "https://auth.example/authorize?state=gw-state", "state": "gw-state"}
+    assert result == {
+        "url": "https://auth.example/authorize?state=gw-state",
+        "state": "gw-state",
+    }
     # The listener is bound before the URL is returned: connecting works now.
     with socket.create_connection(("127.0.0.1", port), timeout=1):
         pass
     status, _ = await asyncio.to_thread(
-        _open_callback, f"http://127.0.0.1:{port}/auth/callback?code=gw-code&state=gw-state"
+        _open_callback,
+        f"http://127.0.0.1:{port}/auth/callback?code=gw-code&state=gw-state",
     )
     assert status == 200
 
@@ -215,20 +229,32 @@ async def test_login_returns_url_immediately_and_emits_completed(fake_home, monk
     assert [event["type"] for event in events] == ["auth.chatgpt.completed"]
     event = events[0]
     validate_event(event)
-    assert set(event) == {"protocolVersion", "type", "sessionId", "turnId", "account_id", "expiry"}
+    assert set(event) == {
+        "protocolVersion",
+        "type",
+        "sessionId",
+        "turnId",
+        "account_id",
+        "expiry",
+    }
     assert event["account_id"] == "acct-gw"
     assert event["expiry"] == pytest.approx(fixed_expiry)
     assert feature._PENDING is None
 
 
-async def test_login_pending_is_idempotent_then_a_new_flow_starts(fake_home, monkeypatch):
+async def test_login_pending_is_idempotent_then_a_new_flow_starts(
+    fake_home, monkeypatch
+):
     port = _free_port()
     calls: list[str] = []
     _counting_login(monkeypatch, port, calls)
     monkeypatch.setattr(
         chatgpt_auth,
         "exchange_code",
-        lambda code, **kwargs: {**_tokens(account="acct-gw"), "expires_at": time.time() + 60},
+        lambda code, **kwargs: {
+            **_tokens(account="acct-gw"),
+            "expires_at": time.time() + 60,
+        },
     )
     harness = _Harness()
 
@@ -241,7 +267,8 @@ async def test_login_pending_is_idempotent_then_a_new_flow_starts(fake_home, mon
     assert calls == ["login_url"], "a second login must not start a second flow"
     assert feature._PENDING is pending, "the pending flow must be the same one"
     await asyncio.to_thread(
-        _open_callback, f"http://127.0.0.1:{port}/auth/callback?code=gw-code&state=gw-state"
+        _open_callback,
+        f"http://127.0.0.1:{port}/auth/callback?code=gw-code&state=gw-state",
     )
     await asyncio.wait_for(pending.task, timeout=5)
     assert len(harness.events()) == 1
@@ -277,28 +304,60 @@ async def test_login_timeout_emits_failed(fake_home, monkeypatch):
     assert feature._PENDING is None
 
 
-async def test_login_state_mismatch_emits_failed_without_exchanging(fake_home, monkeypatch):
+async def test_login_ignores_invalid_callbacks_before_valid_callback(
+    fake_home, monkeypatch
+):
     port = _free_port()
     _install_login(monkeypatch, port)
+    exchanged = []
 
-    def fake_exchange(code, **kwargs):  # pragma: no cover - must not run
-        raise AssertionError("a rejected callback must never exchange")
+    def fake_exchange(code, **kwargs):
+        exchanged.append(code)
+        return {**_tokens(account="acct-gw"), "expires_at": time.time() + 60}
 
     monkeypatch.setattr(chatgpt_auth, "exchange_code", fake_exchange)
     harness = _Harness()
+    await harness.call("auth.chatgpt.login", {"no_browser": True})
+    pending = feature._PENDING
+    assert pending is not None
+    base = f"http://127.0.0.1:{port}/auth/callback"
+    hostile = urllib.request.Request(
+        f"{base}?code=bad&state=gw-state", headers={"Host": "attacker.example"}
+    )
+    status, _ = await asyncio.to_thread(_open_callback, hostile)
+    assert status == 400
+    assert not pending.task.done()
+    for query in (
+        "error=untrusted",
+        "code=bad&state=wrong",
+        "error=untrusted&state=wrong",
+    ):
+        status, _ = await asyncio.to_thread(_open_callback, f"{base}?{query}")
+        assert status == 400
+        assert not pending.task.done()
+        assert harness.events() == []
+        assert exchanged == []
+    await asyncio.to_thread(_open_callback, f"{base}?code=good&state=gw-state")
+    await asyncio.wait_for(pending.task, timeout=5)
+    assert exchanged == ["good"]
+    assert harness.events()[0]["type"] == "auth.chatgpt.completed"
 
+
+async def test_login_oauth_error_emits_fixed_reason_code(fake_home, monkeypatch):
+    port = _free_port()
+    _install_login(monkeypatch, port)
+    harness = _Harness()
     await harness.call("auth.chatgpt.login", {"no_browser": True})
     pending = feature._PENDING
     assert pending is not None
     status, _ = await asyncio.to_thread(
-        _open_callback, f"http://127.0.0.1:{port}/auth/callback?code=gw-code&state=wrong-state"
+        _open_callback,
+        f"http://127.0.0.1:{port}/auth/callback?error=secret-untrusted%0Avalue&state=gw-state",
     )
-    assert status == 400
+    assert status == 200
     await asyncio.wait_for(pending.task, timeout=5)
-
-    events = harness.events()
-    assert events[0]["type"] == "auth.chatgpt.failed"
-    assert events[0]["reason"] == "state_mismatch"
+    assert harness.events()[0]["reason"] == "oauth_error"
+    assert "secret-untrusted" not in str(harness.events())
 
 
 async def test_login_port_conflict_is_a_typed_rpc_error(fake_home, monkeypatch):
@@ -373,7 +432,8 @@ async def test_logout_cancels_pending_login_and_late_callback_cannot_sign_in(
     assert feature._PENDING is None, "logout must cancel the pending flow"
     # The invalidated flow still answers the redirecting browser...
     status, _ = await asyncio.to_thread(
-        _open_callback, f"http://127.0.0.1:{port}/auth/callback?code=late-code&state=gw-state"
+        _open_callback,
+        f"http://127.0.0.1:{port}/auth/callback?code=late-code&state=gw-state",
     )
     assert status == 200
     await asyncio.wait_for(pending.task, timeout=5)
@@ -431,7 +491,9 @@ async def test_logout_clears_in_process_catalog_state(fake_home, monkeypatch):
     assert catalog.live_models_or_none() is None
 
 
-async def test_fresh_login_after_logout_retires_the_invalidated_flow(fake_home, monkeypatch):
+async def test_fresh_login_after_logout_retires_the_invalidated_flow(
+    fake_home, monkeypatch
+):
     """R3-2: the next login supersedes the invalidated flow and binds anew."""
     port = _free_port()
     calls: list[str] = []
@@ -488,7 +550,9 @@ async def test_import_codex_reports_the_resulting_status(fake_home):
     assert codex_file.read_bytes() == codex_bytes
 
 
-async def test_oversized_callback_headers_leave_the_listener_serving(fake_home, monkeypatch):
+async def test_oversized_callback_headers_leave_the_listener_serving(
+    fake_home, monkeypatch
+):
     """F5 (review round 5): >64 KiB of headers without a terminator must be
     dropped without breaking the flow - the real callback still completes."""
     port = _free_port()
@@ -515,7 +579,9 @@ async def test_oversized_callback_headers_leave_the_listener_serving(fake_home, 
     previous_handler = loop.get_exception_handler()
 
     def collect(_loop: asyncio.AbstractEventLoop, context: dict) -> None:
-        unhandled.append(str(context.get("message", "")) + repr(context.get("exception")))
+        unhandled.append(
+            str(context.get("message", "")) + repr(context.get("exception"))
+        )
 
     loop.set_exception_handler(collect)
     try:
@@ -524,7 +590,8 @@ async def test_oversized_callback_headers_leave_the_listener_serving(fake_home, 
         loop.set_exception_handler(previous_handler)
     assert not any("LimitOverrun" in item for item in unhandled), unhandled
     status, _ = await asyncio.to_thread(
-        _open_callback, f"http://127.0.0.1:{port}/auth/callback?code=gw-code&state=gw-state"
+        _open_callback,
+        f"http://127.0.0.1:{port}/auth/callback?code=gw-code&state=gw-state",
     )
     assert status == 200
     await asyncio.wait_for(pending.task, timeout=5)

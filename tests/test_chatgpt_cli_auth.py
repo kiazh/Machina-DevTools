@@ -26,7 +26,14 @@ from machina.security.chatgpt_auth import LoginRequest
 
 runner = CliRunner()
 
-_STATUS_KEYS = {"signed_in", "source", "expired", "expires_at", "account_id", "last_refresh"}
+_STATUS_KEYS = {
+    "signed_in",
+    "source",
+    "expired",
+    "expires_at",
+    "account_id",
+    "last_refresh",
+}
 
 
 def _jwt(payload: dict) -> str:
@@ -37,7 +44,9 @@ def _jwt(payload: dict) -> str:
     return f"{b64({'alg': 'none', 'typ': 'JWT'})}.{b64(payload)}.sig"
 
 
-def _tokens(*, account: str = "acct-123", refresh: str = "rt-old", exp_in: float = 3600.0) -> dict:
+def _tokens(
+    *, account: str = "acct-123", refresh: str = "rt-old", exp_in: float = 3600.0
+) -> dict:
     auth = {"https://api.openai.com/auth": {"chatgpt_account_id": account}}
     return {
         "access_token": _jwt({**auth, "exp": time.time() + exp_in}),
@@ -224,7 +233,9 @@ def test_login_import_codex_without_source_is_a_clean_error(fake_home):
 
 def test_login_import_codex_refuses_to_clobber_machina_store(fake_home):
     store = fake_home / ".machina" / "auth" / "chatgpt.json"
-    chatgpt_auth.save_tokens(_tokens(account="acct-machina", refresh="rt-machina"), store)
+    chatgpt_auth.save_tokens(
+        _tokens(account="acct-machina", refresh="rt-machina"), store
+    )
     _write_codex(fake_home, _tokens(account="acct-codex", refresh="rt-codex"))
 
     result = runner.invoke(auth_cli.app, ["login", "--import-codex"])
@@ -290,31 +301,41 @@ def test_login_settles_from_a_real_local_callback(fake_home, monkeypatch):
     assert "test-code" not in result.output
 
 
-def test_login_rejects_state_mismatch_without_exchanging(fake_home, monkeypatch):
+def test_login_ignores_invalid_callbacks_before_valid_callback(fake_home, monkeypatch):
     port = _free_port()
     _install_login(monkeypatch, port)
-    exchanged: list[str] = []
+    exchanged = []
 
-    def fake_exchange(code, **kwargs):  # pragma: no cover - must not run
+    def fake_exchange(code, **kwargs):
         exchanged.append(code)
-        raise AssertionError("a rejected callback must never exchange")
+        return {**_tokens(), "account_id": "acct-flow"}
 
     monkeypatch.setattr(chatgpt_auth, "exchange_code", fake_exchange)
-
     with ThreadPoolExecutor(max_workers=1) as pool:
         future = pool.submit(
-            runner.invoke, auth_cli.app, ["login", "--no-browser", "--timeout", "15"]
+            runner.invoke, auth_cli.app, ["login", "--no-browser", "--timeout", "3"]
         )
-        status, _ = _open_callback(
-            f"http://127.0.0.1:{port}/auth/callback?code=test-code&state=wrong-state"
+        base = f"http://127.0.0.1:{port}/auth/callback"
+        hostile = urllib.request.Request(
+            f"{base}?code=bad&state=cli-state", headers={"Host": "attacker.example"}
         )
-        result = future.result(timeout=20)
-
-    assert status == 400
-    assert result.exit_code == 1, result.output
-    assert "state did not match" in result.output
-    assert exchanged == []
-    assert not (fake_home / ".machina").exists()
+        status, _ = _open_callback(hostile)
+        assert status == 400
+        assert not future.done()
+        for query in (
+            "error=untrusted",
+            "code=bad&state=wrong",
+            "error=untrusted&state=wrong",
+        ):
+            status, _ = _open_callback(f"{base}?{query}")
+            assert status == 400
+            assert not future.done()
+            assert exchanged == []
+        status, _ = _open_callback(f"{base}?code=good&state=cli-state")
+        result = future.result(timeout=5)
+    assert status == 200
+    assert result.exit_code == 0, result.output
+    assert exchanged == ["good"]
 
 
 def test_login_timeout_is_a_clean_error_and_releases_the_port(fake_home, monkeypatch):
@@ -345,7 +366,9 @@ def test_login_port_conflict_is_a_clean_error(fake_home, monkeypatch):
     port = int(blocker.getsockname()[1])
     _install_login(monkeypatch, port)
     try:
-        result = runner.invoke(auth_cli.app, ["login", "--no-browser", "--timeout", "5"])
+        result = runner.invoke(
+            auth_cli.app, ["login", "--no-browser", "--timeout", "5"]
+        )
     finally:
         blocker.close()
 
