@@ -785,3 +785,17 @@ async def test_cancelled_writer_settles_the_in_progress_frame(tmp_path, monkeypa
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await task
+
+
+async def test_send_encoding_failure_removes_the_pending_entry(tmp_path, monkeypatch):
+    """combined #4 / original #35: serialization errors must not leak waiters."""
+    conn = LspConnection(fake_profile(), tmp_path)
+
+    async def fail_encode(_message):
+        raise UnicodeEncodeError("utf-8", "\ud800", 0, 1, "surrogates not allowed")
+
+    monkeypatch.setattr(conn, "_transport_active", lambda: True)
+    monkeypatch.setattr(conn, "_send", fail_encode)
+    with pytest.raises(UnicodeEncodeError):
+        await conn._request_core("textDocument/hover", {}, 1.0)
+    assert conn.pending_count == 0, "failed send left its response future registered"
