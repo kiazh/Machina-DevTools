@@ -177,6 +177,7 @@ async def test_read_save_roundtrip_conflict_and_refusals(tmp_path):
             "text": "bye\n",
             "expectedRevision": read["revision"],
             "uiVersion": 3,
+            "epoch": opened["epoch"],
         },
     )
     assert saved["ok"] is True
@@ -185,7 +186,13 @@ async def test_read_save_roundtrip_conflict_and_refusals(tmp_path):
 
     conflict = await ws.workspace_save(
         gw,
-        {"workspaceId": wid, "uri": uri, "text": "again\n", "expectedRevision": read["revision"]},
+        {
+            "workspaceId": wid,
+            "uri": uri,
+            "text": "again\n",
+            "expectedRevision": read["revision"],
+            "epoch": opened["epoch"],
+        },
     )
     assert conflict["ok"] is False
     assert conflict["conflict"]["diskRevision"] == saved["revision"]
@@ -233,6 +240,7 @@ async def test_save_read_only_refusal_shape(tmp_path):
                 "uri": uri,
                 "text": "y\n",
                 "expectedRevision": read["revision"],
+                "epoch": gw.workspace_service.epoch,
             },
         )
         assert saved["ok"] is False
@@ -257,6 +265,7 @@ async def test_save_emits_workspace_file_changed_event(tmp_path):
             "uri": uri,
             "text": "y\n",
             "expectedRevision": read["revision"],
+            "epoch": opened["epoch"],
         },
     )
     assert saved["ok"] is True
@@ -277,19 +286,28 @@ async def test_save_emits_workspace_file_changed_event(tmp_path):
 
 # ─── document mirror handlers ────────────────────────────────────────────────
 async def test_document_flow_and_validation(tmp_path):
-    gw, _, wid = await _opened(tmp_path)
+    gw, identity, wid = await _opened(tmp_path)
     uri = (tmp_path / "a.py").as_uri()
+    epoch = identity["epoch"]
 
-    opened = await ws.workspace_document_open(
-        gw, {"workspaceId": wid, "uri": uri, "languageId": "python", "version": 1, "text": "x = 1\n"}
+    document = await ws.workspace_document_open(
+        gw,
+        {
+            "workspaceId": wid,
+            "uri": uri,
+            "languageId": "python",
+            "version": 1,
+            "text": "x = 1\n",
+            "epoch": epoch,
+        },
     )
-    assert opened["acceptedVersion"] == 1
+    assert document["acceptedVersion"] == 1
     # Trusted open attaches a real manager, so a python document starts the
     # server lazily: never "ready" before the handshake completes, and an
     # environment without the binary stays honest with "missing".
-    assert opened["state"] in {"starting", "initializing", "missing"}
-    assert opened["state"] != "ready"
-    assert isinstance(opened["serverGeneration"], int)
+    assert document["state"] in {"starting", "initializing", "missing"}
+    assert document["state"] != "ready"
+    assert isinstance(document["serverGeneration"], int)
 
     changed = await ws.workspace_document_change(
         gw,
@@ -307,18 +325,28 @@ async def test_document_flow_and_validation(tmp_path):
                     "text": "y",
                 }
             ],
+            "epoch": epoch,
         },
     )
     assert changed == {"acceptedVersion": 2}
 
     resync = await ws.workspace_document_change(
         gw,
-        {"workspaceId": wid, "uri": uri, "baseVersion": 1, "version": 3, "changes": []},
+        {
+            "workspaceId": wid,
+            "uri": uri,
+            "baseVersion": 1,
+            "version": 3,
+            "changes": [],
+            "epoch": epoch,
+        },
     )
     assert resync["resync"] is True
     assert resync["acceptedVersion"] == 2
 
-    closed = await ws.workspace_document_close(gw, {"workspaceId": wid, "uri": uri})
+    closed = await ws.workspace_document_close(
+        gw, {"workspaceId": wid, "uri": uri, "epoch": epoch}
+    )
     assert closed["closed"] is True
 
     for params in (
@@ -429,13 +457,19 @@ async def test_lsp_status_and_control_without_manager(tmp_path):
     # Untrusted workspaces never get language servers (plan §14): status now
     # refuses like control does; the truthful missing contract lives on the
     # trusted-but-managerless path.
-    gw, _, wid = await _opened(tmp_path, trust=False)
+    gw, opened, wid = await _opened(tmp_path, trust=False)
     refused_status = await ws.workspace_lsp_status(gw, {"workspaceId": wid})
     assert refused_status["refused"]["reason"] == "denied"
     assert "trusted" in refused_status["refused"]["message"]
 
     refused = await ws.workspace_lsp_control(
-        gw, {"workspaceId": wid, "action": "start", "profile": "python"}
+        gw,
+        {
+            "workspaceId": wid,
+            "action": "start",
+            "profile": "python",
+            "epoch": opened["epoch"],
+        },
     )
     assert refused["refused"]["reason"] == "denied"
     assert "trusted" in refused["refused"]["message"]
@@ -456,7 +490,12 @@ async def test_lsp_status_and_control_without_manager(tmp_path):
     )
     denied = await ws.workspace_lsp_control(
         untrusted_gw,
-        {"workspaceId": untrusted["workspaceId"], "action": "start", "profile": "python"},
+        {
+            "workspaceId": untrusted["workspaceId"],
+            "action": "start",
+            "profile": "python",
+            "epoch": untrusted["epoch"],
+        },
     )
     assert denied["refused"]["reason"] == "denied"
 
@@ -482,3 +521,96 @@ async def test_service_created_once_per_gateway(tmp_path):
     other_gw = FakeGateway()
     await ws.workspace_open(other_gw, {"root": str(tmp_path), "trust": True})
     assert other_gw.workspace_service is not service
+
+
+async def test_mutating_routes_fence_epoch_and_client_id(tmp_path):
+    """F-19: mutating RPCs require an epoch and verify an optional client id."""
+    (tmp_path / "a.py").write_text("x = 1\n")
+    gw, opened, wid = await _opened(tmp_path)
+    uri = (tmp_path / "a.py").as_uri()
+    epoch = opened["epoch"]
+    client_id = opened["clientId"]
+    read = await ws.workspace_read(gw, {"workspaceId": wid, "uri": uri})
+
+    mutating = (
+        (ws.workspace_save, {"workspaceId": wid, "uri": uri, "text": "y\n"}),
+        (ws.workspace_document_open, {"workspaceId": wid, "uri": uri, "version": 1}),
+        (
+            ws.workspace_document_change,
+            {"workspaceId": wid, "uri": uri, "baseVersion": 1, "version": 2, "changes": []},
+        ),
+        (ws.workspace_document_close, {"workspaceId": wid, "uri": uri}),
+        (
+            ws.workspace_lsp_control,
+            {"workspaceId": wid, "action": "stop", "profile": "python"},
+        ),
+    )
+
+    # Omitting the epoch is a fence failure, never "current epoch".
+    for handler, params in mutating:
+        result = await handler(gw, params)
+        assert result["refused"]["reason"] == "denied", params
+        assert "epoch is required" in result["refused"]["message"]
+
+    # A stale epoch is still denied.
+    for handler, params in mutating:
+        result = await handler(gw, {**params, "epoch": epoch + 1})
+        assert result["refused"]["reason"] == "denied", params
+        assert "stale" in result["refused"]["message"]
+
+    # A supplied client id must match the live identity.
+    for handler, params in mutating:
+        result = await handler(gw, {**params, "epoch": epoch, "clientId": "cl_other"})
+        assert result["refused"]["reason"] == "denied", params
+        assert "client id" in result["refused"]["message"]
+
+    # The current epoch works; a matching client id is accepted, and omission
+    # stays allowed for the single-client stdio path.
+    saved = await ws.workspace_save(
+        gw,
+        {
+            "workspaceId": wid,
+            "uri": uri,
+            "text": "y\n",
+            "expectedRevision": read["revision"],
+            "epoch": epoch,
+            "clientId": client_id,
+        },
+    )
+    assert saved["ok"] is True
+    opened_doc = await ws.workspace_document_open(
+        gw,
+        {
+            "workspaceId": wid,
+            "uri": uri,
+            "languageId": "python",
+            "version": 1,
+            "text": "x = 1\n",
+            "epoch": epoch,
+        },
+    )
+    assert opened_doc["acceptedVersion"] == 1
+    changed = await ws.workspace_document_change(
+        gw,
+        {
+            "workspaceId": wid,
+            "uri": uri,
+            "baseVersion": 1,
+            "version": 2,
+            "changes": [],
+            "epoch": epoch,
+            "clientId": client_id,
+        },
+    )
+    assert changed["acceptedVersion"] == 2
+    closed = await ws.workspace_document_close(
+        gw, {"workspaceId": wid, "uri": uri, "epoch": epoch}
+    )
+    assert closed["closed"] is True
+    control = await ws.workspace_lsp_control(
+        gw, {"workspaceId": wid, "action": "stop", "profile": "python", "epoch": epoch}
+    )
+    assert control["state"] == "stopped"
+
+    gw.workspace_service.close()
+    await gw.workspace_service.wait_stopped()

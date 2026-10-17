@@ -141,11 +141,10 @@ async def test_handshake_order_capabilities_and_no_false_ready(tmp_path):
         ]
         capabilities = params["capabilities"]
         assert capabilities["general"]["positionEncodings"] == ["utf-16"]
-        assert capabilities["workspace"]["applyEdit"] is True
-        assert capabilities["workspace"]["workspaceEdit"] == {
-            "documentChanges": True,
-            "resourceOperations": [],
-        }
+        # I-6: production never registers on_server_request, so the client must
+        # not advertise workspace-edit support it always refuses.
+        assert capabilities["workspace"]["applyEdit"] is False
+        assert "workspaceEdit" not in capabilities["workspace"]
         assert capabilities["textDocument"]["synchronization"] == {"didSave": True}
         assert (
             capabilities["textDocument"]["completion"]["completionItem"]["snippetSupport"] is False
@@ -592,6 +591,33 @@ async def test_server_initiated_requests_answered_structurally(tmp_path):
         assert await conn.wait_for_stderr("FAKE-LOG-RED", 5.0)
         assert "\x1b" not in conn.stderr_text()
         assert "\x07" not in conn.stderr_text()
+    finally:
+        await conn.stop()
+
+
+async def test_apply_edit_refusal_survives_capability_withdrawal(tmp_path):
+    """I-6: even a server that ignores ``applyEdit: false`` gets an honest refusal.
+
+    The refusal branch is defense-in-depth: it must keep answering
+    ``applied: false`` with a failureReason, and the advertised capability
+    must match that behavior in the very same handshake.
+    """
+    progress = ProgressBus()
+    conn = LspConnection(fake_profile("--mode", "server-requests"), tmp_path)
+    conn.on_notification(progress.on_notification)
+    await conn.start()
+    try:
+        log = await conn.request("record-log")
+        workspace_capability = log["initializeParams"]["capabilities"]["workspace"]
+        assert workspace_capability["applyEdit"] is False
+        assert "workspaceEdit" not in workspace_capability
+
+        await progress.wait("responses-collected", 10)
+        responses = await conn.request("fetch-responses")
+        refusal = responses["srv-1"]["result"]
+        assert refusal["applied"] is False
+        assert isinstance(refusal["failureReason"], str)
+        assert refusal["failureReason"]
     finally:
         await conn.stop()
 

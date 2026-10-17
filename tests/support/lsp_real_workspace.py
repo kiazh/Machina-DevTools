@@ -267,7 +267,9 @@ class RealLspWorkspace:
         return language_id_for(Path(uri_key(uri)).name)
 
     async def document_open(self, uri: str, language_id: str, version: int, text: str):
-        result = self.service.document_open(uri, language_id, version, text)
+        result = self.service.document_open(
+            uri, language_id, version, text, epoch=self.service.epoch
+        )
         snapshot = self.service.document_snapshot(uri)
         assert snapshot is not None
         record = {
@@ -296,7 +298,9 @@ class RealLspWorkspace:
     async def document_change(
         self, uri: str, base_version: int, version: int, changes: list[dict[str, Any]]
     ):
-        result = self.service.document_change(uri, base_version, version, changes)
+        result = self.service.document_change(
+            uri, base_version, version, changes, epoch=self.service.epoch
+        )
         record = self._open_docs.get(uri_key(uri))
         if record is not None:
             record["version"] = result.accepted_version
@@ -320,7 +324,7 @@ class RealLspWorkspace:
     async def document_close(self, uri: str):
         record = self._open_docs.pop(uri_key(uri), None)
         connection = self._connections.get(record["language"]) if record else None
-        result = self.service.document_close(uri)
+        result = self.service.document_close(uri, epoch=self.service.epoch)
         if (
             not self._service_owns_sync
             and record is not None
@@ -331,7 +335,9 @@ class RealLspWorkspace:
         return result
 
     async def save(self, uri: str, text: str, expected_revision: str | None = None, **kwargs):
-        result = await self.service.save(uri, text, expected_revision, **kwargs)
+        result = await self.service.save(
+            uri, text, expected_revision, epoch=self.service.epoch, **kwargs
+        )
         if result.ok and not self._service_owns_sync:
             record = self._open_docs.get(uri_key(uri))
             connection = self._connections.get(record["language"]) if record else None

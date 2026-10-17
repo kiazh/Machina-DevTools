@@ -122,7 +122,7 @@ async def test_document_close_clears_diagnostics_so_reopen_publishes_again(tmp_p
     service.open(str(tmp_path), trust=True)
     service.set_lsp_manager(FakeManager())
     uri = (tmp_path / "a.py").as_uri()
-    service.document_open(uri, "python", 0, "x = 1\n")
+    service.document_open(uri, "python", 0, "x = 1\n", epoch=service.epoch)
     connection = FakeConnection()
     service._track_connection("python", connection)
 
@@ -139,8 +139,8 @@ async def test_document_close_clears_diagnostics_so_reopen_publishes_again(tmp_p
     assert publish(10, "older") is False  # while open: the version gate holds
     assert _diagnostics_events(events)[0]["epoch"] == service.epoch
 
-    assert service.document_close(uri)["closed"] is True
-    service.document_open(uri, "python", 0, "x = 1\n")
+    assert service.document_close(uri, epoch=service.epoch)["closed"] is True
+    service.document_open(uri, "python", 0, "x = 1\n", epoch=service.epoch)
     assert publish(0, "fresh") is True  # a reopen starts at version 0 again
     read = await service.intelligence("diagnostics", uri=uri)
     assert read.result["producers"] == [
@@ -158,7 +158,7 @@ async def test_save_returns_promptly_with_a_parked_sync_chain(tmp_path):
     uri = target.as_uri()
     read = service.read(uri)
 
-    service.document_open(uri, "python", 1, "x = 1\n")
+    service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
     connection = FakeConnection()
     service._track_connection("python", connection)  # didOpen + open record
 
@@ -172,7 +172,7 @@ async def test_save_returns_promptly_with_a_parked_sync_chain(tmp_path):
 
     loop = asyncio.get_running_loop()
     started = loop.time()
-    result = await service.save(uri, "x = 2\n", read.revision)
+    result = await service.save(uri, "x = 2\n", read.revision, epoch=service.epoch)
     elapsed = loop.time() - started
     assert result.ok is True
     assert elapsed < 2.0  # the parked chain never holds the save RPC

@@ -220,7 +220,7 @@ async def test_every_operation_returns_the_frozen_contract(tmp_path):
         target = tmp_path / "a.py"
         target.write_text("x = 1\n", encoding="utf-8")
         uri = target.as_uri()
-        service.document_open(uri, "python", 1, "x = 1\n")
+        service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         await service.intelligence("symbols", uri=uri)  # flush the sync chain
         connection = await manager.ensure_started("python")
 
@@ -290,7 +290,7 @@ async def test_disk_sourced_analysis_is_unversioned_not_fabricated(tmp_path):
         # The server is running for the language (started by an editor open).
         first = tmp_path / "a.py"
         first.write_text("x = 1\n", encoding="utf-8")
-        service.document_open(first.as_uri(), "python", 1, "x = 1\n")
+        service.document_open(first.as_uri(), "python", 1, "x = 1\n", epoch=service.epoch)
         await service.intelligence("symbols", uri=first.as_uri())
         # A file nobody opened: disk-sourced, unversioned — never fabricated.
         (tmp_path / "other.py").write_text("y = 2\n", encoding="utf-8")
@@ -322,7 +322,7 @@ async def test_byte_cap_truncates_whole_entries_with_a_flag(tmp_path):
         target = tmp_path / "a.py"
         target.write_text("x = 1\n", encoding="utf-8")
         uri = target.as_uri()
-        service.document_open(uri, "python", 1, "x = 1\n")
+        service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         payload = await _execute(
             operation="references", path="a.py", position={"line": 0, "character": 1}
         )
@@ -344,7 +344,7 @@ async def test_hover_text_respects_both_result_caps(tmp_path):
         target = tmp_path / "a.py"
         target.write_text("x = 1\n", encoding="utf-8")
         uri = target.as_uri()
-        service.document_open(uri, "python", 1, "x = 1\n")
+        service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         payload = await _execute(operation="hover", path="a.py", position={"line": 0, "character": 1})
         serialized = json.dumps(payload, separators=(",", ":"))
         assert len(serialized.encode("utf-8")) <= tool_module.MAX_RESULT_BYTES
@@ -493,7 +493,7 @@ async def test_configuration_reports_live_facts_only_while_open(tmp_path):
         target = root / "a.py"
         target.write_text("x = 1\n", encoding="utf-8")
         uri = target.as_uri()
-        service.document_open(uri, "python", 1, "x = 1\n")
+        service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         await service.intelligence("symbols", uri=uri)
         await manager.ensure_started("python")
 
@@ -515,7 +515,7 @@ async def test_brief_never_carries_buffer_or_disk_text(tmp_path):
         target = tmp_path / "a.py"
         target.write_text(f"api_key = '{planted}'\n", encoding="utf-8")
         uri = target.as_uri()
-        service.document_open(uri, "python", 1, f"api_key = '{planted}'\n")
+        service.document_open(uri, "python", 1, f"api_key = '{planted}'\n", epoch=service.epoch)
         await service.intelligence("symbols", uri=uri)
         assert planted in service.document_snapshot(uri)["text"], "the mirror really holds it"
 

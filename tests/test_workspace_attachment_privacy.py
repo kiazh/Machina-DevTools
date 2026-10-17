@@ -96,7 +96,7 @@ async def test_opening_a_file_never_leaks_its_text_to_any_agent_surface(tmp_path
     session = _owned_session(monkeypatch)
     async with _open_workspace_with_mirrored_secret(tmp_path) as (service, identity, manager, events):
         uri = (tmp_path / "secret.py").as_uri()
-        service.document_open(uri, "python", 1, PLANTED_TEXT)
+        service.document_open(uri, "python", 1, PLANTED_TEXT, epoch=service.epoch)
         # Flush the pending sync so the server has the mirror and refuses
         # nothing; the session data is now genuinely in process memory.
         await service.intelligence("symbols", uri=uri)
@@ -161,7 +161,7 @@ async def test_unsaved_changes_stay_out_of_every_status_surface(tmp_path, monkey
     session = _owned_session(monkeypatch)
     async with _open_workspace_with_mirrored_secret(tmp_path) as (service, _, manager, events):
         uri = (tmp_path / "secret.py").as_uri()
-        service.document_open(uri, "python", 1, "print('hello')\n")
+        service.document_open(uri, "python", 1, "print('hello')\n", epoch=service.epoch)
         await service.intelligence("symbols", uri=uri)
         await manager.ensure_started("python")
         # A change carries the planted secret, accepted into the mirror only
@@ -175,7 +175,7 @@ async def test_unsaved_changes_stay_out_of_every_status_surface(tmp_path, monkey
                 "text": f"# {SECRET}\n",
             }
         ]
-        assert service.document_change(uri, 1, 2, change).accepted_version == 2
+        assert service.document_change(uri, 1, 2, change, epoch=service.epoch).accepted_version == 2
         assert SECRET in service.document_snapshot(uri)["text"]
 
         assert SECRET not in capability_context(

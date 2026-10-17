@@ -140,7 +140,7 @@ async def test_open_does_not_spawn_and_first_document_open_starts_lazily(tmp_pat
         assert manager.status() == []  # open() learned profiles, spawned nothing
 
         uri = (tmp_path / "a.py").as_uri()
-        opened = service.document_open(uri, "python", 1, "x = 1\n")
+        opened = service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         assert opened.accepted_version == 1
         assert opened.state == "starting"  # a lazy start was scheduled
         assert opened.server_generation == identity.epoch  # no server generation yet
@@ -165,7 +165,7 @@ async def test_open_does_not_spawn_and_first_document_open_starts_lazily(tmp_pat
             "text": "x = 1\n",
         }
 
-        retried = service.document_open(uri, "python", 1, "x = 1\n")
+        retried = service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         assert retried.state == "ready"
         assert retried.server_generation == connection.generation
         # Re-read the log AFTER the retry: asserting on the pre-retry snapshot
@@ -199,7 +199,7 @@ async def test_language_detection_by_extension_not_client_language_id(tmp_path):
     manager = _manager(tmp_path)
     async with _workspace(tmp_path, manager) as (service, _, _events):
         ts_uri = (tmp_path / "a.ts").as_uri()
-        opened = service.document_open(ts_uri, "typescriptreact", 1, "const x = 1\n")
+        opened = service.document_open(ts_uri, "typescriptreact", 1, "const x = 1\n", epoch=service.epoch)
         assert opened.state == "starting"
         await _flush(service, ts_uri)
         languages = {row["languageId"] for row in (await service.lsp_status())["servers"]}
@@ -211,7 +211,7 @@ async def test_language_detection_by_extension_not_client_language_id(tmp_path):
         # A client-declared languageId cannot route an unmapped extension to a
         # server: notes.txt is mirrored but never reaches one.
         txt_uri = (tmp_path / "notes.txt").as_uri()
-        mirror_only = service.document_open(txt_uri, "python", 1, "hello\n")
+        mirror_only = service.document_open(txt_uri, "python", 1, "hello\n", epoch=service.epoch)
         assert mirror_only.state == "missing"
         assert service.document_snapshot(txt_uri)["text"] == "hello\n"
         languages = {row["languageId"] for row in (await service.lsp_status())["servers"]}
@@ -223,7 +223,7 @@ async def test_incremental_sync_sends_exact_utf16_ranges(tmp_path):
     manager = _manager(tmp_path, python_args=("--sync-kind", "2"))
     async with _workspace(tmp_path, manager) as (service, _, _events):
         uri = (tmp_path / "a.py").as_uri()
-        service.document_open(uri, "python", 1, "a😀b\nsecond\n")
+        service.document_open(uri, "python", 1, "a😀b\nsecond\n", epoch=service.epoch)
         await _flush(service, uri)
         connection = await manager.ensure_started("python")
 
@@ -237,7 +237,7 @@ async def test_incremental_sync_sends_exact_utf16_ranges(tmp_path):
                 "text": "X",
             }
         ]
-        accepted = service.document_change(uri, 1, 2, changes)
+        accepted = service.document_change(uri, 1, 2, changes, epoch=service.epoch)
         assert accepted.accepted_version == 2
         assert accepted.resync is False
 
@@ -251,7 +251,7 @@ async def test_incremental_sync_sends_exact_utf16_ranges(tmp_path):
                 "text": "SECOND",
             }
         ]
-        assert service.document_change(uri, 2, 3, second).accepted_version == 3
+        assert service.document_change(uri, 2, 3, second, epoch=service.epoch).accepted_version == 3
         assert service.document_snapshot(uri)["text"] == "aXb\nSECOND\n"
 
         records = await _records(connection)
@@ -265,7 +265,7 @@ async def test_full_sync_server_receives_full_snapshots(tmp_path):
     manager = _manager(tmp_path)  # fake declares textDocumentSync.change = 1
     async with _workspace(tmp_path, manager) as (service, _, _events):
         uri = (tmp_path / "a.py").as_uri()
-        service.document_open(uri, "python", 1, "x = 1\n")
+        service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         await _flush(service, uri)
         connection = await manager.ensure_started("python")
 
@@ -278,7 +278,7 @@ async def test_full_sync_server_receives_full_snapshots(tmp_path):
                 "text": "y",
             }
         ]
-        assert service.document_change(uri, 1, 2, change).accepted_version == 2
+        assert service.document_change(uri, 1, 2, change, epoch=service.epoch).accepted_version == 2
         records = await _records(connection)
         did_change = _by_method(records, "textDocument/didChange")[0]
         assert did_change["textDocument"]["version"] == 2
@@ -289,7 +289,7 @@ async def test_request_after_change_ordering_and_reopen_on_ready(tmp_path):
     manager = _manager(tmp_path, python_args=("--sync-kind", "2"))
     async with _workspace(tmp_path, manager) as (service, _, _events):
         uri = (tmp_path / "a.py").as_uri()
-        service.document_open(uri, "python", 1, "x = 1\n")
+        service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         # Change while the server is still handshaking: accepted into the
         # mirror, nothing is sent (never a didChange against a dead generation).
         change = [
@@ -301,7 +301,7 @@ async def test_request_after_change_ordering_and_reopen_on_ready(tmp_path):
                 "text": "2",
             }
         ]
-        assert service.document_change(uri, 1, 2, change).accepted_version == 2
+        assert service.document_change(uri, 1, 2, change, epoch=service.epoch).accepted_version == 2
 
         await service.intelligence("completion", uri=uri, position={"line": 0, "character": 5})
         connection = await manager.ensure_started("python")
@@ -315,7 +315,7 @@ async def test_request_after_change_ordering_and_reopen_on_ready(tmp_path):
 
         # Once ready, a change is queued inline and still precedes the request
         # that depends on it.
-        assert service.document_change(uri, 2, 3, [dict(change[0], text="3")]).accepted_version == 3
+        assert service.document_change(uri, 2, 3, [dict(change[0], text="3")], epoch=service.epoch).accepted_version == 3
         await service.intelligence("completion", uri=uri, position={"line": 0, "character": 5})
         records = await _records(connection)
         methods = [entry["method"] for entry in records]
@@ -362,7 +362,7 @@ async def test_completion_normalization_and_no_snippet_capability(tmp_path):
     manager = _manager(tmp_path)
     async with _workspace(tmp_path, manager) as (service, _, _events):
         uri = (tmp_path / "a.py").as_uri()
-        service.document_open(uri, "python", 1, "x = 1\n")
+        service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         result = await service.intelligence(
             "completion", uri=uri, position={"line": 0, "character": 1}
         )
@@ -425,7 +425,7 @@ async def test_completion_cap_100_with_omitted(tmp_path):
     manager = _manager(tmp_path, python_args=("--completion-count", "150"))
     async with _workspace(tmp_path, manager) as (service, _, _events):
         uri = (tmp_path / "a.py").as_uri()
-        service.document_open(uri, "python", 1, "x = 1\n")
+        service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         result = await service.intelligence(
             "completion", uri=uri, position={"line": 0, "character": 1}
         )
@@ -439,7 +439,7 @@ async def test_hover_flattening_and_cap(tmp_path):
     manager = _manager(tmp_path, python_args=("--hover-repeats", "2000"))
     async with _workspace(tmp_path, manager) as (service, _, _events):
         uri = (tmp_path / "a.py").as_uri()
-        service.document_open(uri, "python", 1, "x = 1\n")
+        service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         result = await service.intelligence("hover", uri=uri, position={"line": 0, "character": 1})
         assert result.state == STATE_READY
         assert result.truncated is True
@@ -457,7 +457,7 @@ async def test_intelligence_timeout_is_bounded_and_configurable(tmp_path):
         tmp_path, manager, service_kwargs={"intelligence_timeouts": {"hover": 0.3}}
     ) as (service, _, _events):
         uri = (tmp_path / "a.py").as_uri()
-        service.document_open(uri, "python", 1, "x = 1\n")
+        service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         await _flush(service, uri)
         loop = asyncio.get_running_loop()
         started = loop.time()
@@ -476,7 +476,7 @@ async def test_definition_location_link_normalization(tmp_path):
     manager = _manager(tmp_path)
     async with _workspace(tmp_path, manager) as (service, _, _events):
         uri = (tmp_path / "a.py").as_uri()
-        service.document_open(uri, "python", 1, "x = 1\n")
+        service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         result = await service.intelligence(
             "definition", uri=uri, position={"line": 0, "character": 1}
         )
@@ -498,7 +498,7 @@ async def test_references_cap_500(tmp_path):
     manager = _manager(tmp_path, python_args=("--references-count", "600"))
     async with _workspace(tmp_path, manager) as (service, _, _events):
         uri = (tmp_path / "a.py").as_uri()
-        service.document_open(uri, "python", 1, "x = 1\n")
+        service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         result = await service.intelligence(
             "references", uri=uri, position={"line": 0, "character": 1}
         )
@@ -514,7 +514,7 @@ async def test_symbols_hierarchical_form_computes_flat_view(tmp_path):
     manager = _manager(tmp_path)
     async with _workspace(tmp_path, manager) as (service, _, _events):
         uri = (tmp_path / "a.py").as_uri()
-        service.document_open(uri, "python", 1, "x = 1\n")
+        service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         result = await service.intelligence("symbols", uri=uri)
         assert result.state == STATE_READY
         hierarchical = result.result["hierarchical"]
@@ -536,7 +536,7 @@ async def test_symbols_flat_form_computes_hierarchical_view(tmp_path):
     manager = _manager(tmp_path, python_args=("--symbols-form", "flat"))
     async with _workspace(tmp_path, manager) as (service, _, _events):
         uri = (tmp_path / "a.py").as_uri()
-        service.document_open(uri, "python", 1, "x = 1\n")
+        service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         result = await service.intelligence("symbols", uri=uri)
         flat = result.result["flat"]
         assert [node["name"] for node in flat] == ["Alpha", "method_a", "method_b", "standalone"]
@@ -568,7 +568,7 @@ async def test_diagnostics_replace_reject_unversioned_and_clear(tmp_path):
     manager = _manager(tmp_path)
     async with _workspace(tmp_path, manager) as (service, identity, events):
         uri = (tmp_path / "a.py").as_uri()
-        service.document_open(uri, "python", 1, "x = 1\n")
+        service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         await _flush(service, uri)
         connection = await manager.ensure_started("python")
 
@@ -666,7 +666,7 @@ async def test_diagnostics_per_file_cap_1000_with_omitted(tmp_path):
     manager = _manager(tmp_path)
     async with _workspace(tmp_path, manager) as (service, _, events):
         uri = (tmp_path / "a.py").as_uri()
-        service.document_open(uri, "python", 1, "x = 1\n")
+        service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         await _flush(service, uri)
         connection = await manager.ensure_started("python")
 
@@ -687,11 +687,11 @@ async def test_diagnostics_are_per_producer(tmp_path):
     manager = _manager(tmp_path)
     async with _workspace(tmp_path, manager) as (service, _, events):
         uri = (tmp_path / "a.py").as_uri()
-        service.document_open(uri, "python", 1, "x = 1\n")
+        service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         await _flush(service, uri)
         python_connection = await manager.ensure_started("python")
 
-        started = await service.lsp_control("start", "typescript")
+        started = await service.lsp_control("start", "typescript", epoch=service.epoch)
         assert started["state"] == "ready"
         ts_connection = await manager.ensure_started("typescript")
 
@@ -729,7 +729,7 @@ async def test_crash_marks_diagnostics_stale_and_restart_discards_old_generation
     manager = _manager(tmp_path)
     async with _workspace(tmp_path, manager) as (service, identity, events):
         uri = (tmp_path / "a.py").as_uri()
-        service.document_open(uri, "python", 1, "x = 1\n")
+        service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         await _flush(service, uri)
         connection = await manager.ensure_started("python")
         await connection.request(
@@ -757,7 +757,7 @@ async def test_crash_marks_diagnostics_stale_and_restart_discards_old_generation
         assert [item["message"] for item in read.result["diagnostics"]] == ["before-crash"]
 
         # Restart: generation increments, the old set is never served again.
-        restarted = await service.lsp_control("restart", "pyright")
+        restarted = await service.lsp_control("restart", "pyright", epoch=service.epoch)
         assert restarted["state"] == "ready"
         assert restarted["generation"] == connection.generation
         assert connection.generation >= 2
@@ -779,8 +779,8 @@ async def test_restart_reopens_documents_with_latest_snapshots(tmp_path):
     async with _workspace(tmp_path, manager) as (service, _, _events):
         a_uri = (tmp_path / "a.py").as_uri()
         b_uri = (tmp_path / "b.py").as_uri()
-        service.document_open(a_uri, "python", 1, "a = 1\n")
-        service.document_open(b_uri, "python", 1, "b = 1\n")
+        service.document_open(a_uri, "python", 1, "a = 1\n", epoch=service.epoch)
+        service.document_open(b_uri, "python", 1, "b = 1\n", epoch=service.epoch)
         await _flush(service, b_uri)
         connection = await manager.ensure_started("python")
 
@@ -793,9 +793,9 @@ async def test_restart_reopens_documents_with_latest_snapshots(tmp_path):
                 "text": "2",
             }
         ]
-        assert service.document_change(a_uri, 1, 2, change).accepted_version == 2
+        assert service.document_change(a_uri, 1, 2, change, epoch=service.epoch).accepted_version == 2
 
-        restarted = await service.lsp_control("restart", "pyright")
+        restarted = await service.lsp_control("restart", "pyright", epoch=service.epoch)
         assert restarted["generation"] == connection.generation == 2
 
         # The restarted server is a fresh process: its log holds only the
@@ -822,12 +822,12 @@ async def test_save_sends_did_save_with_text_when_requested(tmp_path):
         target = tmp_path / "a.py"
         target.write_text("x = 1\n")
         uri = target.as_uri()
-        service.document_open(uri, "python", 1, "x = 1\n")
+        service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         await _flush(service, uri)
         connection = await manager.ensure_started("python")
         read = service.read(uri)
 
-        result = await service.save(uri, "x = 2\n", read.revision)
+        result = await service.save(uri, "x = 2\n", read.revision, epoch=service.epoch)
         assert result.ok is True
         saves = _by_method(await _records(connection), "textDocument/didSave")
         assert saves == [{"textDocument": {"uri": uri}, "text": "x = 2\n"}]
@@ -844,12 +844,12 @@ async def test_save_omits_text_when_server_does_not_request_it(tmp_path):
         target = tmp_path / "a.py"
         target.write_text("x = 1\n")
         uri = target.as_uri()
-        service.document_open(uri, "python", 1, "x = 1\n")
+        service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         await _flush(service, uri)
         connection = await manager.ensure_started("python")
         read = service.read(uri)
 
-        result = await service.save(uri, "x = 2\n", read.revision)
+        result = await service.save(uri, "x = 2\n", read.revision, epoch=service.epoch)
         assert result.ok is True
         saves = _by_method(await _records(connection), "textDocument/didSave")
         assert saves == [{"textDocument": {"uri": uri}}]
@@ -860,14 +860,14 @@ async def test_document_close_sends_did_close_only_when_open_on_generation(tmp_p
     manager = _manager(tmp_path)
     async with _workspace(tmp_path, manager) as (service, _, _events):
         uri = (tmp_path / "a.py").as_uri()
-        service.document_open(uri, "python", 1, "x = 1\n")
+        service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         await _flush(service, uri)
         connection = await manager.ensure_started("python")
 
-        assert service.document_close(uri) == {"closed": True, "uri": uri}
+        assert service.document_close(uri, epoch=service.epoch) == {"closed": True, "uri": uri}
         closes = _by_method(await _records(connection), "textDocument/didClose")
         assert closes == [{"textDocument": {"uri": uri}}]
-        service.document_close(uri)  # idempotent: nothing to close any more
+        service.document_close(uri, epoch=service.epoch)  # idempotent: nothing to close any more
         closes = _by_method(await _records(connection), "textDocument/didClose")
         assert len(closes) == 1
 
@@ -876,14 +876,14 @@ async def test_document_close_sends_did_close_only_when_open_on_generation(tmp_p
         # restart, while documents still open are.
         other = (tmp_path / "b.py").as_uri()
         kept = (tmp_path / "c.py").as_uri()
-        service.document_open(other, "python", 1, "b = 1\n")
-        service.document_open(kept, "python", 1, "c = 1\n")
+        service.document_open(other, "python", 1, "b = 1\n", epoch=service.epoch)
+        service.document_open(kept, "python", 1, "c = 1\n", epoch=service.epoch)
         await _flush(service, kept)
         with pytest.raises(LspUnavailableError):
             await connection.request("boom", {})
         await _until(lambda: connection.state == STATE_FAILED)
-        assert service.document_close(other)["closed"] is True
-        restarted = await service.lsp_control("restart", "pyright")
+        assert service.document_close(other, epoch=service.epoch)["closed"] is True
+        restarted = await service.lsp_control("restart", "pyright", epoch=service.epoch)
         assert restarted["state"] == STATE_READY
         did_opens = _by_method(await _records(connection), "textDocument/didOpen")
         assert [entry["textDocument"]["uri"] for entry in did_opens] == [kept]
@@ -893,24 +893,24 @@ async def test_lsp_control_stop_and_lazy_restart(tmp_path):
     manager = _manager(tmp_path)
     async with _workspace(tmp_path, manager) as (service, _, _events):
         # Stopping a profile that never started is honest, not an error.
-        idle = await service.lsp_control("stop", "python")
+        idle = await service.lsp_control("stop", "python", epoch=service.epoch)
         assert idle["state"] == "stopped"
         assert "no connection" in idle["detail"]
         assert manager.status() == []
 
-        started = await service.lsp_control("start", "pyright")
+        started = await service.lsp_control("start", "pyright", epoch=service.epoch)
         assert started["state"] == STATE_READY
         assert started["generation"] == 1
         assert (await service.lsp_status())["servers"][0]["state"] == STATE_READY
 
-        stopped = await service.lsp_control("stop", "python")
+        stopped = await service.lsp_control("stop", "python", epoch=service.epoch)
         assert stopped["state"] == "stopped"
         assert (await service.lsp_status())["servers"][0]["state"] == "stopped"
 
         # The next documentOpen starts the stopped server again, lazily — the
         # service itself, without the test touching the manager.
         uri = (tmp_path / "a.py").as_uri()
-        reopened = service.document_open(uri, "python", 1, "x = 1\n")
+        reopened = service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         assert reopened.state == "starting"
         await _until(lambda: manager.status() and manager.status()[0]["state"] == STATE_READY)
         connection = await manager.ensure_started("python")
@@ -918,7 +918,7 @@ async def test_lsp_control_stop_and_lazy_restart(tmp_path):
         did_open = _by_method(await _records(connection), "textDocument/didOpen")[-1]
         assert did_open["textDocument"]["version"] == 1
 
-        unsupported = await service.lsp_control("start", "cobol")
+        unsupported = await service.lsp_control("start", "cobol", epoch=service.epoch)
         assert unsupported["state"] == "missing"
 
 
@@ -927,7 +927,7 @@ async def test_missing_server_is_honest_and_mirrors_still_work(tmp_path, monkeyp
     manager = _manager(tmp_path)
     async with _workspace(tmp_path, manager) as (service, _, events):
         uri = (tmp_path / "a.py").as_uri()
-        opened = service.document_open(uri, "python", 1, "x = 1\n")
+        opened = service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         assert opened.state == "missing"
         assert opened.accepted_version == 1  # the mirror is accepted regardless
         assert manager.status() == []  # nothing was spawned or even created
@@ -957,11 +957,12 @@ async def test_missing_server_is_honest_and_mirrors_still_work(tmp_path, monkeyp
                         "text": "2",
                     }
                 ],
+                epoch=service.epoch,
             ).accepted_version
             == 2
         )
         assert service.document_snapshot(uri)["text"] == "x = 2\n"
-        assert service.document_close(uri)["closed"] is True
+        assert service.document_close(uri, epoch=service.epoch)["closed"] is True
         assert events == []
 
         # A position is required for cursor operations; a typed denial, never
@@ -981,7 +982,7 @@ async def test_reopen_epoch_drops_old_workspace_server_results(tmp_path):
     service.open(str(tmp_path), True)
     try:
         uri = (tmp_path / "a.py").as_uri()
-        service.document_open(uri, "python", 1, "x = 1\n")
+        service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         await _flush(service, uri)
         connection = await manager.ensure_started("python")
 
@@ -1007,16 +1008,16 @@ async def test_reopen_after_close_is_honest_about_the_retired_manager(tmp_path):
     service.set_lsp_manager(manager)
     service.open(str(tmp_path), True)
     uri = (tmp_path / "a.py").as_uri()
-    service.document_open(uri, "python", 1, "x = 1\n")
+    service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
     await _flush(service, uri)
     assert service.close() == {"closed": True}
     await service.wait_stopped()
 
     identity = service.open(str(tmp_path), True)
     assert identity.epoch == 2
-    reopened = service.document_open(uri, "python", 1, "x = 1\n")
+    reopened = service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
     assert reopened.state == "missing"
-    control = await service.lsp_control("start", "python")
+    control = await service.lsp_control("start", "python", epoch=service.epoch)
     assert control["state"] == "missing"
     assert "no language-server manager" in control["detail"]
     assert (await service.lsp_status()) == {"servers": []}
@@ -1031,7 +1032,7 @@ async def test_close_stops_everything_and_is_idempotent(tmp_path):
     service.set_lsp_manager(manager)
     identity = service.open(str(tmp_path), True)
     uri = (tmp_path / "a.py").as_uri()
-    service.document_open(uri, "python", 1, "x = 1\n")
+    service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
     await _flush(service, uri)
     assert (await manager.ensure_started("python")).state == STATE_READY
 
@@ -1044,7 +1045,7 @@ async def test_close_stops_everything_and_is_idempotent(tmp_path):
     from machina.workspace.models import WorkspaceError
 
     with pytest.raises(WorkspaceError):
-        service.document_open(uri, "python", 1, "x = 1\n")
+        service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
 
 
 # ─── pure normalization units (untrusted server data) ───────────────────────
@@ -1153,7 +1154,7 @@ async def test_did_open_sends_the_documents_protocol_language(tmp_path):
         )
         for name, declared, expected in cases:
             uri = (tmp_path / name).as_uri()
-            service.document_open(uri, declared, 1, "x = 1\n")
+            service.document_open(uri, declared, 1, "x = 1\n", epoch=service.epoch)
             await _flush(service, uri)
         connection = await manager.ensure_started("typescript")
         records = _by_method(await _records(connection), "textDocument/didOpen")

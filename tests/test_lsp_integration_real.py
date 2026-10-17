@@ -424,7 +424,9 @@ async def test_python_stop_restart_reopens_latest_unsaved_text(make_workspace):
     assert before["state"] == "ready"
     generation = before["generation"]
 
-    stopped = await workspace.service.lsp_control("stop", "python")
+    stopped = await workspace.service.lsp_control(
+        "stop", "python", epoch=workspace.service.epoch
+    )
     assert stopped["state"] == "stopped"
     assert stopped["generation"] == generation
     servers = (await workspace.service.lsp_status())["servers"]
@@ -434,7 +436,9 @@ async def test_python_stop_restart_reopens_latest_unsaved_text(make_workspace):
     assert unavailable.state == "stopped" and unavailable.result is None
     assert workspace.path("main.py").read_text(encoding="utf-8") == MAIN_SOURCE
 
-    restarted = await workspace.service.lsp_control("restart", "python")
+    restarted = await workspace.service.lsp_control(
+        "restart", "python", epoch=workspace.service.epoch
+    )
     assert restarted["state"] == "ready"
     assert restarted["generation"] == generation + 1
     servers = (await workspace.service.lsp_status())["servers"]

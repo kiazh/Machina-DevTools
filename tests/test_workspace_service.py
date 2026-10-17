@@ -710,7 +710,7 @@ def test_service_document_epochs_reopen_and_close(tmp_path):
     service, identity, _ = _service(root)
     uri = (root / "a.py").as_uri()
 
-    opened = service.document_open(uri, "python", 1, "x = 1\n")
+    opened = service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
     assert opened.accepted_version == 1
     assert opened.server_generation == identity.epoch
     snapshot = service.document_snapshot(uri)
@@ -752,7 +752,7 @@ async def test_service_save_emits_file_changed_event(tmp_path):
     uri = target.as_uri()
 
     read = service.read(uri)
-    result = await service.save(uri, "y\n", read.revision)
+    result = await service.save(uri, "y\n", read.revision, epoch=service.epoch)
     assert result.ok is True
     assert len(events) == 1
     event = events[0]
@@ -765,7 +765,7 @@ async def test_service_save_emits_file_changed_event(tmp_path):
         "origin": "save",
     }
     # A conflicting save emits nothing.
-    await service.save(uri, "z\n", read.revision)
+    await service.save(uri, "z\n", read.revision, epoch=service.epoch)
     assert len(events) == 1
 
 
@@ -818,7 +818,7 @@ async def test_intelligence_dispatches_to_manager_and_is_honest_on_failure(tmp_p
             return "ready"
 
     service.set_lsp_manager(ReadyManager())
-    service.document_open(uri, "python", 1, "x = 1\n")
+    service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
     dispatched = (await service.intelligence("diagnostics", uri=uri)).as_dict()
     assert dispatched["state"] == "ready"
     assert dispatched["freshness"] == "versioned"
@@ -827,7 +827,7 @@ async def test_intelligence_dispatches_to_manager_and_is_honest_on_failure(tmp_p
     assert dispatched["documentVersion"] == 1
     assert calls[0]["operation"] == "diagnostics"
     assert (await service.lsp_status())["servers"][0]["profile"] == "python"
-    assert service.document_open(uri, "python", 2, "y\n").state == "ready"
+    assert service.document_open(uri, "python", 2, "y\n", epoch=service.epoch).state == "ready"
 
     class BrokenManager:
         def intelligence(self, request):
@@ -847,14 +847,112 @@ async def test_lsp_control_requires_trust_and_reports_missing(tmp_path):
     root = _root(tmp_path)
     untrusted, _, _ = _service(root, trust=False)
     with pytest.raises(WorkspaceError) as denied:
-        await untrusted.lsp_control("start", "python")
+        await untrusted.lsp_control("start", "python", epoch=untrusted.epoch)
     assert denied.value.reason == "denied"
 
     trusted, _, _ = _service(root, trust=True)
-    missing = await trusted.lsp_control("start", "python")
+    missing = await trusted.lsp_control("start", "python", epoch=trusted.epoch)
     assert missing["state"] == "missing"
     assert missing["action"] == "start"
     assert missing["profile"] == "python"
     with pytest.raises(WorkspaceError):
-        await trusted.lsp_control("install", "python")
+        await trusted.lsp_control("install", "python", epoch=trusted.epoch)
     assert await trusted.lsp_status() == {"servers": []}
+
+
+async def test_mutating_operations_require_epoch_and_client_binding(tmp_path):
+    """F-19: mutations are fenced by a REQUIRED epoch and an optional client id.
+
+    A stale caller that merely omits ``epoch`` must not be treated as current,
+    while reads stay backward-compatible (an omitted epoch still means the
+    live workspace).
+    """
+    root = _root(tmp_path)
+    target = root / "a.py"
+    target.write_text("x = 1\n")
+    service, identity, _ = _service(root)
+    uri = target.as_uri()
+    read = service.read(uri)
+
+    # Reads remain compatible with clients that never learned about epochs.
+    assert service.list("").entries
+    assert service.read(uri).text == "x = 1\n"
+    quick = await service.quick_open("a.py")
+    assert quick.workspace_epoch == identity.epoch  # reads still default to current
+    assert (await service.intelligence("symbols", uri=uri)).state == "missing"
+
+    # Missing epoch: every mutating operation denies instead of assuming current.
+    with pytest.raises(WorkspaceError) as missing_save:
+        await service.save(uri, "y\n", read.revision)
+    assert missing_save.value.reason == "denied"
+    assert "epoch is required" in missing_save.value.message
+
+    with pytest.raises(WorkspaceError) as missing_open:
+        service.document_open(uri, "python", 1, "x = 1\n")
+    assert missing_open.value.reason == "denied"
+
+    with pytest.raises(WorkspaceError) as missing_change:
+        service.document_change(uri, 1, 2, [])
+    assert missing_change.value.reason == "denied"
+
+    with pytest.raises(WorkspaceError) as missing_close:
+        service.document_close(uri)
+    assert missing_close.value.reason == "denied"
+
+    with pytest.raises(WorkspaceError) as missing_control:
+        await service.lsp_control("start", "python")
+    assert missing_control.value.reason == "denied"
+
+    # Stale epoch values still deny.
+    stale = identity.epoch + 1
+    with pytest.raises(WorkspaceError) as stale_save:
+        await service.save(uri, "y\n", read.revision, epoch=stale)
+    assert stale_save.value.reason == "denied"
+    assert "stale" in stale_save.value.message
+    with pytest.raises(WorkspaceError) as stale_open:
+        service.document_open(uri, "python", 1, "x = 1\n", epoch=stale)
+    assert stale_open.value.reason == "denied"
+    with pytest.raises(WorkspaceError) as stale_change:
+        service.document_change(uri, 1, 2, [], epoch=stale)
+    assert stale_change.value.reason == "denied"
+    with pytest.raises(WorkspaceError) as stale_close:
+        service.document_close(uri, epoch=stale)
+    assert stale_close.value.reason == "denied"
+    with pytest.raises(WorkspaceError) as stale_control:
+        await service.lsp_control("start", "python", epoch=stale)
+    assert stale_control.value.reason == "denied"
+
+    # A supplied client id must match the identity minted by open().
+    with pytest.raises(WorkspaceError) as wrong_client:
+        await service.save(
+            uri, "y\n", read.revision, epoch=identity.epoch, client_id="cl_not_this_one"
+        )
+    assert wrong_client.value.reason == "denied"
+    assert "client id" in wrong_client.value.message
+    with pytest.raises(WorkspaceError) as wrong_open_client:
+        service.document_open(
+            uri, "python", 1, "x = 1\n", epoch=identity.epoch, client_id="cl_not_this_one"
+        )
+    assert wrong_open_client.value.reason == "denied"
+    with pytest.raises(WorkspaceError) as wrong_control_client:
+        await service.lsp_control(
+            "start", "python", epoch=identity.epoch, client_id="cl_not_this_one"
+        )
+    assert wrong_control_client.value.reason == "denied"
+
+    # Current epoch works, with or without the client id (stdio may omit it).
+    saved = await service.save(uri, "y\n", read.revision, epoch=identity.epoch)
+    assert saved.ok is True
+    opened = service.document_open(
+        uri, "python", 1, "x = 1\n", epoch=identity.epoch, client_id=identity.client_id
+    )
+    assert opened.accepted_version == 1
+    assert (
+        service.document_change(
+            uri, 1, 2, [], epoch=identity.epoch, client_id=identity.client_id
+        ).accepted_version
+        == 2
+    )
+    assert service.document_close(uri, epoch=identity.epoch)["closed"] is True
+    control = await service.lsp_control("start", "python", epoch=identity.epoch)
+    assert control["state"] == "missing"  # no manager attached: honest, not denied
