@@ -137,3 +137,16 @@ async def test_crawl_reports_failures_but_returns_saved_pages(monkeypatch, stubs
     assert pipeline.index_document.await_count == 1
     assert "could not be fetched" in response
     assert "untrusted" in response
+
+
+async def test_crawl_excerpt_redacts_secrets_before_truncation(monkeypatch, stubs):
+    """combined #26: returned excerpts must use the same redaction as storage."""
+    secret = "ghp_" + "A" * 36
+    monkeypatch.setattr(
+        crawl_module,
+        "fetch_page_html",
+        AsyncMock(return_value=_page(body=f"before {secret} after")),
+    )
+    response = await crawl_module.web_crawl("https://example.com/", max_depth=0)
+    assert secret not in response
+    assert "REDACTED" in response
