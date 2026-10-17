@@ -14,6 +14,7 @@ import asyncio
 import json
 import uuid
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import pytest
 
@@ -1272,7 +1273,7 @@ async def test_revert_deletes_the_reviews_own_skill_and_audits(db_pool, monkeypa
         await db_pool.execute("DELETE FROM sessions WHERE id = $1", session.id)
 
 
-async def test_revert_disables_a_foreign_skill_instead_of_deleting_it(
+async def test_revert_leaves_a_foreign_skill_untouched(
     db_pool, monkeypatch, tmp_path
 ):
     monkeypatch.setattr("machina.skills.learning.db", db_pool)
@@ -1284,7 +1285,7 @@ async def test_revert_disables_a_foreign_skill_instead_of_deleting_it(
     try:
         proposal = await _auto_applied_proposal(reviewer, session, agent_id, "revert-foreign")
         # Replace this review's artifact with an unrelated same-named skill:
-        # revert must disable it (foreign provenance) rather than delete it.
+        # revert must leave it untouched, never disable a foreign replacement.
         registry.delete_skill("revert-foreign")
         registry.create_skill(
             "revert-foreign", "Manual skill", "Manual content that must survive.", source="manual"
@@ -1292,11 +1293,11 @@ async def test_revert_disables_a_foreign_skill_instead_of_deleting_it(
         reverted = await reviewer.revert(uuid.UUID(proposal["id"]), agent_id=agent_id)
         assert reverted["status"] == "reverted"
         skill = registry.get("revert-foreign")
-        assert skill is not None and skill.enabled is False
+        assert skill is not None and skill.enabled is True
         fresh = SkillRegistry(tmp_path / "skills")
         fresh.load_all()
         loaded = fresh.get("revert-foreign")
-        assert loaded is not None and loaded.enabled is False
+        assert loaded is not None and loaded.enabled is True
         assert "Manual content that must survive." in loaded.content
     finally:
         await db_pool.execute("DELETE FROM sessions WHERE id = $1", session.id)
@@ -1411,3 +1412,89 @@ def test_learned_skills_publish_and_load_from_the_learned_root(tmp_path):
         fresh.create_skill(
             "learned-location", "Curated twin", "Curated content.", source_type="hub"
         )
+
+
+async def test_revert_does_not_delete_the_skill_when_the_db_update_fails(
+    monkeypatch, tmp_path
+):
+    """combined #8: the durable transition must precede the filesystem action."""
+    review_id = uuid.uuid4()
+    name = "revert-db-fail"
+    registry = SkillRegistry(tmp_path / "skills")
+    registry.create_skill(
+        name,
+        "Deploy steps",
+        "Steps to deploy safely.",
+        source=f"learning-review:{review_id}",
+    )
+    row = {
+        "id": review_id,
+        "agent_id": "agent-1",
+        "status": "approved",
+        "name": name,
+    }
+
+    class FailingConnection:
+        async def fetchrow(self, query, *args):
+            if query.lstrip().startswith("SELECT"):
+                return row
+            raise RuntimeError("database update failed")
+
+        @asynccontextmanager
+        async def transaction(self):
+            yield
+
+    class FailingDB:
+        @asynccontextmanager
+        async def acquire(self):
+            yield FailingConnection()
+
+    monkeypatch.setattr("machina.skills.learning.db", FailingDB())
+    reviewer = LearningReviewer(registry=registry)
+    with pytest.raises(RuntimeError, match="database update failed"):
+        await reviewer.revert(review_id, agent_id="agent-1")
+
+    skill = registry.get(name)
+    assert skill is not None, "DB failure deleted the artifact before recording the revert"
+    assert Path(skill.file_path).is_file()
+
+
+async def test_revert_records_status_before_cleanup_and_retries(
+    db_pool, monkeypatch, tmp_path
+):
+    """combined #8: a cleanup failure is surfaced after the revert is durable."""
+    monkeypatch.setattr("machina.skills.learning.db", db_pool)
+    monkeypatch.setattr("machina.core.session.db", db_pool)
+    agent_id = f"review-{uuid.uuid4()}"
+    session = await SessionManager().create(title="revert retry", agent_id=agent_id)
+    registry = SkillRegistry(tmp_path / "skills")
+    reviewer = LearningReviewer(registry=registry)
+    try:
+        proposal = await _auto_applied_proposal(reviewer, session, agent_id, "revert-retry")
+        review_id = uuid.UUID(proposal["id"])
+        real_delete = registry.delete_skill
+        fail = {"on": True}
+
+        def flaky_delete(name):
+            if fail["on"]:
+                raise OSError("injected cleanup failure")
+            return real_delete(name)
+
+        monkeypatch.setattr(registry, "delete_skill", flaky_delete)
+        with pytest.raises(OSError, match="injected cleanup failure"):
+            await reviewer.revert(review_id, agent_id=agent_id)
+
+        status = await db_pool.fetchval(
+            "SELECT status FROM learning_reviews WHERE id = $1", review_id
+        )
+        assert status == "reverted", "cleanup failure left the review approved"
+        assert registry.get("revert-retry") is not None
+
+        # A retry is not a second transition, but it does retry the owned
+        # artifact cleanup.
+        fail["on"] = False
+        again = await reviewer.revert(review_id, agent_id=agent_id)
+        assert again["status"] == "reverted"
+        assert registry.get("revert-retry") is None
+    finally:
+        await db_pool.execute("DELETE FROM sessions WHERE id = $1", session.id)
