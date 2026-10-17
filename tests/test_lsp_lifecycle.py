@@ -733,3 +733,24 @@ async def test_manager_missing_language_stays_honest(tmp_path, monkeypatch):
     await manager.stop_all()
     with pytest.raises(LspUnavailableError):
         await manager.ensure_started("cobol")
+
+
+async def test_request_timeout_starts_before_the_send_phase(tmp_path, monkeypatch):
+    """combined #2: a blocked stdin drain must not outlive the request timeout."""
+    conn = LspConnection(fake_profile(), tmp_path)
+    entered = asyncio.Event()
+
+    async def blocked_send(_message):
+        entered.set()
+        await asyncio.Event().wait()
+
+    monkeypatch.setattr(conn, "_transport_active", lambda: True)
+    monkeypatch.setattr(conn, "_send", blocked_send)
+    loop = asyncio.get_running_loop()
+    started = loop.time()
+    with pytest.raises(LspTimeoutError):
+        await asyncio.wait_for(conn._request_core("textDocument/hover", {}, 0.05), 1.0)
+    elapsed = loop.time() - started
+    assert entered.is_set()
+    assert elapsed < 0.5, f"send phase ignored the 50ms timeout ({elapsed:.3f}s)"
+    assert conn.pending_count == 0
