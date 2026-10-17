@@ -26,14 +26,7 @@ from machina.security.chatgpt_auth import LoginRequest
 
 runner = CliRunner()
 
-_STATUS_KEYS = {
-    "signed_in",
-    "source",
-    "expired",
-    "expires_at",
-    "account_id",
-    "last_refresh",
-}
+_STATUS_KEYS = {"signed_in", "source", "expired", "expires_at", "account_id", "last_refresh"}
 
 
 def _jwt(payload: dict) -> str:
@@ -44,9 +37,7 @@ def _jwt(payload: dict) -> str:
     return f"{b64({'alg': 'none', 'typ': 'JWT'})}.{b64(payload)}.sig"
 
 
-def _tokens(
-    *, account: str = "acct-123", refresh: str = "rt-old", exp_in: float = 3600.0
-) -> dict:
+def _tokens(*, account: str = "acct-123", refresh: str = "rt-old", exp_in: float = 3600.0) -> dict:
     auth = {"https://api.openai.com/auth": {"chatgpt_account_id": account}}
     return {
         "access_token": _jwt({**auth, "exp": time.time() + exp_in}),
@@ -233,9 +224,7 @@ def test_login_import_codex_without_source_is_a_clean_error(fake_home):
 
 def test_login_import_codex_refuses_to_clobber_machina_store(fake_home):
     store = fake_home / ".machina" / "auth" / "chatgpt.json"
-    chatgpt_auth.save_tokens(
-        _tokens(account="acct-machina", refresh="rt-machina"), store
-    )
+    chatgpt_auth.save_tokens(_tokens(account="acct-machina", refresh="rt-machina"), store)
     _write_codex(fake_home, _tokens(account="acct-codex", refresh="rt-codex"))
 
     result = runner.invoke(auth_cli.app, ["login", "--import-codex"])
@@ -366,9 +355,7 @@ def test_login_port_conflict_is_a_clean_error(fake_home, monkeypatch):
     port = int(blocker.getsockname()[1])
     _install_login(monkeypatch, port)
     try:
-        result = runner.invoke(
-            auth_cli.app, ["login", "--no-browser", "--timeout", "5"]
-        )
+        result = runner.invoke(auth_cli.app, ["login", "--no-browser", "--timeout", "5"])
     finally:
         blocker.close()
 
