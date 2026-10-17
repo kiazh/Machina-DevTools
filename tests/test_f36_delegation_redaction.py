@@ -13,7 +13,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from machina.core.agent_def import AgentDef
-from machina.core.models import Session
+from machina.core.models import AgentResponse, Session
 
 SECRET = "sk-or-v1-abcdef1234567890"
 DSN = "postgresql://user:password@host:5432/db"
@@ -31,6 +31,15 @@ class _ExplodingAgent:
 
     async def run(self, *_args, **_kwargs):
         raise RuntimeError(f"child failed: bearer {SECRET} dsn {DSN}")
+
+
+class _FailedOutcomeAgent(_ExplodingAgent):
+    """Typed child failure: returns content instead of raising."""
+
+    async def run(self, *_args, **_kwargs):
+        return AgentResponse(
+            content=f"child failed Authorization: Bearer {SECRET}", outcome="failed"
+        )
 
 
 @pytest.fixture
@@ -80,6 +89,41 @@ async def test_delegate_error_redacts_persisted_and_returned(monkeypatch, _deleg
 
 
 @pytest.mark.asyncio
+async def test_typed_child_failure_redacts_parent_chunk_and_result(monkeypatch, _delegate_env):
+    """F36: a child that returns outcome='failed' (no exception) is still a
+    diagnostic response and must be redacted in the durable row, the parent
+    context chunk, and the returned result."""
+    module, _child, parent = _delegate_env
+    orch = module.Orchestrator()
+    recorded: dict[str, str] = {}
+    chunks: list[dict] = []
+
+    async def fake_record_end(message_id, *, status, response, tokens):
+        recorded["status"] = status
+        recorded["response"] = response
+
+    async def fake_add_chunk(**kwargs):
+        chunks.append(kwargs)
+
+    monkeypatch.setattr(orch, "_default_agent", AsyncMock(return_value=_FailedOutcomeAgent()))
+    monkeypatch.setattr(orch, "_record_start", AsyncMock(return_value=uuid.uuid4()))
+    monkeypatch.setattr(orch, "_record_end", fake_record_end)
+    monkeypatch.setattr(orch, "_charged_child_tokens", AsyncMock(return_value=0))
+    monkeypatch.setattr(orch, "_parent_context", AsyncMock(return_value=""))
+    monkeypatch.setattr(module.context_manager, "add_chunk", fake_add_chunk)
+
+    result = await orch.delegate(
+        "coder", "work", parent_session_id=parent.id, from_agent="parent"
+    )
+
+    assert result.status == "error"
+    assert SECRET not in result.response
+    assert SECRET not in recorded["response"]
+    parent_chunk = next(chunk for chunk in chunks if chunk["chunk_type"] == "result")
+    assert SECRET not in parent_chunk["payload"]["content"]
+
+
+@pytest.mark.asyncio
 async def test_history_redacts_legacy_rows(monkeypatch, _delegate_env):
     module, _child, _parent = _delegate_env
     orch = module.Orchestrator()
@@ -112,5 +156,8 @@ def test_redaction_failure_is_fail_closed(monkeypatch, _delegate_env):
     def _boom(_text):
         raise RuntimeError("redactor down")
 
-    monkeypatch.setattr(module, "redact_secrets", _boom)
+    monkeypatch.setattr("machina.memory.redaction.redact_secrets", _boom)
+    from machina.memory.redaction import redact_diagnostic
+
+    assert redact_diagnostic(SECRET) == "[redaction unavailable]"
     assert module._redacted(SECRET) == "[redaction unavailable]"

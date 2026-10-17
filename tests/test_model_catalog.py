@@ -10,6 +10,7 @@ therefore pin against the actual backend shape, not a hand-made one.
 from __future__ import annotations
 
 import json
+import uuid
 from pathlib import Path
 
 import pytest
@@ -309,6 +310,42 @@ def test_context_window_uses_account_scoped_chatgpt_catalog(hermetic_catalog, mo
     assert asyncio.run(scoped("acct-a").context_window("gpt-6.1-sol")) == 111_111
     assert asyncio.run(scoped("acct-b").context_window("gpt-6.1-sol")) == 222_222
 
-    # Unknown-account callers (a bare provider name) keep the documented
-    # most-recent-live fallback instead of inventing a scope.
-    assert context_window_for("gpt-6.1-sol", "chatgpt") == 222_222
+    # A bare provider name carries no account hint: with the endpoint scoped
+    # but no account, cached_catalog must not serve another account's live
+    # list. It may still use the Codex CLI cache or the bundled snapshot.
+    assert context_window_for("gpt-6.1-sol", "chatgpt") not in (111_111, 222_222)
+
+
+def test_session_context_window_uses_configured_chatgpt_account(hermetic_catalog, monkeypatch):
+    """F31 completion: compaction/session budgets resolve the string route
+    through the configured account, not the most-recently-fetched one."""
+    import asyncio
+    from types import SimpleNamespace
+
+    from machina import services
+
+    payload_a = _fixture_payload()
+    payload_a["models"][0]["context_window"] = 111_111
+    payload_b = _fixture_payload()
+    payload_b["models"][0]["context_window"] = 222_222
+    models_a = catalog.parse_catalog(payload_a, source="live")
+    models_b = catalog.parse_catalog(payload_b, source="live")
+    monkeypatch.setattr(
+        catalog,
+        "fetch_live_catalog",
+        lambda token, account, **k: models_a if account == "acct-a" else models_b,
+    )
+    # Fetch A first, B last: the unscoped fallback would read B.
+    catalog.refresh_live_catalog("token-1", "acct-a", force=True)
+    catalog.refresh_live_catalog("token-1", "acct-b", force=True)
+
+    monkeypatch.setattr(
+        "machina.security.chatgpt_auth.status", lambda **_kwargs: {"account_id": "acct-a"}
+    )
+
+    async def _route(_session):
+        return "chatgpt", "gpt-6.1-sol"
+
+    monkeypatch.setattr(services, "_effective_session_route", _route)
+    session = SimpleNamespace(id=uuid.uuid4(), agent_id="harness")
+    assert asyncio.run(services.session_context_window(session)) == 111_111

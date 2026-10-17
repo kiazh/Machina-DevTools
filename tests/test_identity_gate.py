@@ -314,3 +314,20 @@ class TestIdentityF34RelevanceAndSentiment:
         belief = _make_belief(known_facts={"Python": 0.9})
         gate = IdentityGate()
         assert gate._compute_consistency("Python is good and bad.", belief) == pytest.approx(0.5)
+
+    def test_relevance_is_capped_at_one(self):
+        facts = {f"fact-{i}": 0.8 for i in range(12)}
+        belief = _make_belief(known_facts=facts)
+        gate = IdentityGate()
+        content = " ".join(facts)
+        assert gate._compute_relevance(content, belief) == 1.0
+
+    def test_relevance_accepts_plural_fact_forms(self):
+        belief = _make_belief(known_facts={"API": 0.9})
+        gate = IdentityGate()
+        assert gate._compute_relevance("APIs are useful", belief) == 1.0
+
+    def test_negation_does_not_cross_an_unrelated_negator(self):
+        belief = _make_belief(known_facts={"Python": 0.9})
+        gate = IdentityGate()
+        assert gate._compute_consistency("Python without issues is good.", belief) == pytest.approx(0.9)

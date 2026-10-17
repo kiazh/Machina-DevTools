@@ -261,8 +261,14 @@ class TestMemoryApprovalGate:
             with patch("machina.memory.approval.memory_store", mock_memory):
                 mock_db.execute = AsyncMock(return_value="UPDATE 1")
                 _transactional_connection(mock_db)
-                # The mock may yield None; this only checks approve() doesn't raise.
-                await gate.approve(uuid.uuid4())
+                created = await gate.approve(uuid.uuid4())
+                assert created is not None
+                mock_memory.add.assert_awaited_once()
+                added = mock_memory.add.await_args.kwargs
+                assert added["content"] == "Test memory"
+                assert added["category"] == "fact"
+                assert added["bypass_approval"] is True
+                mock_db.execute.assert_awaited()
 
     async def test_reject_pending(self, gate, mock_db):
         with patch("machina.memory.approval.db", mock_db):

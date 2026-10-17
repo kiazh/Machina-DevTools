@@ -151,3 +151,28 @@ def test_checkpoint_chunk_inherits_newest_replaced_timestamp():
 
     ordered = sorted(result.compressed_chunks, key=lambda c: c.created_at)
     assert ordered.index(summary) < ordered.index(recent[0])
+
+
+@pytest.mark.asyncio
+async def test_acompress_checkpoint_uses_replaced_timestamps_too():
+    """F35: the async non-LLM path shares the same checkpoint ordering."""
+    session_id = uuid.uuid4()
+    now = datetime.now(UTC).replace(tzinfo=None)
+    chunks = [
+        ContextChunk(
+            id=uuid.uuid4(),
+            session_id=session_id,
+            agent_id="harness",
+            chunk_type="user_message",
+            payload={"content": f"message {i} with enough text to compress"},
+            token_count=20,
+            created_at=now - timedelta(minutes=i),
+        )
+        for i in range(6)
+    ]
+    comp = ContextCompressor(config=CompressionConfig(llm_summarize=False, preserve_recent=2))
+    result = await comp.acompress(chunks, session_id, "harness", checkpoint=_checkpoint())
+
+    summary = next(c for c in result.compressed_chunks if c.chunk_type == "compression_summary")
+    assert summary.created_at == max(c.created_at for c in chunks[2:])
+    assert summary.created_at < min(c.created_at for c in chunks[:2])

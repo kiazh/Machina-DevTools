@@ -14,6 +14,8 @@ Tests all 9 security fixes:
 
 from __future__ import annotations
 
+import json
+import logging
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -435,8 +437,14 @@ class TestAuditLogSanitization:
         assert result["safe"] == "hello"
 
     def test_audit_log_calls_sanitize(self):
-        """audit_log should sanitize all kwargs."""
+        """audit_log must actually redact the emitted record, not just not raise."""
         from machina.core.provider import audit_log
 
-        # This should not raise
-        audit_log("test_event", api_key="sk-abc123def456ghi789jkl012mno345pqr")
+        with patch("machina.core.provider.audit._audit_logger.info") as info:
+            audit_log("test_event", api_key="sk-abc123def456ghi789jkl012mno345pqr")
+
+        rendered = info.call_args.args[0]
+        assert "sk-abc123def456ghi789jkl012mno345pqr" not in rendered
+        assert "REDACTED" in rendered
+        entry = json.loads(rendered)
+        assert entry["event"] == "test_event"

@@ -181,8 +181,12 @@ _CORE_IMPORT_CEILINGS = {
 #   ratchet update. The same AST census measured 775 in a clean worktree at
 #   HEAD 90de21d and 775 on the F30-F36 tree, so this wave adds zero deferred
 #   imports (F31/F36 use module-level/authored imports). Cap 763 -> 775 makes
-#   the guard honest at the branch baseline; further growth still fails.
-DEFERRED_IMPORT_CAP = 775
+#   the guard honest at the branch baseline.
+#   F31 completion: +1 in services.session_context_window — the string route
+#   lazily resolves the configured ChatGPT account/base URL so compaction and
+#   session budgets are account-scoped (one import of the provider module).
+#   Census 775 -> 776, so cap 775 -> 776. Further growth still fails.
+DEFERRED_IMPORT_CAP = 776
 
 
 def test_module_level_core_imports_only_shrink():

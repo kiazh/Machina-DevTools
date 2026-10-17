@@ -248,6 +248,7 @@ async def test_openrouter_stream_complete_calls_usage_store_when_session_id_prov
     reserve.assert_awaited_once()
     # F32: free-tier stream reserves the 1024 output cap actually sent.
     assert reserve.call_args.args[-1] == 1024
+    assert provider.client.stream.call_args.kwargs["json"]["max_tokens"] == 1024
     finish.assert_awaited_once()
     assert len(events) == 3  # 2 text + 1 done
     assert events[-1].type == "done"
@@ -298,3 +299,5 @@ async def test_openrouter_stream_complete_skips_usage_store_when_no_session_id(m
     reserve.assert_not_awaited()
     finish.assert_not_awaited()
     assert len(events) == 2  # 1 text + 1 done
+    # Paid streams keep the requested maximum (no free-tier clamp).
+    assert provider.client.stream.call_args.kwargs["json"]["max_tokens"] == 4096
