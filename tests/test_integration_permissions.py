@@ -1004,15 +1004,21 @@ def test_rag_cold_start_initializes_shared_pipeline():
 
     real_factory = pipemod.build_embedder
     pipemod.build_embedder = lambda settings=None: _FakeEmbedder()  # type: ignore[assignment]
+    leases = []
     try:
         from machina.core import agent_factory as fac
 
         # Cold global (None) + usable embedder → initialized, not None.
-        assert asyncio.run(fac._shared_rag_pipeline()) is not None
-        # Second call reuses the shared instance.
         first = asyncio.run(fac._shared_rag_pipeline())
-        assert asyncio.run(fac._shared_rag_pipeline()) is first
+        assert first is not None
+        leases.append(first)
+        # Second call reuses the shared pipeline behind a fresh lease.
+        second = asyncio.run(fac._shared_rag_pipeline())
+        leases.append(second)
+        assert second.pipeline is first.pipeline
     finally:
+        for lease in leases:
+            asyncio.run(ragmod.release_rag_pipeline(lease))
         pipemod.build_embedder = real_factory  # type: ignore[assignment]
         ragmod._rag_pipeline = real_global
 
