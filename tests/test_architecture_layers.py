@@ -161,7 +161,7 @@ _CORE_IMPORT_CEILINGS = {
 # machina/research/benchmark.py's architecture section (round-2 review N6:
 # the hand-mirrored literal drifted once already). Moves only with the delta
 # table documented inside test_deferred_import_count_ratchet.
-DEFERRED_IMPORT_CAP = 750
+DEFERRED_IMPORT_CAP = 758
 
 
 def test_module_level_core_imports_only_shrink():
@@ -354,6 +354,44 @@ def test_deferred_import_count_ratchet():
     #   750 = 749 + 1 observed on the shared worktree from a concurrent lane
     #   (machina/cli/launcher.py, 0 -> 1 deferred import), counted here so the
     #   tree-wide guard stays honest rather than attributing it elsewhere.
+    #   Fix campaign integration gate (2026-10-17, reviewed): 750 -> 758 (+8).
+    #   Itemized per-file contributors (measured against HEAD on this tree):
+    #     +2 machina/cli/__init__.py (A1 CLI-audit lane): the headless chat
+    #        start path binds ``observability.audit.audit_persistence`` and the
+    #        streaming audit path binds ``core.provider.audit.audit_log`` inside
+    #        the command so importing the CLI never starts the audit writer or
+    #        pulls the provider audit module. (B5's scaffold dedupe in the same
+    #        file changed no census units.)
+    #     +2 machina/observability/audit.py (A1 F-34 audit-spill lane): the
+    #        spool writer binds ``core.provider.audit._sanitize_value`` and the
+    #        retention/read path binds ``core.config`` lazily so the
+    #        stdlib-only spill module stays import-light and sanitization can
+    #        be monkeypatched at its provider seam.
+    #     +2 machina/services.py (B3 token-basis lane): the compaction estimate
+    #        binds ``core.prompt.request_context_tokens`` and the fallback
+    #        binds ``core.assembler.get_token_count`` per call, letting one
+    #        tiktoken basis be swapped/monkeypatched and avoiding a
+    #        services -> assembler module-level edge.
+    #     +1 machina/connectors/mcp_client.py (B2 OAuth lane): the 401/403
+    #        bearer-challenge parser (``connectors.oauth_network``) is bound
+    #        only when an auth failure is classified, so the MCP client does
+    #        not import the OAuth network stack at module load.
+    #     +1 machina/core/agent.py (A2 tool-redaction lane): ``memory.redaction``
+    #        is bound inside the tool-argument path so the agent module keeps
+    #        its module-level import surface and redaction stays patchable.
+    #     +1 machina/core/provider/transport.py (B3 settlement lane):
+    #        ``core.usage.usage_store`` is bound inside ReservationSettlement so
+    #        the transport helpers stay import-light for every provider.
+    #     +1 machina/tools/artifacts.py (A2 artifact-envelope lane):
+    #        ``core.tool_views.append_limit`` is bound in the page-budget helper
+    #        to avoid a module-level tools -> core.tool_views edge.
+    #     -1 machina/core/runtime.py (A1 runtime-hygiene lane): the dead
+    #        pass-through ``_bounded_cleanup`` wrapper went away and the real
+    #        ``core.cleanup.bounded_cleanup`` is hoisted to module level.
+    #     -1 machina/core/scheduler.py (A1 scheduler lane): ``datetime`` was
+    #        hoisted to module level for the cron fallback/UTC clock, replacing
+    #        the function-local import.
+    #   Census measured 758 on this tree; cap 750 -> 758. No other ceiling moved.
     # Procedure: this number may only move with a delta table like the above
     # in this comment; silent growth fails the suite by design.
     total = sum(_deferred_import_count(p) for p in ROOT.rglob("*.py"))
@@ -599,7 +637,26 @@ def test_god_file_ceilings_only_fall(relative_path, ceiling):
 #       +19 core/provider/usage_map.py (221 -> 240; the reduced-view usage
 #          precedence fix + the reviewed prompt-total reconciliation rule:
 #          hit/miss-only partitions now always sum to prompt_tokens).
-_PROVIDER_PACKAGE_TOTAL_CEILING = 5470
+# 5520 = 5470 + 50, measured by the fix-campaign integration gate
+#        (2026-10-17, reviewed, post-``ruff format``). B3's ReservationSettlement
+#        exactly-once accounting across all six transports, net of dead-code
+#        removal:
+#       +51 core/provider/transport.py (274 -> 325; the ReservationSettlement
+#          helper — exactly-once settle/fail guard, record_failure reporting,
+#          GeneratorExit/CancelledError-safe close — plus the shared
+#          ``_tools_payload`` moved here from copilot),
+#       +7 core/provider/openrouter.py (597 -> 604; settlement wiring on
+#          stream/complete + the guarded fallback sleep),
+#       +4 core/provider/anthropic.py (574 -> 578; settlement wiring),
+#       +3 core/provider/direct.py (342 -> 345; settlement wiring),
+#       +2 core/provider/chatgpt.py (682 -> 684; settlement wiring),
+#       -5 core/provider/ollama.py (369 -> 364; settlement wiring offset by
+#          the removed inline reservation teardown),
+#       -12 core/provider/copilot.py (441 -> 429; settlement wiring offset by
+#          deleting the unused ``_default_effort`` and its duplicated
+#          ``_tools_payload``, now imported from transport).
+#        Net +50 by exactly this delta; no other ceiling moved.
+_PROVIDER_PACKAGE_TOTAL_CEILING = 5520
 
 
 def test_provider_package_total_only_falls():

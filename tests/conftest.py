@@ -1,10 +1,13 @@
 """Shared test fixtures and global state isolation."""
 
 import asyncio
+import logging
 import os
 
 import pytest
 import pytest_asyncio
+
+logger = logging.getLogger(__name__)
 
 
 def pytest_collection_modifyitems(items):
@@ -84,8 +87,17 @@ def init_test_database():
 
     try:
         asyncio.run(_init())
-    except Exception:
-        pass  # DB-backed tests will skip on their own if the DB is unreachable
+    except Exception as error:
+        # A DSN was explicitly provided, so a broken schema init is a test
+        # environment failure, not a reason to silently skip every DB test
+        # (which reads as a false green). Never echo the DSN: it may carry a
+        # password.
+        logger.exception("test database schema initialization failed")
+        pytest.fail(
+            "test database schema initialization failed; "
+            f"fix MACHINA_TEST_DATABASE_URL before running DB tests ({type(error).__name__})",
+            pytrace=False,
+        )
 
 
 @pytest.fixture(autouse=True)
