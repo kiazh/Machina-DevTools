@@ -382,3 +382,31 @@ def test_diagnostics_store_stays_bounded_across_many_uris():
         if store.entries(f"file:///f{index}", epoch=1, generation_for=lambda _p: 1)
     )
     assert kept == 4
+
+
+# ─── 8. incremental-sync fallback must describe the server's old text ────────
+async def test_incremental_sync_fallback_replaces_server_text_without_stale_range(tmp_path):
+    """combined #1: a fallback full replacement must not use the NEW text's
+    extent; when the document shrinks, that range leaves old server text."""
+    from machina.workspace.documents import utf16_full_range
+
+    service = WorkspaceService(send_event=lambda _event: None)
+    service.open(str(tmp_path), trust=True)
+    uri = (tmp_path / "a.py").as_uri()
+    service.document_open(uri, "python", 1, "abcdef\nlast", epoch=service.epoch)
+    connection = FakeConnection()
+    connection.capabilities = {"textDocumentSync": 2}
+    service._track_connection("python", connection)
+    assert connection.did_open_calls[-1] == (uri, "python", 1, "abcdef\nlast")
+    connection.did_change_calls.clear()
+
+    service._documents.change_document(
+        uri,
+        1,
+        2,
+        [{"range": utf16_full_range("abcdef\nlast"), "text": "a"}],
+        epoch=service.epoch,
+    )
+    service._apply_document_sync(connection, uri, "python", None)
+
+    assert connection.did_change_calls == [(uri, 2, [{"text": "a"}])]
