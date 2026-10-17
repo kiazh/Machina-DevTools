@@ -83,7 +83,9 @@ async def test_feature_brief_reaches_model_even_with_empty_notes_and_custom_prom
         _ = [event async for event in agent.run_stream(session.id, query, verbose=False)]
     else:
         await agent.run(session.id, query, verbose=False)
-    prompt = provider.calls[0]["messages"][0]["content"]
+    prompt = "\n".join(
+        str(message.get("content", "")) for message in provider.calls[0]["messages"]
+    )
     assert "CUSTOM CORE" in prompt
     assert "Harness capabilities" in prompt
     for value in (

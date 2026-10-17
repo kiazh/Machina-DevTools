@@ -185,8 +185,12 @@ _CORE_IMPORT_CEILINGS = {
 #   F31 completion: +1 in services.session_context_window — the string route
 #   lazily resolves the configured ChatGPT account/base URL so compaction and
 #   session budgets are account-scoped (one import of the provider module).
-#   Census 775 -> 776, so cap 775 -> 776. Further growth still fails.
-DEFERRED_IMPORT_CAP = 776
+#   Census 775 -> 776, so cap 775 -> 776.
+#   Combined audit P2 (2026-10-17): census 776 -> 780 (+4). These are deferred
+#   imports in the upstream-synchronized auth/settings work merged during this
+#   branch; this wave adds no new provider/controller module-scope edges.
+#   Cap 776 -> 780. Further growth still fails.
+DEFERRED_IMPORT_CAP = 780
 
 
 def test_module_level_core_imports_only_shrink():

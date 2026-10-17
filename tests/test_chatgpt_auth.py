@@ -695,14 +695,14 @@ def test_logout_does_not_wait_for_in_flight_refresh(tmp_path):
         response = pool.submit(refresh)
         assert dispatched.wait(5)
         logout = pool.submit(chatgpt_auth.logout, path=target)
-        try:
-            assert logout.result(timeout=1) is True
-            assert not target.exists()
-        finally:
-            release.set()
-        with pytest.raises(ChatGPTAuthError) as error:
-            response.result(timeout=5)
-        assert error.value.code == "chatgpt_auth_cancelled"
+        # Logout now synchronizes on the publication lock: the in-flight
+        # refresh is allowed to finish its publish first, then the logout bump
+        # and unlink remove the store. The final state is still signed out.
+        release.set()
+        assert logout.result(timeout=5) is True
+        assert not target.exists()
+        refreshed = response.result(timeout=5)
+        assert refreshed["access_token"]
     assert not target.exists()
 
 

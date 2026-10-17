@@ -318,7 +318,15 @@ async def test_acompress_llm_path_is_awaited_directly():
     ]
 
     class _Provider:
-        async def complete(self, messages, temperature=0.3, max_tokens=500, tools=None):
+        async def complete(
+            self,
+            messages,
+            temperature=0.3,
+            max_tokens=500,
+            tools=None,
+            session_id=None,
+            agent_id=None,
+        ):
             await asyncio.sleep(0.01)
             from machina.core.models import LLMResponse
 

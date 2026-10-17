@@ -83,7 +83,7 @@ class _FinalProvider:
 
 
 @pytest.mark.asyncio
-async def test_e2e_overridden_job_runs_and_reconciles_session_owner(scheduler_db, monkeypatch):
+async def test_e2e_overridden_job_runs_and_restores_session_owner(scheduler_db, monkeypatch):
     from machina.core.scheduler import JobRunner, job_store
     from machina.core.session import SessionManager
 
@@ -120,4 +120,4 @@ async def test_e2e_overridden_job_runs_and_reconciles_session_owner(scheduler_db
     )
 
     owner = await scheduler_db.fetchval("SELECT agent_id FROM sessions WHERE id = $1", session.id)
-    assert owner == "researcher", "the durable owner must be reconciled with the executed identity"
+    assert owner == "harness", "the run-scoped job override must be restored after execution"

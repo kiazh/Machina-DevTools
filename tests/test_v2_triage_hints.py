@@ -205,7 +205,9 @@ async def test_both_loops_carry_the_class_hint_for_the_same_message(
         assert response.tool_calls == []  # advisory: no tool forcing
     assert agent._last_triage == triage
     assert len(provider.calls) == 1, "advisory hints must not add a model call"
-    prompt = provider.calls[0]["messages"][0]["content"]
+    prompt = "\n".join(
+        str(message.get("content", "")) for message in provider.calls[0]["messages"]
+    )
     assert hint in prompt
 
 

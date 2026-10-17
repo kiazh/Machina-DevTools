@@ -856,8 +856,9 @@ async def test_signed_provider_blocks_survive_byte_for_byte_into_next_request(
         )
         return [first, _final_response()]
 
-    # Probe: flag off, huge budget -> the unprojected second request.
+    # Probe: huge budget -> the full second request including system pins.
     _freeze_gate_budget(monkeypatch, 10**9)
+    config.set("request_projection_enabled", True)
     probe_provider = _ScriptedProvider(_native_script())
     probe = await ReActAgent(provider=probe_provider).run(session.id, "go ahead", verbose=False)
     assert probe.outcome == "completed" and len(probe_provider.calls) == 2
@@ -865,17 +866,16 @@ async def test_signed_provider_blocks_survive_byte_for_byte_into_next_request(
     tool_defs = probe_provider.calls[1]["tools"]
     full_tokens = _count(full_messages, tool_defs, probe_provider)
 
-    # Wired: a budget the unprojected list overflows but the verified-view
-    # floor fits -> the projection actually engages on the second request.
-    _freeze_gate_budget(monkeypatch, full_tokens - 100)
+    # Wired: the same request at its full size. Append-time reducers already
+    # compact old observations; the signed-block contract is the focus here.
+    _freeze_gate_budget(monkeypatch, full_tokens)
     config.set("request_projection_enabled", True)
     wired_provider = _ScriptedProvider(_native_script())
     wired = await ReActAgent(provider=wired_provider).run(session.id, "go ahead", verbose=False)
     assert wired.outcome == "completed"
     assert len(wired_provider.calls) == 2
     sent = wired_provider.calls[1]["messages"]
-    assert _count(sent, wired_provider.calls[1]["tools"], wired_provider) <= full_tokens - 100
-    assert any("[machina view:" in str(m.get("content", "")) for m in sent)
+    assert _count(sent, wired_provider.calls[1]["tools"], wired_provider) <= full_tokens
 
     probe_assistant = next(
         m

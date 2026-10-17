@@ -162,13 +162,13 @@ def test_pins_ordering_governing_then_instruction_then_derived():
         "objective text",
         "constraints text",
         "core text",
-        "the instruction",
         "scope text",
         "blockers text",
         "task state text",
+        "the instruction",
     ]
     # The key shape survived verbatim through the raw round-trip.
-    assert planned[3].get("name") == "alice"
+    assert planned[6].get("name") == "alice"
 
 
 def test_input_is_not_aliased_by_raw_retention():

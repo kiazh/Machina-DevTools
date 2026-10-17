@@ -8,18 +8,16 @@ from unittest.mock import AsyncMock
 import pytest
 
 
-async def test_estimate_reads_all_chunks_not_the_last_ten(monkeypatch):
+async def test_compaction_trigger_reads_all_compressible_chunks(monkeypatch):
     import machina.services as services
 
-    all_chunks = AsyncMock(return_value=[])
-    recent = AsyncMock(side_effect=AssertionError("old 10-chunk window used"))
-    monkeypatch.setattr(services.context_manager, "get_all_chunks", all_chunks)
-    monkeypatch.setattr(services.context_manager, "get_recent_context", recent)
-    monkeypatch.setattr(
-        "machina.core.session.session_manager.get", AsyncMock(return_value=None)
+    all_chunks = AsyncMock(
+        return_value=[
+            type("Chunk", (), {"chunk_type": "user_message", "token_count": 50})(),
+            type("Chunk", (), {"chunk_type": "document", "token_count": 999})(),
+        ]
     )
+    monkeypatch.setattr(services.context_manager, "get_all_chunks", all_chunks)
 
-    await services._estimate_next_request(uuid.uuid4())
-
+    assert await services._compressible_context_tokens(uuid.uuid4()) == 50
     all_chunks.assert_awaited_once()
-    recent.assert_not_awaited()

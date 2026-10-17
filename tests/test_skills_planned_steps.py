@@ -567,8 +567,9 @@ def test_duplicate_heading_binding_is_deterministic_and_surfaced(tmp_path):
     )
     assert first.to_dict() == second.to_dict()
     assert any(d.code == CODE_SECTION_DUPLICATE_HEADING for d in first.diagnostics)
-    # Declared sections bind to the first matching heading (A1 rule).
-    assert first.chosen[0].text.startswith("## Deploy the service\n\nfirst occurrence body")
+    # combined #48: a duplicate heading is ambiguous and is not disclosed as
+    # if it had a deterministic first-occurrence binding.
+    assert not first.chosen
 
 
 # --- parity: no metadata/sections -> pre-A3 whole-body output ------------------

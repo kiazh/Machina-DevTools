@@ -159,6 +159,7 @@ async def test_maybe_auto_compact_eviction_failure_recorded(monkeypatch):
 
     monkeypatch.setattr("machina.core.context_windows.context_window_for", capacity)
     monkeypatch.setattr(svc.context_manager, "get_token_usage", AsyncMock(return_value=10_000))
+    monkeypatch.setattr(svc.context_manager, "get_all_chunks", AsyncMock(return_value=[]))
     monkeypatch.setattr(
         svc,
         "compress_session",

@@ -51,9 +51,10 @@ async def test_openrouter_stream_records_success_metrics(monkeypatch):
     response.aiter_lines = lines
     provider.client.stream = MagicMock(return_value=_Ctx(response))
     recorded: list[dict] = []
-    monkeypatch.setattr(
-        openrouter_module.metrics, "record_llm_call", lambda **kwargs: recorded.append(kwargs)
-    )
+    def _record(*args, **kwargs):
+        recorded.append({"args": args, **kwargs})
+
+    monkeypatch.setattr(openrouter_module, "_record_llm_call", _record)
 
     events = [
         event
@@ -63,7 +64,7 @@ async def test_openrouter_stream_records_success_metrics(monkeypatch):
     assert recorded, "streamed call recorded no LLM metric"
     success = recorded[-1]
     assert success.get("is_error", False) is False
-    assert success["model"] == "vendor/paid"
+    assert success["args"][0] == "vendor/paid"
     assert success["prompt_tokens"] == 5
     assert success["completion_tokens"] == 3
 
@@ -77,9 +78,10 @@ async def test_openrouter_stream_records_error_metrics(monkeypatch):
     response.aiter_lines = lines
     provider.client.stream = MagicMock(return_value=_Ctx(response))
     recorded: list[dict] = []
-    monkeypatch.setattr(
-        openrouter_module.metrics, "record_llm_call", lambda **kwargs: recorded.append(kwargs)
-    )
+    def _record(*args, **kwargs):
+        recorded.append({"args": args, **kwargs})
+
+    monkeypatch.setattr(openrouter_module, "_record_llm_call", _record)
 
     with pytest.raises(Exception):
         _ = [
@@ -94,5 +96,5 @@ def test_every_stream_provider_calls_record_llm_call(name):
     path = Path(machina.__file__).resolve().parent / "core/provider" / f"{name}.py"
     source = path.read_text(encoding="utf-8")
     stream = source[source.index("async def stream_complete") :]
-    assert "metrics.record_llm_call" in stream
+    assert "_record_llm_call" in stream
     assert "is_error=True" in stream

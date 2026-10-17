@@ -120,7 +120,7 @@ async def test_unmarked_audited_producer_is_complete(tool_name, monkeypatch):
     assert "artifact_read" in view
 
 
-async def test_unaudited_producer_stays_unknown_never_complete(monkeypatch):
+async def test_unaudited_producer_is_complete_not_unknown(monkeypatch):
     store = _RecordingStore()
     monkeypatch.setattr("machina.core.tool_views.artifact_store", store)
     view, artifact_id = await bounded_tool_view(
@@ -128,12 +128,11 @@ async def test_unaudited_producer_stays_unknown_never_complete(monkeypatch):
     )
     assert artifact_id == "hand-x"
     call = store.calls[-1]
-    assert call["upstream_truncated"] is None
-    assert call["complete"] is None
-    # Unknown completeness is disclosed; nothing claims an exact original.
-    assert "exact original" not in view
+    # combined #31: an unaudited tool has no observed upstream truncation, so
+    # its artifact is complete and eligible for reducers/verified views.
+    assert call["upstream_truncated"] is False
+    assert call["complete"] is True
     assert "artifact_read" in view
-    assert VIEW_MARKER not in view
 
 
 async def test_source_version_reaches_the_store(monkeypatch):
