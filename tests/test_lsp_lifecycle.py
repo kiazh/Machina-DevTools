@@ -754,3 +754,34 @@ async def test_request_timeout_starts_before_the_send_phase(tmp_path, monkeypatc
     assert entered.is_set()
     assert elapsed < 0.5, f"send phase ignored the 50ms timeout ({elapsed:.3f}s)"
     assert conn.pending_count == 0
+
+
+async def test_cancelled_writer_settles_the_in_progress_frame(tmp_path, monkeypatch):
+    """combined #3: a frame popped before a blocked drain must still settle."""
+    conn = LspConnection(fake_profile(), tmp_path)
+    gate = asyncio.Event()
+
+    class BlockingStdin:
+        def write(self, _data: bytes) -> None:
+            return None
+
+        async def drain(self) -> None:
+            await gate.wait()
+
+    conn._stdin = BlockingStdin()
+    future: asyncio.Future[None] = asyncio.get_running_loop().create_future()
+    conn._outbox.append((b"frame", future))
+    task = asyncio.create_task(conn._writer_loop())
+    try:
+        await _until(lambda: not conn._outbox)  # popped, now blocked in drain
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+        assert future.done(), "cancelled writer abandoned the in-progress write future"
+        assert isinstance(future.exception(), LspUnavailableError)
+    finally:
+        gate.set()
+        if not task.done():
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
