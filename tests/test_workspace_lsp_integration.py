@@ -364,7 +364,7 @@ async def test_completion_normalization_and_no_snippet_capability(tmp_path):
         uri = (tmp_path / "a.py").as_uri()
         service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         result = await service.intelligence(
-            "completion", uri=uri, position={"line": 0, "character": 1}
+            "completion", uri=uri, position={"line": 0, "character": 0}
         )
         assert result.state == STATE_READY
         assert result.freshness == "versioned"
@@ -427,7 +427,7 @@ async def test_completion_cap_100_with_omitted(tmp_path):
         uri = (tmp_path / "a.py").as_uri()
         service.document_open(uri, "python", 1, "x = 1\n", epoch=service.epoch)
         result = await service.intelligence(
-            "completion", uri=uri, position={"line": 0, "character": 1}
+            "completion", uri=uri, position={"line": 0, "character": 0}
         )
         assert result.truncated is True
         assert len(result.result["items"]) == 100
@@ -1167,3 +1167,25 @@ async def test_did_open_sends_the_documents_protocol_language(tmp_path):
         py_records = _by_method(await _records(python_connection), "textDocument/didOpen")
         py_sent = {r["textDocument"]["uri"]: r["textDocument"]["languageId"] for r in py_records}
         assert py_sent[(tmp_path / "main.py").as_uri()] == "python"
+
+
+def test_completion_normalization_preserves_plain_insert_text():
+    result = normalize_completion_list(
+        [{"label": "path (module)", "filterText": "path", "insertText": "path"}]
+    )
+    assert result.result["items"][0]["insertText"] == "path"
+
+
+async def test_completion_filters_prefix_before_cap_with_utf16_cursor(tmp_path):
+    manager = _manager(tmp_path, python_args=("--completion-count", "150"))
+    async with _workspace(tmp_path, manager) as (service, _, _events):
+        uri = (tmp_path / "a.py").as_uri()
+        service.document_open(uri, "python", 1, "😀\r\n😀item01", epoch=service.epoch)
+        result = await service.intelligence(
+            "completion", uri=uri, position={"line": 1, "character": 8}
+        )
+        assert result.truncated is False
+        assert result.result["omitted"] == 0
+        assert [item["label"] for item in result.result["items"]] == [
+            f"item{index:04d}" for index in range(100, 150)
+        ]

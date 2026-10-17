@@ -470,3 +470,90 @@ async def test_in_root_symlink_uri_is_not_rewritten_to_its_target(tmp_path):
 
     assert service._uri_to_rel(link.as_uri()) == "link.py"
     assert service.read(link.as_uri()).text == "x = 1\n"
+
+
+async def test_workspace_launch_starts_servers_in_background_and_pushes_ready(
+    tmp_path, monkeypatch
+):
+    release = asyncio.Event()
+    started = set()
+
+    class Manager:
+        def __init__(self, root):
+            pass
+
+        async def ensure_started(self, language):
+            started.add(language)
+            await release.wait()
+            return FakeConnection(
+                profile_id="pyright" if language == "python" else "typescript-language-server"
+            )
+
+        async def stop_all(self):
+            pass
+
+    monkeypatch.setattr(ws, "LspManager", Manager)
+    monkeypatch.setattr(lsp_mod, "resolve_profile", lambda language: object())
+    gw = _FakeGateway()
+    try:
+        await asyncio.wait_for(ws.workspace_open(gw, {"root": str(tmp_path), "trust": True}), 1)
+        await _until(lambda: started == {"python", "typescript"})
+        assert not release.is_set()  # workspace.open did not wait for server initialization
+        release.set()
+        await _until(
+            lambda: (
+                len(
+                    [
+                        frame
+                        for frame in gw.frames
+                        if frame.get("params", {}).get("type") == "workspace.lspState"
+                        and frame["params"]["state"] == "ready"
+                    ]
+                )
+                == 2
+            )
+        )
+    finally:
+        release.set()
+        if gw.workspace_service:
+            gw.workspace_service.close()
+        await ws.drain_retired_lsp_managers(gw)
+
+
+async def test_untrusted_workspace_never_autostarts_servers(tmp_path, monkeypatch):
+    def forbidden_manager(root):
+        raise AssertionError("untrusted workspace must not launch servers")
+
+    monkeypatch.setattr(ws, "LspManager", forbidden_manager)
+    gw = _FakeGateway()
+    await ws.workspace_open(gw, {"root": str(tmp_path), "trust": False})
+    await asyncio.sleep(0)
+    assert not gw.frames
+    gw.workspace_service.close()
+
+
+async def test_workspace_close_cancels_background_server_start(tmp_path, monkeypatch):
+    started, cancelled = asyncio.Event(), asyncio.Event()
+
+    class Manager:
+        def __init__(self, root):
+            pass
+
+        async def ensure_started(self, language):
+            started.set()
+            try:
+                await asyncio.Future()
+            finally:
+                cancelled.set()
+
+        async def stop_all(self):
+            pass
+
+    monkeypatch.setattr(ws, "LspManager", Manager)
+    monkeypatch.setattr(lsp_mod, "resolve_profile", lambda language: object())
+    gw = _FakeGateway()
+    await ws.workspace_open(gw, {"root": str(tmp_path), "trust": True})
+    await asyncio.wait_for(started.wait(), 1)
+    gw.workspace_service.close()
+    await asyncio.wait_for(cancelled.wait(), 1)
+    assert not any(frame.get("params", {}).get("state") == "ready" for frame in gw.frames)
