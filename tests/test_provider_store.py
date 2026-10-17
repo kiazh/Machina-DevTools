@@ -95,13 +95,15 @@ def test_store_is_0600_and_never_contains_the_key(store_env):
     assert stat.S_IMODE(os.stat(store_env["env"]).st_mode) == 0o600
 
 
-def test_update_preserves_models_and_created_at(store_env):
+@pytest.mark.parametrize("changed_endpoint", [False, True])
+def test_update_preserves_created_at_and_only_same_endpoint_models(store_env, changed_endpoint):
     first = store.add_provider("acme", "http://127.0.0.1:9000/v1")
     store.save_models("acme", [{"id": "m1"}])
-    second = store.add_provider("acme", "http://127.0.0.1:9001/v1")
+    url = f"http://127.0.0.1:{9001 if changed_endpoint else 9000}/v1"
+    second = store.add_provider("acme", url)
     assert second["created_at"] == first["created_at"]
-    assert [row["id"] for row in second["models"]] == ["m1"]
-    assert store.get_provider_entry("acme")["base_url"].endswith(":9001/v1")
+    assert [row["id"] for row in second["models"]] == ([] if changed_endpoint else ["m1"])
+    assert store.get_provider_entry("acme")["base_url"] == url
 
 
 def test_remove_deletes_every_trace_and_reports(store_env):

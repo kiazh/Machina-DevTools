@@ -557,3 +557,40 @@ async def test_all_registered_builtins_are_discoverable(sandbox):
     assert out["provider"] == "copilot"
     assert out["source"] == "none"
     assert out["models"] == []
+
+
+@pytest.mark.parametrize("models", [[{"id": "new-model"}], []])
+async def test_named_provider_refresh_replaces_removed_default(sandbox, monkeypatch, models):
+    from machina.security import providers as store
+
+    store.add_provider("acme", "http://127.0.0.1:9000/v1")
+    store.save_models("acme", [{"id": "old-model"}])
+    monkeypatch.setattr(store, "fetch_models", lambda *a, **k: models)
+    result = await feature.providers_add(
+        _gw(), {"name": "acme", "baseUrl": "http://127.0.0.1:9001/v1"}
+    )
+    entry = store.get_provider_entry("acme")
+    assert result["models"] == entry["models"] == models
+    assert entry["default_model"] == ("new-model" if models else None)
+
+
+def test_provider_catalog_keeps_default_only_while_present(sandbox):
+    from machina.security import providers as store
+
+    store.add_provider("acme", "http://127.0.0.1:9000/v1")
+    store.save_models("acme", [{"id": "a"}, {"id": "b"}])
+    store.save_models("acme", [{"id": "b"}, {"id": "a"}])
+    assert store.get_provider_entry("acme")["default_model"] == "a"
+    store.save_models("acme", [{"id": "b"}])
+    assert store.get_provider_entry("acme")["default_model"] == "b"
+
+
+def test_changing_provider_endpoint_invalidates_previous_catalog(sandbox):
+    from machina.security import providers as store
+
+    store.add_provider("acme", "http://127.0.0.1:9000/v1")
+    store.save_models("acme", [{"id": "old-model"}])
+    updated = store.add_provider("acme", "http://127.0.0.1:9001/v1")
+    assert updated["models"] == []
+    assert updated["default_model"] is None
+    assert updated["models_fetched_at"] is None
