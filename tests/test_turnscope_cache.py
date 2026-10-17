@@ -555,3 +555,42 @@ def test_section_summary_is_single_line(clean_turn):
     assert "\n" not in summary
     assert "system" in summary and "query" in summary
     assert "prompt" in summary
+
+
+async def test_uncached_other_session_read_preserves_active_snapshot(clean_turn, monkeypatch):
+    from machina.core import session_mode
+
+    sid, other = str(uuid.uuid4()), str(uuid.uuid4())
+    stub = ModeStubDb()
+    monkeypatch.setattr("machina.db.connection.db", stub)
+    with session_mode.turn_scope():
+        assert await session_mode.resolve_effective_mode(sid) == "workspace"
+        assert await session_mode.resolve_effective_mode(other) == "workspace"
+        assert session_mode.peek_turn_mode(sid) == "workspace"
+        assert await session_mode.resolve_effective_mode(sid) == "workspace"
+    assert stub.fetchrows == 2
+
+
+@pytest.mark.parametrize("explicit_scope", [False, True])
+async def test_outside_read_preserves_same_session_turn_cache(
+    clean_turn, monkeypatch, explicit_scope
+):
+    import asyncio
+    import contextvars
+    from contextlib import nullcontext
+
+    from machina.core import session_mode
+    from machina.permissions import broker
+
+    sid = str(uuid.uuid4())
+    monkeypatch.setattr("machina.db.connection.db", ModeStubDb())
+    token = broker._turn.set("active-turn")
+    try:
+        with session_mode.turn_scope() if explicit_scope else nullcontext():
+            await session_mode.resolve_effective_mode(sid)
+            await asyncio.create_task(
+                session_mode.resolve_effective_mode(sid), context=contextvars.Context()
+            )
+            assert session_mode.peek_turn_mode(sid) == "workspace"
+    finally:
+        broker._turn.reset(token)
