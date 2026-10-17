@@ -273,3 +273,17 @@ async def test_http_resume_connector_failures_are_structured_conflicts(monkeypat
     assert response.status_code == 409
     assert response.json()["detail"]["type"] == "approval.continuation_unavailable"
     assert "private-token" not in response.text
+
+
+async def test_http_v2_pause_markers_all_bind_the_originating_turn(approval_http):
+    client, session, *_ = approval_http
+    response = await client.post(
+        f"/api/v1/sessions/{session.id}/prompt", json={"text": "write", "protocolVersion": 2}
+    )
+    assert response.status_code == 200
+    pauses = [event for event in events(response) if event["type"] == "needs_approval"]
+    assert pauses
+    for pause in pauses:
+        record = await store.get_approval(pause["requestId"])
+        assert pause["originTurnId"] == record["turn_id"]
+        assert pause["durable"] is record.get("durable")
