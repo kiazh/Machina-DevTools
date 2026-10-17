@@ -195,7 +195,15 @@ async def test_client_cancel_mid_stream_closes_provider_and_releases_claim(sse_e
 
     # Cleanup must close the owned provider and release the turn claim.
     await asyncio.wait_for(provider.closed_event.wait(), 5)
-    token = await try_begin_turn(uuid.UUID(sid))
+    # Claim release runs in cleanup after the provider close; under load it
+    # can land just after the close event. Poll briefly instead of assuming
+    # the release is synchronous with the close.
+    token = None
+    for _ in range(100):
+        token = await try_begin_turn(uuid.UUID(sid))
+        if token:
+            break
+        await asyncio.sleep(0.02)
     assert token, "turn claim was not released after cancellation"
     assert await end_turn(uuid.UUID(sid), token)
 
