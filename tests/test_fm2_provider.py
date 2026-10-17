@@ -997,3 +997,31 @@ def test_reload_rate_limiters_rejects_invalid_config(monkeypatch):
 
 def test_reload_rate_limiters_is_exported():
     assert "reload_rate_limiters" in provider_module.__all__
+
+
+async def test_anthropic_zero_argument_tool_use_normalizes_to_empty_object(make):
+    """combined #25: no input_json_delta must still yield parseable arguments."""
+    provider = make.anthropic(
+        lambda request: _anthropic_sse(
+            (
+                "content_block_start",
+                {
+                    "type": "content_block_start",
+                    "index": 0,
+                    "content_block": {"type": "tool_use", "id": "c1", "name": "clock"},
+                },
+            ),
+            (
+                "message_delta",
+                {
+                    "type": "message_delta",
+                    "delta": {"stop_reason": "tool_use"},
+                    "usage": {"output_tokens": 1},
+                },
+            ),
+            ("message_stop", {"type": "message_stop"}),
+        )
+    )
+    events = [event async for event in provider.stream_complete(MESSAGES, tools=TOOLS)]
+    done = next(event for event in events if event.type == "done")
+    assert done.response.tool_calls[0]["function"]["arguments"] == "{}"
