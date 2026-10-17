@@ -196,3 +196,56 @@ def test_setup_non_interactive_creates_blank_env(env_file: Path) -> None:
     text = env_file.read_text(encoding="utf-8")
     assert "DATABASE_URL=" in text
     assert "sk-or-" not in text  # placeholders only, no real values echoed
+
+
+async def test_keys_menu_updates_and_clears_active_prefixed_alias(env_file, monkeypatch):
+    from machina.core.config import config
+    from machina.gateway.features.secrets import secrets_clear, secrets_set
+    from machina.security.env_file import read_env_values, set_env_values
+
+    monkeypatch.setenv("MACHINA_OPENAI_API_KEY", "old-prefixed-value")
+    set_env_values({"MACHINA_OPENAI_API_KEY": "old-prefixed-value"})
+    result = await secrets_set(FakeGW(), {"key": "OPENAI_API_KEY", "value": "new-key-value"})
+    assert result["effectiveUpdated"] is True
+    assert config.get("openai_api_key") == "new-key-value"
+    assert read_env_values()["MACHINA_OPENAI_API_KEY"] == "new-key-value"
+    result = await secrets_clear(FakeGW(), {"key": "OPENAI_API_KEY"})
+    assert result["effectiveUpdated"] is True
+    assert config.get("openai_api_key") == ""
+    assert not read_env_values().get("MACHINA_OPENAI_API_KEY")
+    assert "MACHINA_OPENAI_API_KEY" not in os.environ
+
+
+async def test_keys_menu_set_clear_set_updates_existing_config_override(env_file, monkeypatch):
+    from machina.core.config import config
+    from machina.gateway.features.secrets import secrets_clear, secrets_set
+
+    monkeypatch.setattr(config, "_session_overrides", {"openai_api_key": "old-override-value"})
+    for value in ("new-key-value", "", "replacement-key-value"):
+        if value:
+            result = await secrets_set(
+                FakeGW(), {"key": "OPENAI_API_KEY", "value": value, "persist": False}
+            )
+        else:
+            result = await secrets_clear(FakeGW(), {"key": "OPENAI_API_KEY"})
+        assert result["effectiveUpdated"] is True
+        assert config.get("openai_api_key") == value
+
+
+async def test_keys_menu_clear_removes_mount_references_without_editing_mount(
+    env_file, monkeypatch, tmp_path
+):
+    from machina.core.config import config
+    from machina.gateway.features.secrets import secrets_clear
+    from machina.security.env_file import read_env_values, set_env_values
+
+    mounted = tmp_path / "mounted-key"
+    mounted.write_text("mounted-secret-value")
+    monkeypatch.setenv("MACHINA_OPENAI_API_KEY_FILE", str(mounted))
+    set_env_values({"MACHINA_OPENAI_API_KEY_FILE": str(mounted)})
+    result = await secrets_clear(FakeGW(), {"key": "OPENAI_API_KEY"})
+    assert result["effectiveUpdated"] is True
+    assert config.get("openai_api_key") == ""
+    assert "MACHINA_OPENAI_API_KEY_FILE" not in os.environ
+    assert not read_env_values().get("MACHINA_OPENAI_API_KEY_FILE")
+    assert mounted.read_text() == "mounted-secret-value"
