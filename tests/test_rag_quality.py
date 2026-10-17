@@ -310,3 +310,20 @@ async def test_search_tool_renders_unavailable_distinct_from_no_results(monkeypa
     empty.search.return_value = []
     monkeypatch.setattr(rag, "acquire_rag_pipeline", AsyncMock(return_value=empty))
     assert await rag.search_documents("query", str(sid)) == "No results found for 'query'"
+
+
+async def test_zero_passage_budget_emits_one_notice_instead_of_markers(monkeypatch):
+    """combined #44: do not spend the whole budget on unusable markers."""
+    from machina.tools import rag
+
+    sid, results = candidates()
+    pipeline = AsyncMock()
+    pipeline.search.return_value = results[:2]
+    monkeypatch.setattr(rag, "acquire_rag_pipeline", AsyncMock(return_value=pipeline))
+    monkeypatch.setattr(rag, "release_rag_pipeline", AsyncMock())
+    monkeypatch.setattr(rag, "active_agent_scope", AsyncMock(return_value=("harness", sid)))
+    monkeypatch.setattr(rag, "MAX_SEARCH_RESPONSE_CHARS", 1)
+
+    output = await rag.search_documents("query", str(sid), top_k=2)
+    assert "budget exhausted" in output
+    assert "passage truncated" not in output
