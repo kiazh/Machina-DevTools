@@ -131,8 +131,13 @@ def test_authored_sections_anchor_to_real_bundle_headings():
         assert metadata is not None, skill_id
         bound, anchor_diags = bind_section_anchors(metadata, content)
         assert not [d for d in anchor_diags if d.code == "section-missing-anchor"], skill_id
+        ambiguous = {d.code for d in anchor_diags}
         for section in bound.sections:
-            assert section.anchor is not None, (skill_id, section.id)
+            if section.anchor is None:
+                # combined #48: duplicate headings are deliberately left
+                # unbound rather than silently pointing at the first match.
+                assert "section-duplicate-heading" in ambiguous, (skill_id, section.id)
+                continue
             heading = content.splitlines()[section.anchor.line - 1]
             assert section.heading.casefold() in heading.casefold(), (skill_id, section.id)
 

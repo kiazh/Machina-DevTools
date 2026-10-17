@@ -207,14 +207,15 @@ def test_d05_registry_edit_between_pages_returns_stale(tmp_path):
 def test_declared_sections_bind_via_metadata_anchor_binding():
     from machina.skills.sections import read_section
 
-    result = read_section(GUIDE, "tests", metadata=_guide_metadata())
+    result = read_section(GUIDE, "rollback", metadata=_guide_metadata())
     assert result.bound is True
-    assert result.section_id == "tests"  # declared id stays the stable address
-    assert result.anchor_id == "run-tests"  # parsed anchor id it resolved to
-    assert result.heading == "Run tests"
-    assert result.text.startswith("## Run tests\n\nFirst run the focused suite")
-    # A1 rule: a declared heading binds to its first matching occurrence.
-    assert "repeated heading" not in result.text
+    assert result.section_id == "rollback"
+    assert result.heading == "Roll back"
+    assert result.text.startswith("## Roll back")
+
+    # combined #48: a duplicate heading is ambiguous, so it is not bound.
+    duplicate = read_section(GUIDE, "tests", metadata=_guide_metadata())
+    assert duplicate.bound is False
 
 
 def test_missing_anchor_is_an_explicit_diagnostic():
@@ -256,16 +257,16 @@ def test_read_skill_section_uses_the_skill_object():
         content = GUIDE
         skill_metadata = _guide_metadata()
 
-    result = read_skill_section(_Skill(), "tests")
+    result = read_skill_section(_Skill(), "rollback")
     assert result.skill_id == "guide"
     assert result.bound is True
-    assert result.text.startswith("## Run tests")
+    assert result.text.startswith("## Roll back")
 
     # Explicit bodies (e.g. builtin bundle instructions kept outside
     # ``skill.content``) are addressed the same way via ``content=``.
-    loaded = read_skill_section(_Skill(), "tests", content=GUIDE + "\n## Later\n\nx\n")
-    assert loaded.section_id == "tests"
-    assert loaded.text == result.text
+    loaded = read_skill_section(_Skill(), "rollback", content=GUIDE + "\n## Later\n\nx\n")
+    assert loaded.section_id == "rollback"
+    assert loaded.text.startswith("## Roll back")
     assert "## Later" not in loaded.text
 
 

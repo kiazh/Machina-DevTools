@@ -559,12 +559,10 @@ Second body.
     missing = [d for d in _diagnostics(registry) if d.code == CODE_SECTION_MISSING_ANCHOR]
     assert missing and "Nowhere" in missing[0].message
 
-    # Duplicate headings: deterministic first-occurrence binding, reported.
-    # Both declared sections re-bind to the SAME first occurrence (line 1);
-    # the duplicate is never resolved to a different passage on a re-parse.
-    assert by_id["first"].anchor is not None and by_id["first"].anchor.line == 1
-    assert by_id["second"].anchor is not None and by_id["second"].anchor.line == 1
-    assert by_id["second"].anchor.occurrence == 0
+    # combined #48: duplicate headings are ambiguous and are left unbound
+    # rather than silently resolving every declaration to the first match.
+    assert by_id["first"].anchor is None
+    assert by_id["second"].anchor is None
     duplicates = [d for d in _diagnostics(registry) if d.code == CODE_SECTION_DUPLICATE_HEADING]
     assert len(duplicates) >= 2
 
