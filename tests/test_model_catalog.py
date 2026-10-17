@@ -270,3 +270,45 @@ def test_window_lookup_uses_entry_context_window(hermetic_catalog, monkeypatch):
     assert catalog.window_for("gpt-6.1-sol") == 500_000
     assert catalog.window_for("gpt-6-luna") == 272_000
     assert catalog.window_for("gpt-9-future") is None
+
+
+def test_context_window_uses_account_scoped_chatgpt_catalog(hermetic_catalog, monkeypatch):
+    """F31/R6-1: capacity checks must read THIS account's live catalog.
+
+    The old path called catalog.window_for(slug) with no scope, so the
+    most-recently fetched account's window answered another account's turn.
+    """
+    import asyncio
+
+    from machina.core.context_windows import context_window_for
+    from machina.core.provider.chatgpt import ChatGPTProvider
+
+    payload_a = _fixture_payload()
+    payload_a["models"][0]["context_window"] = 111_111
+    payload_b = _fixture_payload()
+    payload_b["models"][0]["context_window"] = 222_222
+    models_a = catalog.parse_catalog(payload_a, source="live")
+    models_b = catalog.parse_catalog(payload_b, source="live")
+    monkeypatch.setattr(
+        catalog,
+        "fetch_live_catalog",
+        lambda token, account, **k: models_a if account == "acct-a" else models_b,
+    )
+    catalog.refresh_live_catalog("token-1", "acct-a", force=True)
+    catalog.refresh_live_catalog("token-1", "acct-b", force=True)
+
+    def scoped(account: str):
+        provider = object.__new__(ChatGPTProvider)
+        monkeypatch.setattr(provider, "_account_hint", lambda: account)
+        return provider
+
+    assert context_window_for("gpt-6.1-sol", scoped("acct-a")) == 111_111
+    assert context_window_for("gpt-6.1-sol", scoped("acct-b")) == 222_222
+
+    # Both the prompt-gate helper and the provider method resolve the scope.
+    assert asyncio.run(scoped("acct-a").context_window("gpt-6.1-sol")) == 111_111
+    assert asyncio.run(scoped("acct-b").context_window("gpt-6.1-sol")) == 222_222
+
+    # Unknown-account callers (a bare provider name) keep the documented
+    # most-recent-live fallback instead of inventing a scope.
+    assert context_window_for("gpt-6.1-sol", "chatgpt") == 222_222
