@@ -468,3 +468,37 @@ async def test_authenticated_gateway_configure_connect_discover_disconnect_resta
         assert not (await call("mcp.list"))["servers"]
     finally:
         await service.manager.shutdown_all()
+
+
+@pytest.mark.parametrize("cancelled", [False, True])
+async def test_connect_restores_permission_context_when_completion_fails(monkeypatch, cancelled):
+    import asyncio
+    from types import SimpleNamespace
+
+    from machina.connectors import execution
+    from machina.permissions import broker
+
+    request = SimpleNamespace(digest="reviewed", approval_id="approval")
+    monkeypatch.setattr(execution, "_connect_request", AsyncMock(return_value=request))
+    monkeypatch.setattr(
+        broker.permission_broker, "guard", AsyncMock(side_effect=RuntimeError("guard failed"))
+    )
+    error_type = asyncio.CancelledError if cancelled else RuntimeError
+    complete = AsyncMock(side_effect=error_type("completion failed"))
+    monkeypatch.setattr(broker.permission_broker, "complete", complete)
+    previous = [
+        (broker._approval_handler, broker._approval_handler.get()),
+        (broker._principal, broker._principal.get()),
+        (broker._execution_context, broker._execution_context.get()),
+    ]
+    # Restore context even against the unfixed implementation, keeping the test isolated.
+    saved = [(variable, variable.set(value)) for variable, value in previous]
+    try:
+        with pytest.raises(error_type, match="completion failed"):
+            await execution.connect_authorized(None, "fixture", "session", "agent", "reviewed")
+        complete.assert_awaited_once_with("approval", "failed")
+        for variable, value in previous:
+            assert variable.get() is value, variable.name
+    finally:
+        for variable, token in reversed(saved):
+            variable.reset(token)
