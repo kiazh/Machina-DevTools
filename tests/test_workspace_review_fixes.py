@@ -428,3 +428,45 @@ async def test_workspace_close_retires_the_active_manager(tmp_path):
 
     await ws.drain_retired_lsp_managers(gateway, timeout=5.0)
     assert manager.completed is True
+
+
+# ─── 10. document changes report an LSP enqueue failure as resync ────────────
+async def test_did_change_enqueue_failure_returns_resync(tmp_path):
+    """combined #59: mirror success cannot claim the server is current."""
+    from machina.workspace.documents import utf16_full_range
+    from machina.workspace.lsp import LspUnavailableError
+
+    service = WorkspaceService(send_event=lambda _event: None)
+    service.open(str(tmp_path), trust=True)
+    uri = (tmp_path / "a.py").as_uri()
+    service.document_open(uri, "python", 1, "abcdef\nlast", epoch=service.epoch)
+    connection = FakeConnection()
+    connection.capabilities = {"textDocumentSync": 1}
+    service._track_connection("python", connection)
+
+    def _refuse(*_args, **_kwargs):
+        raise LspUnavailableError("write queue full")
+
+    connection.did_change = _refuse
+    result = service.document_change(
+        uri,
+        1,
+        2,
+        [{"range": utf16_full_range("abcdef\nlast"), "text": "a"}],
+        epoch=service.epoch,
+    )
+    assert result.resync is True
+
+
+# ─── 11. in-root symlink URIs keep their requested identity ──────────────────
+async def test_in_root_symlink_uri_is_not_rewritten_to_its_target(tmp_path):
+    """combined #58: URI relation follows the requested in-root path."""
+    real = tmp_path / "real.py"
+    real.write_text("x = 1\n")
+    link = tmp_path / "link.py"
+    link.symlink_to(real)
+    service = WorkspaceService(send_event=lambda _event: None)
+    service.open(str(tmp_path), trust=True)
+
+    assert service._uri_to_rel(link.as_uri()) == "link.py"
+    assert service.read(link.as_uri()).text == "x = 1\n"
