@@ -165,3 +165,65 @@ async def test_research_duplicate_results_do_not_consume_page_limit(monkeypatch,
 
     assert extract.await_count == 2
     assert "https://example.com/second" in response
+
+
+async def test_web_research_discloses_a_stored_snapshot(monkeypatch):
+    """combined #51: an indexed URL is returned as an explicitly stale snapshot."""
+    sid = uuid.uuid4()
+    pipeline = type("Pipeline", (), {"index_document": AsyncMock(return_value=[])})()
+    monkeypatch.setattr(
+        research_module, "active_agent_scope", AsyncMock(return_value=("harness", sid))
+    )
+    monkeypatch.setattr(
+        research_module,
+        "_search_web_results",
+        AsyncMock(return_value=[("Reference", "https://example.com/guide", "snippet")]),
+    )
+    monkeypatch.setattr(research_module.db, "fetchval", AsyncMock(return_value=True))
+    monkeypatch.setattr(
+        research_module.db,
+        "fetch",
+        AsyncMock(
+            return_value=[
+                {
+                    "payload_msgpack": msgpack.packb(
+                        {"text": "Stored snapshot text.", "metadata": {"chunk_index": 0}},
+                        use_bin_type=True,
+                    )
+                }
+            ]
+        ),
+    )
+    monkeypatch.setattr(research_module, "acquire_rag_pipeline", AsyncMock(return_value=pipeline))
+    extract = AsyncMock(return_value="fresh")
+    monkeypatch.setattr(research_module, "extract_url_text", extract)
+
+    response = await research_module.web_research("reference guide")
+
+    assert "not re-fetched" in response
+    assert "freshness/completeness not verified" in response
+    extract.assert_not_awaited()
+
+
+async def test_web_research_excerpt_is_redacted(monkeypatch):
+    """combined #50: the returned excerpt uses the indexed redaction."""
+    sid = uuid.uuid4()
+    secret = "ghp_" + "A" * 36
+    pipeline = type("Pipeline", (), {"index_document": AsyncMock(return_value=[object()])})()
+    monkeypatch.setattr(
+        research_module, "active_agent_scope", AsyncMock(return_value=("harness", sid))
+    )
+    monkeypatch.setattr(
+        research_module,
+        "_search_web_results",
+        AsyncMock(return_value=[("Reference", "https://example.com/guide", "snippet")]),
+    )
+    monkeypatch.setattr(
+        research_module, "extract_url_text", AsyncMock(return_value=f"before {secret} after")
+    )
+    monkeypatch.setattr(research_module.db, "fetchval", AsyncMock(return_value=False))
+    monkeypatch.setattr(research_module, "acquire_rag_pipeline", AsyncMock(return_value=pipeline))
+
+    response = await research_module.web_research("reference guide")
+    assert secret not in response
+    assert "REDACTED" in response
