@@ -279,3 +279,28 @@ async def test_cache_hits_are_reported_without_raw_query(monkeypatch):
     for _event, fields in events:
         assert "secret-ish query" not in str(fields)
         assert "query" not in fields
+
+
+async def test_provider_failure_is_not_cached_as_an_empty_expansion():
+    """combined #53: a transient failure must not suppress the retry."""
+    calls = {"n": 0}
+
+    async def flaky(_prompt: str) -> str:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise TimeoutError("provider stalled")
+        return _WEB_ANSWER
+
+    first = await expand_query("transient failure retry query", seam=flaky)
+    assert first.task_families == ()
+    second = await expand_query("transient failure retry query", seam=flaky)
+    assert second.task_families == ("web-build",)
+    assert calls["n"] == 2
+
+
+def test_expansion_prompt_redacts_before_truncating():
+    """combined #54: a token crossing the 2,000-char cut must not survive."""
+    prefix = "x" * (1990)
+    prompt = build_expansion_prompt(prefix + "ghp_" + "A" * 36)
+    assert "ghp_" not in prompt
+    assert "A" * 20 not in prompt
