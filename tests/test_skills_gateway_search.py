@@ -23,6 +23,7 @@ import pytest
 from machina.gateway import features
 from machina.gateway.errors import INVALID_PARAMS, NOT_FOUND, RpcError
 from machina.gateway.features import skills as feature
+from tests.support.fakes import FakeGateway
 
 SKILLS_GATEWAY_METHODS = {"skills.search", "skills.preview_route", "skills.section"}
 
@@ -35,24 +36,6 @@ GUIDE_CONTENT = (
     "## Roll back\n\n"
     "Restore the previous release if checks fail.\n"
 )
-
-
-class FakeGateway:
-    """Minimal gateway surface for handler tests."""
-
-    def __init__(self) -> None:
-        self.frames: list[dict] = []
-        self.methods: dict = {}
-        self.guards = 0
-
-    def require_db(self) -> None:
-        self.guards += 1
-
-    def _write(self, frame: dict) -> None:
-        self.frames.append(frame)
-
-    def add_method(self, name, handler) -> None:
-        self.methods[name] = handler
 
 
 def _registry(tmp_path):

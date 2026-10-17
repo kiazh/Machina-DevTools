@@ -446,8 +446,11 @@ class TestConfigProfilesStatus:
         # R4-025: max_iterations was removed; the surface rejects it.
         removed = await h.call("config.set", {"key": "max_iterations", "value": "7"})
         assert removed["error"]["code"] == INVALID_PARAMS
-        flag = result(await h.call("config.set", {"key": "verbose", "value": "off"}))
-        assert flag["value"] is False
+        # ``verbose``/``streaming`` were dead knobs removed by the fix
+        # campaign; ``rag_enabled`` is a live boolean default.
+        monkeypatch.setattr(config, "rag_enabled", config.rag_enabled)
+        flag = result(await h.call("config.set", {"key": "rag_enabled", "value": "off"}))
+        assert flag["value"] is False and config.get("rag_enabled") is False
 
     async def test_profiles(self, h):
         user = f"user-{uuid.uuid4().hex[:8]}"

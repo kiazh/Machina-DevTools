@@ -153,6 +153,35 @@ def test_section_failure_exits_nonzero(tmp_path, monkeypatch):
     assert "RuntimeError: section exploded" in payload["error"]
 
 
+def test_section_systemexit_is_recorded_and_later_sections_still_run(tmp_path, monkeypatch):
+    """A SystemExit escaping one section must not abort the whole benchmark.
+
+    RED before the per-section BaseException guard: ``SystemExit`` propagated
+    out of ``main()`` and every later section was silently skipped.
+    """
+    calls: list[str] = []
+
+    def escape():
+        calls.append("environment")
+        raise SystemExit("import gate exited")
+
+    def later():
+        calls.append("replay")
+        return {"artifact_written": True}
+
+    monkeypatch.setattr(benchmark, "_environment", escape)
+    monkeypatch.setattr(benchmark, "_incident_replay", later)
+    out = tmp_path / "bench.json"
+
+    rc = benchmark.main(["--section", "environment,replay", "--json", str(out)])
+
+    assert calls == ["environment", "replay"], "a SystemExit aborted later sections"
+    assert rc == 1
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert "SystemExit" in data["environment"]["error"]
+    assert data["replay"]["artifact_written"] is True
+
+
 def test_suite_failure_exits_nonzero(tmp_path, monkeypatch):
     """A failing --with-suite row must fail the benchmark run too."""
     monkeypatch.setattr(

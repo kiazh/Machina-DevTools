@@ -326,7 +326,10 @@ async def test_http_rejects_unsafe_destinations_without_consent(host):
         ConnectorConfig(
             id="blocked",
             transport="streamable_http",
-            endpoint=f"http://{rendered}/mcp",
+            # Scheme policy is pinned separately (test_connectors_config /
+            # test_b2_campaign_fixes); keep this test focused on host
+            # classification by using an encrypted endpoint.
+            endpoint=f"https://{rendered}/mcp",
         ).validate()
     )
     with pytest.raises(ConnectionFailed):

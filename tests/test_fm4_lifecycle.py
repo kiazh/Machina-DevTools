@@ -2,7 +2,7 @@
 config removal, Database.reset stale-handle warning.
 
 RED before fix:
-- m6: update_state_fields silently replaced corrupt session state with {}.
+- m6/F-29: update_state_fields silently replaced corrupt session state with {}.
 - m7: runtime.startup() latched unavailable while the DB was down and
   refresh() never retried the connection.
 - n4: compaction_check_enabled was dead config surface.
@@ -18,10 +18,13 @@ import types
 import uuid
 from unittest.mock import AsyncMock, MagicMock
 
-from machina.core.session import SessionManager
+import pytest
+
+from machina.core.session import CorruptSessionStateError, SessionManager
 
 
-async def test_update_state_fields_logs_corrupt_state(monkeypatch, caplog):
+async def test_update_state_fields_refuses_corrupt_state(monkeypatch):
+    """F-29: a corrupt blob must fail closed, never be rewritten as ``{}``."""
     from machina.core import session as session_mod
 
     sid = uuid.uuid4()
@@ -33,12 +36,11 @@ async def test_update_state_fields_logs_corrupt_state(monkeypatch, caplog):
     database.acquire.return_value.__aenter__.return_value = connection
     monkeypatch.setattr(session_mod, "db", database)
 
-    with caplog.at_level(logging.WARNING, logger="machina.core.session"):
-        merged = await SessionManager().update_state_fields(sid, {"emotion": "trust"})
+    with pytest.raises(CorruptSessionStateError) as excinfo:
+        await SessionManager().update_state_fields(sid, {"emotion": "trust"})
 
-    assert merged == {"emotion": "trust"}
-    messages = [r.getMessage() for r in caplog.records]
-    assert any(str(sid) in m and "state" in m.lower() for m in messages), messages
+    assert str(sid) in str(excinfo.value) and "state" in str(excinfo.value).lower()
+    connection.execute.assert_not_awaited()
 
 
 class _FlakyDb:

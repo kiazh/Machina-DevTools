@@ -250,6 +250,12 @@ class _FixedEmbedder:
 class _FailRetrievalQueries:
     """Injects a database outage at the two retrieval queries only."""
 
+    # MCH-009 moved retrieval onto the ``_snapshot_connection`` path, which
+    # acquires a pooled connection for real Databases. Advertise the
+    # direct-double contract so the pipeline hands this wrapper to the search
+    # branches itself (the documented fallback for doubles exposing ``fetch``).
+    connected = False
+
     def __init__(self, inner):
         self._inner = inner
 

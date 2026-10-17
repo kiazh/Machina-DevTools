@@ -16,6 +16,7 @@ import pytest
 from machina.gateway import features
 from machina.gateway.errors import INVALID_PARAMS, NOT_FOUND, RpcError
 from machina.gateway.features import workspace as ws
+from tests.support.fakes import FakeGateway
 
 WORKSPACE_METHODS = {
     "workspace.open",
@@ -30,24 +31,6 @@ WORKSPACE_METHODS = {
     "workspace.lspControl",
     "workspace.close",
 }
-
-
-class FakeGateway:
-    """Minimal gateway surface for handler tests."""
-
-    def __init__(self) -> None:
-        self.frames: list[dict] = []
-        self.methods: dict = {}
-        self.workspace_service = None
-
-    def require_db(self) -> None:
-        return None
-
-    def _write(self, frame: dict) -> None:
-        self.frames.append(frame)
-
-    def add_method(self, name, handler) -> None:
-        self.methods[name] = handler
 
 
 async def _opened(tmp_path: Path, *, trust: bool = True) -> tuple[FakeGateway, dict, str]:

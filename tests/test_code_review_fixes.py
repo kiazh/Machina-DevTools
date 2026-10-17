@@ -336,10 +336,6 @@ class TestCircularImport:
         assert "LazyDb" in source
         assert retriever_module.db is not None
 
-    def test_retriever_class_exists(self):
-        """MemoryRetriever class should be importable."""
-        assert MemoryRetriever is not None
-
     def test_retriever_can_be_instantiated(self):
         """MemoryRetriever should be instantiable."""
         retriever = MemoryRetriever()

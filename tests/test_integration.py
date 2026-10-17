@@ -642,9 +642,15 @@ class TestSessionContextIntegration:
             # runs the UNNEST batch insert.
             if "nextval('context_chunks_event_seq')" in query:
                 return [{"v": i + 1} for i in range(args[0])]
+            if "FROM context_chunks WHERE id = ANY" in query:
+                # C1 replay probe: nothing was pre-persisted in this double.
+                return []
+            # C1: the RETURNING rows must carry the caller-assigned ids, which
+            # are the first UNNEST array.
+            ids = args[0]
             return [
                 {
-                    "id": uuid.uuid4(),
+                    "id": chunk_id,
                     "session_id": session_id,
                     "agent_id": "harness",
                     "chunk_type": "user_message",
@@ -654,7 +660,7 @@ class TestSessionContextIntegration:
                     "created_at": datetime.now(UTC).replace(tzinfo=None),
                     "accessed_at": None,
                 }
-                for i in range(5)
+                for i, chunk_id in enumerate(ids)
             ]
 
         mock_db.fetch = AsyncMock(side_effect=_fetch)

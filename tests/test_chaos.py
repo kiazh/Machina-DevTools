@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -677,6 +678,9 @@ class TestDatabaseChaos:
 
         async def slow_add_chunks_batch(*args, **kwargs):
             await asyncio.sleep(0.1)  # Simulate slow query
+            # C1: the consumer acknowledges by id (RETURNING rows); without an
+            # acknowledgement the flush correctly retains the batch and retries.
+            return [SimpleNamespace(id=chunk.get("id")) for chunk in args[0]]
 
         with patch("machina.core.agent.session_manager") as mock_sm:
             mock_sm.get = AsyncMock(return_value=mock_session)

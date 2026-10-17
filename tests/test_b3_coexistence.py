@@ -32,7 +32,6 @@ from __future__ import annotations
 
 import asyncio
 import copy
-import hashlib
 import json
 import os
 import re
@@ -49,9 +48,19 @@ import pytest
 from machina.core.agent import BaseReActAgent, ReActAgent
 from machina.core.config import config
 from machina.core.exceptions import ToolError
-from machina.core.models import LLMResponse, Session, StreamEvent
+from machina.core.models import LLMResponse, Session
 from machina.core.request_gate import evaluate_request
 from machina.tools.base import ToolRegistry
+from tests.support.fakes import (
+    RejectingProvider,
+    ScriptedProvider,
+    VerifiedLookupOnly,
+    VerifiedStore,
+)
+
+_RejectingProvider = RejectingProvider
+_VerifiedLookupOnly = VerifiedLookupOnly
+_VerifiedStore = VerifiedStore
 
 REPO = Path(os.environ.get("MACHINA_REPO") or Path(__file__).resolve().parents[2] / "machina")
 CORPUS = Path(__file__).resolve().parent / "data" / "request_projection" / "corpus.json"
@@ -63,43 +72,11 @@ ROUNDS = 4
 
 
 # ─── fake providers (no live calls; scripted + payload capture) ──────────────
+# Shared bodies live in tests/support/fakes.py (B3 was the superset of B2).
 
 
-class _ScriptedProvider:
-    """Deterministic provider; every call snapshots its kwargs."""
-
-    model = "fake-b3"
-
-    def __init__(self, responses: list[LLMResponse], on_call=None) -> None:
-        self.responses = list(responses)
-        self.calls: list[dict] = []
-        self.on_call = on_call
-
-    async def complete(self, **kwargs):
-        self.calls.append(copy.deepcopy(kwargs))
-        if self.on_call is not None:
-            self.on_call(len(self.calls))
-        index = min(len(self.calls) - 1, len(self.responses) - 1)
-        return self.responses[index]
-
-    async def stream_complete(self, **kwargs):
-        response = await self.complete(**kwargs)
-        if response.content:
-            yield StreamEvent(type="text", content=response.content)
-        yield StreamEvent(type="done", response=response)
-
-
-class _RejectingProvider:
-    """Fails the test if any seam tries to call a provider itself."""
-
-    model = "reject"
-
-    async def complete(self, **kwargs):
-        raise AssertionError("provider must not be called during projection")
-
-    async def stream_complete(self, **kwargs):
-        raise AssertionError("provider must not be called during projection")
-        yield  # pragma: no cover - generator protocol
+def _ScriptedProvider(responses, *, on_call=None, **kwargs):
+    return ScriptedProvider(responses, on_call=on_call, model="fake-b3", **kwargs)
 
 
 def _round_response(index: int) -> LLMResponse:
@@ -126,47 +103,6 @@ def _final_response() -> LLMResponse:
 
 def _script() -> list[LLMResponse]:
     return [_round_response(i) for i in range(1, ROUNDS + 1)] + [_final_response()]
-
-
-# ─── fake artifact store (verified views; no DB) ─────────────────────────────
-
-
-class _VerifiedStore:
-    """Retains stored content, answers the projector's lookup contract."""
-
-    def __init__(self) -> None:
-        self.stored: dict[str, str] = {}
-        self.lookups: list[str] = []
-
-    async def store(self, kind, content, **kwargs):
-        handle = "hand-" + hashlib.sha256(content.encode("utf-8")).hexdigest()[:12]
-        self.stored[handle] = content
-        return {"artifact_id": handle, "kind": kind, "content_bytes": len(content)}
-
-    async def lookup(self, handle, *, session_id, agent_id):
-        self.lookups.append(str(handle))
-        if str(handle) not in self.stored:
-            return None
-        return {
-            "available": True,
-            "complete": True,
-            "handle": str(handle),
-            "revision": f"rev-{handle}",
-            "summary_view": f"verified summary for {handle}",
-        }
-
-
-class _VerifiedLookupOnly:
-    """Verified lookup for handles it was never asked to retain (corpus ids)."""
-
-    async def lookup(self, handle, *, session_id, agent_id):
-        return {
-            "available": True,
-            "complete": True,
-            "handle": str(handle),
-            "revision": f"rev-{handle}",
-            "summary_view": f"verified summary for {handle}",
-        }
 
 
 # ─── loop harness (mocked session/context, stub tool, no network) ────────────
@@ -761,7 +697,11 @@ async def test_stale_search_cursor_is_rejected_through_the_tool_surface(live_db)
 async def test_cross_session_recovery_stays_denied_through_tools(live_db):
     from machina.core.artifacts import artifact_store
     from machina.tools import agents as agents_module
-    from machina.tools.artifacts import artifact_describe, artifact_read, artifact_search
+    from machina.tools.artifacts import (
+        artifact_describe,
+        artifact_read,
+        artifact_search,
+    )
 
     owner = await _mk_session(live_db)
     stranger = await _mk_session(live_db)
@@ -807,8 +747,10 @@ async def test_mid_session_route_change_recomputes_the_budget_at_the_seam(monkey
         context_window_model="b3-large",
     )
     messages = [{"role": "user", "content": "go ahead"}]
+    provider = _RejectingProvider()
+    provider.model = "b3-large"
     kwargs = {
-        "provider": _RejectingProvider(),
+        "provider": provider,
         "tool_defs": [],
         "session_id": uuid.uuid4(),
         "agent_id": "harness",
@@ -819,7 +761,10 @@ async def test_mid_session_route_change_recomputes_the_budget_at_the_seam(monkey
     assert first.failure is None
 
     # Mid-session route change: the same session object now resolves to a much
-    # smaller effective window; the next gate recomputes against it.
+    # smaller effective window; the next gate recomputes against it. F-01: the
+    # provider carries the model actually serving the turn, so it follows the
+    # route.
+    provider.model = "b3-small"
     session.model = "b3-small"
     session.context_window = 64
     session.context_window_model = "b3-small"
@@ -845,7 +790,10 @@ async def test_loop_refits_next_iteration_after_a_model_window_change(tmp_path, 
 
     def _shrink_route(call_number: int) -> None:
         if call_number == 1:
-            # The route changes between iterations (model pin + resolved window).
+            # The route changes between iterations (model pin + resolved
+            # window). F-01: the provider carries the serving model, so the
+            # route change updates it together with the session pin.
+            provider.model = "b3-small"
             session.model = "b3-small"
             session.context_window = 64
             session.context_window_model = "b3-small"

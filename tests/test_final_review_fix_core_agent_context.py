@@ -484,6 +484,7 @@ async def test_closing_run_stream_flushes_completed_tool_before_return(sleep_too
 
     async def batch(chunks):
         persisted.extend(chunks)
+        return [SimpleNamespace(id=chunk.get("id")) for chunk in chunks]
 
     async def marker(**kwargs):
         persisted.append(kwargs)
@@ -533,6 +534,7 @@ async def test_run_joins_post_tool_flush_during_repeated_cancellation(sleep_tool
         entered.set()
         await release.wait()
         persisted.extend(chunks)
+        return [SimpleNamespace(id=chunk.get("id")) for chunk in chunks]
 
     async def marker(**kwargs):
         persisted.append(kwargs)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import datetime
 
@@ -252,8 +253,10 @@ async def test_estimator_counts_full_schema_for_unrestricted_empty_tools(monkeyp
     monkeypatch.setattr(agent_registry, "get", resolver(["tool_0"]))
     restricted = await svc._estimate_next_request(uuid.uuid4())
 
-    full_tokens = get_token_count(str(full))
-    one_tokens = get_token_count(str(one))
+    from machina.core.provider.transport import _tools_payload
+
+    full_tokens = get_token_count(json.dumps(_tools_payload(full), ensure_ascii=False))
+    one_tokens = get_token_count(json.dumps(_tools_payload(one), ensure_ascii=False))
     assert full_tokens > one_tokens  # fixture sanity
     assert unrestricted - restricted == full_tokens - one_tokens
 

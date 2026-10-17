@@ -102,7 +102,6 @@ def _lifecycle_env(tmp_path, monkeypatch, *, boot_sleep: str = "0"):
     monkeypatch.setattr(fl, "_started_pid", None)
     monkeypatch.delenv("DOCKER_HOST", raising=False)
     monkeypatch.delenv("MACHINA_HOME", raising=False)
-    monkeypatch.delenv("MACHINA_MACHINA_HOME", raising=False)
 
     trace = tmp_path / "trace.log"
     firecrawl_dir = tmp_path / "firecrawl"

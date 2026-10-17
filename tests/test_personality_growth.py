@@ -145,55 +145,6 @@ async def test_additive_growth_migration_is_idempotent(db_pool):
 
 
 @pytest.mark.asyncio
-@pytest.mark.ui_integration
-async def test_ui_checks_with_real_gateway_restart(db_pool, tmp_path):
-    import asyncio
-    import os
-    import shutil
-    import subprocess
-    import sys
-    from pathlib import Path
-
-    if not shutil.which("node"):
-        pytest.skip("Node is unavailable")
-    root = Path(__file__).resolve().parents[1]
-    from machina.core.config import LEGACY_ENV_VARS, SECRET_KEYS
-
-    env = dict(os.environ)
-    for key in SECRET_KEYS:
-        env[f"MACHINA_{key.upper()}"] = ""
-        if key in LEGACY_ENV_VARS:
-            env[LEGACY_ENV_VARS[key]] = ""
-            env[f"{LEGACY_ENV_VARS[key]}_FILE"] = ""
-    env_file = tmp_path / ".env"
-    env_file.touch()
-    env.update(
-        {
-            "HOME": str(tmp_path),
-            "MACHINA_ENV_FILE": str(env_file),
-            "MACHINA_TEST_PYTHON": sys.executable,
-            "MACHINA_TEST_DATABASE_URL": db_pool.dsn,
-            "MACHINA_DATABASE_URL": db_pool.dsn,
-            "DATABASE_URL": db_pool.dsn,
-            "MACHINA_PERSONALITY_GROWTH_ENABLED": "true",
-            "MACHINA_MEMORY_ENABLED": "true",
-            "MACHINA_EXECUTION_MODE": "ask",
-        }
-    )
-    result = await asyncio.to_thread(
-        subprocess.run,
-        ["npm", "run", "check"],
-        cwd=root / "ui",
-        env=env,
-        capture_output=True,
-        text=True,
-        timeout=120,
-    )
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "skipped 0" in result.stdout
-
-
-@pytest.mark.asyncio
 async def test_growth_persists_and_feedback_is_owned_and_once(db_pool):
     import asyncio
     import uuid

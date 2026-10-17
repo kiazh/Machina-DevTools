@@ -1,4 +1,4 @@
-"""RepoMap tests (Stream D): inventory, zero-work repeat, evidence map, self-map."""
+"""RepoMap tests (Stream D): inventory, zero-work repeat, self-map."""
 
 import os
 import time
@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from machina.repomap import ContentHashCache, EvidenceMap, build_repomap
+from machina.repomap import ContentHashCache, build_repomap
 
 REPO_ROOT = str(Path(__file__).resolve().parents[1])
 
@@ -96,23 +96,6 @@ def test_rebuild_detects_mtime_preserving_rewrite(tiny_tree):
     assert second.files_scanned == 1
     assert "re" in second.import_edges["pkg.a"]
     assert "os" not in second.import_edges["pkg.a"]
-
-
-def test_evidence_map_ranges_and_zero_repeat_work(tmp_path):
-    f = tmp_path / "doc.txt"
-    f.write_text("\n".join(f"line{i}" for i in range(1, 11)))
-    ev = EvidenceMap()
-    assert ev.read(str(f), 1, 4) == ["line1", "line2", "line3"]
-    assert ev.reads_from_disk == 1
-    assert ev.read(str(f), 2, 3) == ["line2"]  # covered -> served from cache
-    assert ev.reads_from_disk == 1
-    assert ev.is_covered(str(f), 1, 4)
-    assert not ev.is_covered(str(f), 1, 11)
-    assert ev.covered(str(f)) == [(1, 4)]
-    with pytest.raises(ValueError):
-        ev.read(str(f), 0, 2)
-    with pytest.raises(FileNotFoundError):
-        ev.read(str(tmp_path / "missing.txt"))
 
 
 def test_self_map_completes_in_seconds_with_zero_repeat_reads():

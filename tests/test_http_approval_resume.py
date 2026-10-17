@@ -119,6 +119,7 @@ async def test_http_approved_action_resumes_once_with_new_fence(approval_http, p
     assert resumed.status_code == 200, resumed.text
     emitted = events(resumed)
     assert resumed.headers["X-AH-Protocol-Version"] == str(protocol_version)
+    assert resumed.headers["X-Machina-Protocol-Version"] == str(protocol_version)
     if protocol_version == 2:
         from machina.protocol import validate_event
 

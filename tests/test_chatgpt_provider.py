@@ -172,7 +172,6 @@ def fake_home_env(monkeypatch, tmp_path):
     monkeypatch.delenv("MACHINA_CHATGPT_AUTH_FILE", raising=False)
     monkeypatch.delenv("CODEX_HOME", raising=False)
     monkeypatch.delenv("MACHINA_HOME", raising=False)
-    monkeypatch.delenv("MACHINA_MACHINA_HOME", raising=False)
     from machina.core.config import config
 
     monkeypatch.setattr(config, "machina_home", "", raising=False)
@@ -188,7 +187,6 @@ async def make(monkeypatch, tmp_path):
     monkeypatch.delenv("MACHINA_CHATGPT_AUTH_FILE", raising=False)
     monkeypatch.delenv("CODEX_HOME", raising=False)
     monkeypatch.delenv("MACHINA_HOME", raising=False)
-    monkeypatch.delenv("MACHINA_MACHINA_HOME", raising=False)
     from machina.core.config import config
 
     monkeypatch.setattr(config, "machina_home", "", raising=False)

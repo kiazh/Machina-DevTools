@@ -56,7 +56,6 @@ def fake_home(monkeypatch, tmp_path):
     monkeypatch.delenv("MACHINA_CHATGPT_AUTH_FILE", raising=False)
     monkeypatch.delenv("CODEX_HOME", raising=False)
     monkeypatch.delenv("MACHINA_HOME", raising=False)
-    monkeypatch.delenv("MACHINA_MACHINA_HOME", raising=False)
     monkeypatch.setattr(config, "machina_home", "", raising=False)
     return home
 

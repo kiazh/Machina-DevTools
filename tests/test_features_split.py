@@ -167,7 +167,9 @@ def test_coerce_config_value_preserved():
     from machina.gateway.features import coerce_config_value
 
     assert coerce_config_value("turn_timeout", "7") == 7
-    assert coerce_config_value("verbose", "off") is False
+    # ``verbose`` was a dead knob removed by the fix campaign; use a live
+    # boolean default to pin the coercion contract.
+    assert coerce_config_value("rag_enabled", "off") is False
 
 
 # ─── interop feature handlers (in-process delegation to machina.interop) ─────

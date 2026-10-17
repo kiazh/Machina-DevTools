@@ -28,11 +28,14 @@ def test_token_usage():
     m = MetricsCollector()
     m.record_tokens("s1", 100, 50)
     m.record_tokens("s1", 200, 100)
-    assert m.get_token_usage("s1") == {
+    # Only cumulative process totals are retained (the per-session breakdown
+    # had no production reader; Prometheus scrapes token_totals).
+    assert m.get_all_metrics()["token_totals"] == {
         "prompt_tokens": 300,
         "completion_tokens": 150,
         "total_tokens": 450,
     }
+    assert "token_usage" not in m.get_all_metrics()
 
 
 def test_db_and_llm_calls():
@@ -53,7 +56,7 @@ def test_all_metrics_and_reset():
         "counters",
         "errors",
         "error_rates",
-        "token_usage",
+        "token_totals",
     } <= m.get_all_metrics().keys()
     m.reset()
     assert m.get_counter("op") == 0

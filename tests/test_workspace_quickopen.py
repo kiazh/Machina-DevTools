@@ -37,6 +37,7 @@ from machina.workspace.quickopen import (
     rank_entries,
 )
 from machina.workspace.service import WorkspaceService
+from tests.support.fakes import FakeGateway
 
 QUICK_OPEN_METHODS = {"workspace.quickOpen", "workspace.quickOpenCancel"}
 
@@ -72,24 +73,6 @@ def _nested_tree(root: Path, dirs: str = "abcd", per_dir: int = 10) -> int:
             _write(root, f"{letter}/f{index:02d}.txt")
             total += 1
     return total
-
-
-class FakeGateway:
-    """Minimal gateway surface for handler tests (mirrors test_workspace_gateway)."""
-
-    def __init__(self) -> None:
-        self.frames: list[dict] = []
-        self.methods: dict = {}
-        self.workspace_service = None
-
-    def require_db(self) -> None:
-        return None
-
-    def _write(self, frame: dict) -> None:
-        self.frames.append(frame)
-
-    def add_method(self, name, handler) -> None:
-        self.methods[name] = handler
 
 
 async def _opened(tmp_path: Path) -> tuple[FakeGateway, dict, str]:

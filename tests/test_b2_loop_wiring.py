@@ -23,7 +23,6 @@ payloads; session/context plumbing is mocked (same harness shape as
 from __future__ import annotations
 
 import copy
-import hashlib
 import inspect
 import json
 import logging
@@ -37,9 +36,19 @@ import yaml
 
 from machina.core.agent import BaseReActAgent, ReActAgent
 from machina.core.config import DEFAULTS, Config, config, validate_value
-from machina.core.models import LLMResponse, Session, StreamEvent
+from machina.core.models import LLMResponse, Session
 from machina.core.request_gate import RequestGate, evaluate_request
 from machina.tools.base import ToolRegistry
+from tests.support.fakes import (
+    RejectingProvider,
+    ScriptedProvider,
+    VerifiedLookupOnly,
+    VerifiedStore,
+)
+
+_RejectingProvider = RejectingProvider
+_VerifiedLookupOnly = VerifiedLookupOnly
+_VerifiedStore = VerifiedStore
 
 REPO = Path(os.environ.get("MACHINA_REPO") or Path(__file__).resolve().parents[2] / "machina")
 CORPUS = Path(__file__).resolve().parent / "data" / "request_projection" / "corpus.json"
@@ -51,40 +60,11 @@ ROUNDS = 4
 
 
 # ─── fake provider: captures the exact outgoing payloads ─────────────────────
+# Shared bodies live in tests/support/fakes.py (B2 is a subset of B3).
 
 
-class _ScriptedProvider:
-    """Deterministic provider; every call snapshots its kwargs."""
-
-    model = "fake-b2"
-
-    def __init__(self, responses: list[LLMResponse]) -> None:
-        self.responses = list(responses)
-        self.calls: list[dict] = []
-
-    async def complete(self, **kwargs):
-        self.calls.append(copy.deepcopy(kwargs))
-        index = min(len(self.calls) - 1, len(self.responses) - 1)
-        return self.responses[index]
-
-    async def stream_complete(self, **kwargs):
-        response = await self.complete(**kwargs)
-        if response.content:
-            yield StreamEvent(type="text", content=response.content)
-        yield StreamEvent(type="done", response=response)
-
-
-class _RejectingProvider:
-    """Fails the test if the seam ever tries to call a provider itself."""
-
-    model = "reject"
-
-    async def complete(self, **kwargs):
-        raise AssertionError("provider must not be called during projection")
-
-    async def stream_complete(self, **kwargs):
-        raise AssertionError("provider must not be called during projection")
-        yield  # pragma: no cover - generator protocol
+def _ScriptedProvider(responses, **kwargs):
+    return ScriptedProvider(responses, model="fake-b2", **kwargs)
 
 
 def _round_response(index: int) -> LLMResponse:
@@ -111,55 +91,6 @@ def _final_response() -> LLMResponse:
 
 def _script() -> list[LLMResponse]:
     return [_round_response(i) for i in range(1, ROUNDS + 1)] + [_final_response()]
-
-
-# ─── fake artifact store: verified views + read-only lookup ──────────────────
-
-
-class _VerifiedStore:
-    """Retains stored content, answers the projector's lookup contract."""
-
-    def __init__(self) -> None:
-        self.stored: dict[str, str] = {}
-        self.lookups: list[str] = []
-        self.store_calls = 0
-
-    async def store(self, kind, content, **kwargs):
-        self.store_calls += 1
-        # Deterministic handle: identical content -> identical handle, so two
-        # scripted runs produce byte-identical payloads.
-        handle = "hand-" + hashlib.sha256(content.encode("utf-8")).hexdigest()[:12]
-        self.stored[handle] = content
-        return {"artifact_id": handle, "kind": kind, "content_bytes": len(content)}
-
-    async def lookup(self, handle, *, session_id, agent_id):
-        self.lookups.append(str(handle))
-        if str(handle) not in self.stored:
-            return None
-        return {
-            "available": True,
-            "complete": True,
-            "handle": str(handle),
-            "revision": f"rev-{handle}",
-            "summary_view": f"verified summary for {handle}",
-        }
-
-
-class _VerifiedLookupOnly:
-    """Verified lookup for handles it was never asked to retain (corpus ids)."""
-
-    def __init__(self) -> None:
-        self.lookups: list[str] = []
-
-    async def lookup(self, handle, *, session_id, agent_id):
-        self.lookups.append(str(handle))
-        return {
-            "available": True,
-            "complete": True,
-            "handle": str(handle),
-            "revision": f"rev-{handle}",
-            "summary_view": f"verified summary for {handle}",
-        }
 
 
 # ─── loop harness (mocked session/context, stub recall tool) ─────────────────

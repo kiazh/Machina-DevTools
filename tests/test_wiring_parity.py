@@ -314,6 +314,77 @@ def test_identical_url_loop_still_stagnates_at_k():
     assert stop is not None
 
 
+def test_status_read_targets_digest_the_actual_result():
+    """P0-19: identical-looking status calls are only stagnant if results match."""
+    from machina.controller import wiring
+
+    for tool, args in (
+        ("harness_status", {}),
+        ("list_agents", {}),
+        ("skill_list", {"query": ""}),
+    ):
+        first = wiring.target_bytes(tool, args, result="revision=1 notes=tone")
+        changed = wiring.target_bytes(tool, args, result="revision=2 notes=tone")
+        repeat = wiring.target_bytes(tool, args, result="revision=1 notes=tone")
+        assert first != changed, f"{tool}: changed live state must be new coverage"
+        assert first == repeat, f"{tool}: identical result must be the same target"
+        assert first[1] == 0 and changed[1] == 0
+        assert "result:" in first[0], f"{tool}: target must carry a result digest"
+
+
+def test_status_reads_with_different_results_never_stagnate():
+    """P0-19: three distinct status results must not trip the forced stop."""
+    from machina.controller import wiring
+
+    for tool, args in (
+        ("harness_status", {}),
+        ("list_agents", {}),
+        ("skill_list", {"query": ""}),
+    ):
+        hist: list = []
+        for i in range(6):
+            hist, stop = wiring.check_stagnation(
+                hist,
+                [
+                    {
+                        "tool": tool,
+                        "args": args,
+                        "result_preview": f"live state revision {i}",
+                        "outcome": "completed",
+                    }
+                ],
+            )
+            assert stop is None, f"{tool} false stagnation at round {i}: {stop}"
+
+
+def test_status_reads_with_identical_results_still_stagnate_at_k():
+    """P0-19: the guard remains — byte-identical status reads halt at K."""
+    from machina.controller import wiring
+
+    for tool, args in (
+        ("harness_status", {}),
+        ("list_agents", {}),
+        ("skill_list", {"query": ""}),
+    ):
+        hist: list = []
+        stop = None
+        for _ in range(8):
+            hist, stop = wiring.check_stagnation(
+                hist,
+                [
+                    {
+                        "tool": tool,
+                        "args": args,
+                        "result_preview": "unchanged live state",
+                        "outcome": "completed",
+                    }
+                ],
+            )
+            if stop:
+                break
+        assert stop is not None, f"{tool}: identical results must still stagnate"
+
+
 def _recall_responseAR(query):
     return LLMResponse(
         content="",

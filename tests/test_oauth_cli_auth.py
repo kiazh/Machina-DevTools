@@ -31,7 +31,6 @@ def fake_home(monkeypatch, tmp_path):
     for env in (
         "MACHINA_COPILOT_AUTH_FILE",
         "MACHINA_HOME",
-        "MACHINA_MACHINA_HOME",
     ):
         monkeypatch.delenv(env, raising=False)
     monkeypatch.setattr(config, "machina_home", "", raising=False)

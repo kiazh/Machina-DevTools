@@ -102,29 +102,53 @@ def test_chatgpt_unknown_slug_keeps_default(monkeypatch, tmp_path):
     assert context_window_for("gpt-9-future", "chatgpt") == DEFAULT_CONTEXT_WINDOW
 
 
-def test_effective_turn_budget_prefers_session_then_provider_then_config():
+def test_turn_model_prefers_provider_model_when_models_diverge():
+    """F-01: capacity reflects the model actually serving the turn.
+
+    A provider-level override (``machina chat -m`` / model_override) selects a
+    different model than the saved ``session.model``; the pre-request context
+    window check must use the ACTUAL provider-selected model, not the stale
+    session field. (The historical test expected session priority — see
+    FEATURE_LEDGER D-02 and OPENCODE_SHELL_CONTEXT_HANDOFF §1.)
+    """
     import uuid
 
     from machina.core.agent import _effective_turn_budget, _turn_model
     from machina.core.models import Session
 
-    session = Session(id=uuid.uuid4(), context_budget=8000, model="deepseek-chat")
-
     class StubProvider:
         model = "gpt-4o-mini"
 
-    assert _turn_model(session, StubProvider()) == "deepseek-chat"
-    assert (
-        _turn_model(Session(id=uuid.uuid4(), context_budget=8000), StubProvider()) == "gpt-4o-mini"
-    )
+    divergent = Session(id=uuid.uuid4(), context_budget=8000, model="deepseek-chat")
+    assert _turn_model(divergent, StubProvider()) == "gpt-4o-mini"
+    big_window_override = Session(id=uuid.uuid4(), context_budget=8000, model="gemini-2.0-flash")
+    assert _turn_model(big_window_override, StubProvider()) == "gpt-4o-mini"
+    # Provider absent (None/empty) falls back to session, then config.
+    class EmptyProvider:
+        model = None
+
+    assert _turn_model(divergent, EmptyProvider()) == "deepseek-chat"
     from machina.core.config import config as _global_config
+
+    assert _turn_model(Session(id=uuid.uuid4(), context_budget=8000), EmptyProvider()) == (
+        _global_config.get("model") or None
+    )
 
     assert _turn_model(Session(id=uuid.uuid4(), context_budget=8000), object()) == (
         _global_config.get("model") or None
     )
 
-    assert _effective_turn_budget(session, StubProvider()) == 64_000
+    # Budgets follow the actual serving model: the previously-divergent
+    # gemini-session/codellama-provider case must budget 16_384, not 1M.
+    class SmallProvider:
+        model = "codellama"
+
     big = Session(id=uuid.uuid4(), context_budget=8000, model="gemini-2.0-flash")
-    assert _effective_turn_budget(big, StubProvider()) == 1_048_576
-    explicit = Session(id=uuid.uuid4(), context_budget=2000, model="gemini-2.0-flash")
-    assert _effective_turn_budget(explicit, StubProvider()) == 1_048_576
+    assert _effective_turn_budget(big, SmallProvider()) == 16_384
+
+    # Aligned models keep session-driven budgeting.
+    assert _effective_turn_budget(divergent, type("P", (), {"model": "deepseek-chat"})()) == 64_000
+    aligned = Session(id=uuid.uuid4(), context_budget=2000, model="gemini-2.0-flash")
+    assert _effective_turn_budget(aligned, type("P", (), {"model": "gemini-2.0-flash"})()) == (
+        1_048_576
+    )

@@ -27,7 +27,6 @@ def fake_home(monkeypatch, tmp_path):
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.delenv("MACHINA_COPILOT_AUTH_FILE", raising=False)
     monkeypatch.delenv("MACHINA_HOME", raising=False)
-    monkeypatch.delenv("MACHINA_MACHINA_HOME", raising=False)
     monkeypatch.setattr(config, "machina_home", "", raising=False)
     monkeypatch.setattr(copilot_auth, "_probe_gh_token", lambda: None)
     return home

@@ -20,18 +20,7 @@ import pytest
 from machina.gateway.features import workspace as ws
 from machina.workspace.lsp import LspManager
 from machina.workspace.models import WorkspaceError
-
-
-class FakeGateway:
-    def __init__(self) -> None:
-        self.frames: list[dict] = []
-        self.workspace_service = None
-
-    def require_db(self) -> None:
-        return None
-
-    def _write(self, frame: dict) -> None:
-        self.frames.append(frame)
+from tests.support.fakes import FakeGateway
 
 
 async def _open(tmp_path: Path, root: Path | None = None, *, trust: bool = True):

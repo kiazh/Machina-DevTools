@@ -1440,18 +1440,30 @@ class TestAgentProviderEdgeCases:
     ):
         """Agent should handle tool call missing 'id' field."""
         provider = AsyncMock()
+        # The agent loop is unbounded by design (stagnation/window terminators
+        # only), and read_file is not stagnation-eligible, so a constant mock
+        # repeats this malformed call until a window cap — the same stall class
+        # bounded in test_chaos.py. Answer once, then finish with a final answer.
         provider.complete = AsyncMock(
-            return_value=LLMResponse(
-                content="",
-                model="test-model",
-                usage={"total_tokens": 5},
-                tool_calls=[
-                    {
-                        "function": {"name": "read_file", "arguments": "{}"},
-                        # missing id
-                    }
-                ],
-            )
+            side_effect=[
+                LLMResponse(
+                    content="",
+                    model="test-model",
+                    usage={"total_tokens": 5},
+                    tool_calls=[
+                        {
+                            "function": {"name": "read_file", "arguments": "{}"},
+                            # missing id
+                        }
+                    ],
+                ),
+                LLMResponse(
+                    content="Handled the malformed tool call.",
+                    model="test-model",
+                    usage={"total_tokens": 5},
+                    tool_calls=[],
+                ),
+            ]
         )
 
         with patch("machina.core.agent.session_manager") as mock_sm:
