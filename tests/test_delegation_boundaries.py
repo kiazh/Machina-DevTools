@@ -597,8 +597,9 @@ async def test_runtime_migration_backfills_historical_delegation_charges(db_pool
 
 @pytest.mark.db
 @pytest.mark.asyncio
-async def test_fork_keeps_ancestral_budgets_after_parent_deletion(db_pool, monkeypatch):
-    from machina.core.exceptions import UsageBudgetExceededError
+async def test_fork_does_not_keep_ancestral_budgets_after_parent_deletion(
+    db_pool, monkeypatch
+):
     from machina.core.session import session_manager
     from machina.core.usage import UsageStore
 
@@ -610,9 +611,12 @@ async def test_fork_keeps_ancestral_budgets_after_parent_deletion(db_pool, monke
     await session_manager.get(child.id)
     await session_manager.delete(root.id)
     fork = await session_manager.fork(child.id)
+    assert fork.is_fork is True
     monkeypatch.setattr(config, "usage_agent_request_limit", 1)
-    with pytest.raises(UsageBudgetExceededError):
-        await UsageStore().reserve(fork.id, fork.agent_id, "fake", "fake", [], [], 1)
+    # A user fork is an independent branch: the source's spend is not charged
+    # to it (combined #33 / original #50).
+    reservation = await UsageStore().reserve(fork.id, fork.agent_id, "fake", "fake", [], [], 1)
+    assert reservation is not None
 
 
 @pytest.mark.asyncio
