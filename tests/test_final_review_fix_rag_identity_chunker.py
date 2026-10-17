@@ -86,6 +86,9 @@ def _reset_shared_pipeline(monkeypatch) -> None:
 
     monkeypatch.setattr(rag_tools, "_rag_pipeline", None, raising=False)
     monkeypatch.setattr(rag_tools, "_rag_pipeline_identity", None, raising=False)
+    monkeypatch.setattr(rag_tools, "_pipeline_users", {}, raising=False)
+    monkeypatch.setattr(rag_tools, "_pipeline_leases", {}, raising=False)
+    monkeypatch.setattr(rag_tools, "_retired_pipelines", {}, raising=False)
 
 
 # ─── F08: rotated credential rebuilds the shared pipeline ───────────────────
@@ -218,12 +221,13 @@ async def test_replaced_pipeline_stays_open_until_all_consumers_release(monkeypa
     _stub_pipeline_embedder(monkeypatch)
     _reset_shared_pipeline(monkeypatch)
     first = await rag_tools.acquire_rag_pipeline()
-    assert await rag_tools.acquire_rag_pipeline() is first
-    old_embedder = first._embedder
+    second = await rag_tools.acquire_rag_pipeline()
+    assert second.pipeline is first.pipeline
+    old_embedder = first.pipeline._embedder
     _setup_config(monkeypatch, openai_api_key="key-TWO")
-    assert await rag_tools.get_rag_pipeline() is not first
+    assert await rag_tools.get_rag_pipeline() is not first.pipeline
     old_embedder.close.assert_not_awaited()
     await rag_tools.release_rag_pipeline(first)
     old_embedder.close.assert_not_awaited()
-    await rag_tools.release_rag_pipeline(first)
+    await rag_tools.release_rag_pipeline(second)
     old_embedder.close.assert_awaited_once()

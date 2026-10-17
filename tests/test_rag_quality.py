@@ -92,7 +92,7 @@ async def test_document_tool_returns_passage_and_chunk_identity(monkeypatch):
     )
     pipeline = AsyncMock()
     pipeline.search.return_value = results[:1]
-    monkeypatch.setattr(rag, "get_rag_pipeline", AsyncMock(return_value=pipeline))
+    monkeypatch.setattr(rag, "acquire_rag_pipeline", AsyncMock(return_value=pipeline))
     monkeypatch.setattr(rag, "active_agent_scope", AsyncMock(return_value=("harness", sid)))
     output = await rag.search_documents("query", str(sid))
     assert "Decisive answer after character 200.\nKeep this heading." in output
@@ -208,7 +208,7 @@ async def test_ten_document_passages_fit_agent_message_budget(monkeypatch):
     ]
     pipeline = AsyncMock()
     pipeline.search.return_value = results
-    monkeypatch.setattr(rag, "get_rag_pipeline", AsyncMock(return_value=pipeline))
+    monkeypatch.setattr(rag, "acquire_rag_pipeline", AsyncMock(return_value=pipeline))
     monkeypatch.setattr(rag, "active_agent_scope", AsyncMock(return_value=("harness", sid)))
     output = await rag.search_documents("q" * 1000, str(sid), top_k=10)
     assert len(output) <= 8500
@@ -301,12 +301,12 @@ async def test_search_tool_renders_unavailable_distinct_from_no_results(monkeypa
     failing.search.side_effect = SearchUnavailableError(
         "both retrieval branches failed (dense, keyword); results unavailable"
     )
-    monkeypatch.setattr(rag, "get_rag_pipeline", AsyncMock(return_value=failing))
+    monkeypatch.setattr(rag, "acquire_rag_pipeline", AsyncMock(return_value=failing))
     monkeypatch.setattr(rag, "active_agent_scope", AsyncMock(return_value=("harness", sid)))
     with pytest.raises(ToolError, match="unavailable"):
         await rag.search_documents("query", str(sid))
 
     empty = AsyncMock()
     empty.search.return_value = []
-    monkeypatch.setattr(rag, "get_rag_pipeline", AsyncMock(return_value=empty))
+    monkeypatch.setattr(rag, "acquire_rag_pipeline", AsyncMock(return_value=empty))
     assert await rag.search_documents("query", str(sid)) == "No results found for 'query'"

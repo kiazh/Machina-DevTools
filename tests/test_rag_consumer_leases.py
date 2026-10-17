@@ -43,6 +43,7 @@ async def test_consumer_keeps_pipeline_open_until_finished(monkeypatch, consumer
     monkeypatch.setattr(rag, "_rag_pipeline", old)
     monkeypatch.setattr(rag, "_rag_pipeline_identity", identity[0])
     monkeypatch.setattr(rag, "_pipeline_users", {})
+    monkeypatch.setattr(rag, "_pipeline_leases", {})
     monkeypatch.setattr(rag, "_retired_pipelines", {})
     monkeypatch.setattr(rag, "_current_pipeline_identity", lambda: identity[0])
     monkeypatch.setattr(rag, "_built_reranker_identity", lambda pipeline: None)
