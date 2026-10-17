@@ -26,8 +26,21 @@ from machina.skills.runtime import automatic_skills, search_skills
 from machina.skills.search import APPLICABLE, EXCLUDED
 
 
+class _Registry(SkillRegistry):
+    """Fail-closed policy: created test skills get minimal schema-v2 metadata."""
+
+    def create_skill(self, *args, **kwargs):
+        from machina.skills.metadata import SkillMetadata
+
+        skill = super().create_skill(*args, **kwargs)
+        self.load_all()
+        current = self.get(skill.name)
+        self.persist_skill_metadata(current, SkillMetadata(skill_id=current.name))
+        return skill
+
+
 def _registry(tmp_path, name: str = "skills") -> SkillRegistry:
-    return SkillRegistry(tmp_path / name)
+    return _Registry(tmp_path / name)
 
 
 def _real_registry():
@@ -63,7 +76,7 @@ def test_automatic_path_ranks_through_canonical_search_and_legacy_index_is_gone(
 
     monkeypatch.setattr(runtime, "search_skills", spy)
 
-    reg = SkillRegistry(tmp_path)
+    reg = _Registry(tmp_path)
     reg.create_skill(
         "deploy", "Deploy services carefully", "Steps", triggers=["deploy"]
     )
@@ -229,7 +242,7 @@ async def test_skill_list_query_browse_is_canonical_and_excludes_disabled(
     from machina.tools.base import registry as tool_registry
     from machina.tools.skills import skill_list
 
-    reg = SkillRegistry(tmp_path)
+    reg = _Registry(tmp_path)
     reg.create_skill(
         "team-deploy", "Deploy services carefully", "S", triggers=["deploy"]
     )

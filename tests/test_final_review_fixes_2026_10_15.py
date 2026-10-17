@@ -209,8 +209,12 @@ def test_run_bounded_delivers_large_stdin_when_the_child_reads():
 def test_registry_lookup_is_case_insensitive(tmp_path):
     from machina.skills.registry import SkillRegistry
 
+    from machina.skills.metadata import SkillMetadata
+
     registry = SkillRegistry(tmp_path)
     registry.create_skill("Deploy", "Deploy steps", "Steps to deploy safely")
+    registry.load_all()
+    registry.persist_skill_metadata(registry.get("Deploy"), SkillMetadata(skill_id="Deploy"))
     assert registry.get("DEPLOY") is not None
     assert registry.get("deploy") is not None
     assert registry.get_skill_content("DePlOy") is not None

@@ -10,6 +10,14 @@ from __future__ import annotations
 from machina.skills.registry import SkillRegistry
 
 
+def _add_metadata(skills: SkillRegistry, name: str) -> None:
+    """Fail-closed policy: a usable test skill needs schema-v2 metadata."""
+    from machina.skills.metadata import SkillMetadata
+
+    skills.load_all()
+    skills.persist_skill_metadata(skills.get(name), SkillMetadata(skill_id=name))
+
+
 def _cpp_registry(tmp_path) -> SkillRegistry:
     skills = SkillRegistry(tmp_path)
     skills.create_skill(
@@ -18,6 +26,7 @@ def _cpp_registry(tmp_path) -> SkillRegistry:
         "TEAM RULE: prefer modern syntax.",
         triggers=["c++"],
     )
+    _add_metadata(skills, "edge-modern")
     return skills
 
 

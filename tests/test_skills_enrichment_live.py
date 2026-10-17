@@ -170,7 +170,18 @@ def test_search_exposes_authored_families_capabilities_and_aliases():
 
 
 def test_automatic_disclosure_selects_authored_stage_sections(tmp_path):
-    before = _real_registry(enrichment_dir=tmp_path / "empty-sidecars")
+    # Fail-closed policy: a skill with no metadata at all is unusable, so the
+    # "before" catalog models the pre-section state as a sidecar with metadata
+    # but NO authored sections (whole-body fallback). A sidecar (not an
+    # in-memory attach) survives the telemetry-triggered reload that follows
+    # another automatic context in this test.
+    payload = _sidecar()
+    for entry in payload["skills"].values():
+        entry["sections"] = []
+    sections_less = tmp_path / "metadata-no-sections"
+    sections_less.mkdir()
+    (sections_less / f"{PIN}.json").write_text(json.dumps(payload), encoding="utf-8")
+    before = _real_registry(enrichment_dir=sections_less)
     after = _real_registry()
 
     _, plan_before = _plan(before)
@@ -182,9 +193,12 @@ def test_automatic_disclosure_selects_authored_stage_sections(tmp_path):
         for section in entry.get("sections", [])
     }
 
-    # Before: no declared sections -> the whole-body fallback, the implement
-    # anchor is not disclosed at all.
-    assert plan_before.chosen == ()
+    # Before: no sidecar-declared sections -> the ECC whole-body fallback, the
+    # implement anchor is not disclosed at all. Native skills may now carry
+    # their own authored metadata, so scope this assertion to the sidecar
+    # entries under test rather than requiring an empty plan.
+    chosen_before = {(entry.skill_id, entry.section_id) for entry in plan_before.chosen}
+    assert not (chosen_before & authored_sections), chosen_before
     assert plan_before.whole_body
 
     # After: at least one authored stage section is selected whole.

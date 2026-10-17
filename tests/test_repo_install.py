@@ -27,6 +27,8 @@ ALPHA_SKILL = """---
 name: alpha
 description: Alpha skill for fixtures
 triggers: [alpha]
+schema_version: 2
+skill_id: alpha
 ---
 Help with alpha tasks.
 """

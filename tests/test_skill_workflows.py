@@ -7,6 +7,17 @@ import pytest
 from machina.skills.registry import SkillRegistry
 
 
+def _give_metadata(skills: SkillRegistry, *names: str) -> None:
+    """Fail-closed policy: usable fixtures need schema-v2 metadata."""
+    from machina.skills.metadata import SkillMetadata
+
+    skills.load_all()
+    for name in names:
+        skill = skills.get(name)
+        if skill is not None and skill.skill_metadata is None:
+            skills.persist_skill_metadata(skill, SkillMetadata(skill_id=name))
+
+
 def test_coding_workflow_composes_domain_testing_and_verification(tmp_path, monkeypatch):
     from machina.skills.workflow import plan_workflow
 
@@ -81,6 +92,7 @@ def test_skill_read_search_returns_real_continuation_offsets(tmp_path, monkeypat
     skills = SkillRegistry(tmp_path)
     content = "Introduction ß\n\n## Testing\nRun tests before completion.\n"
     skills.create_skill("guide", "A guide", content)
+    _give_metadata(skills, "guide")
     monkeypatch.setattr(module, "skill_registry", skills)
     text = skill_read("guide", query="Testing", limit=30)
     match = re.search(r"\[(\d+):(\d+)/", text)
@@ -224,6 +236,7 @@ def test_local_trigger_is_an_automatically_loaded_anchor(tmp_path, monkeypatch):
         "TEAM RULE: use our existing dependency injection.",
         triggers=["python"],
     )
+    _give_metadata(skills, "team-workflow")
     text = automatic_skill_context("Implement a Python API", skills=skills)
     assert "TEAM RULE: use our existing dependency injection." in text
 

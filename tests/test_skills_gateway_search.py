@@ -64,6 +64,12 @@ def _registry(tmp_path):
         source_type="local",
     )
     reg.load_all()
+    # Fail-closed policy: these fixtures are usable, so give them minimal v2
+    # metadata in memory (the stat-only registry cache keeps it across loads).
+    from machina.skills.metadata import SkillMetadata
+
+    for name in ("python-testing", "deploy-guide", "release-runbook"):
+        reg.get(name).skill_metadata = SkillMetadata(skill_id=name)
     return reg
 
 

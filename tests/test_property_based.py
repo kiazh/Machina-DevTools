@@ -198,11 +198,15 @@ class TestPromptAssemblerProperties:
         query=st.text(min_size=0, max_size=100),
         budget=st.integers(min_value=100, max_value=50000),
     )
-    @settings(max_examples=100)
+    @settings(max_examples=100, deadline=None)
     def test_assemble_respects_budget(self, system_prompt, goal, query, budget):
         """Property: optional (retrieved) context never pushes the prompt past
         the budget. System prompt, goal and query are always included, so the
-        bound is max(budget, mandatory tokens)."""
+        bound is max(budget, mandatory tokens).
+
+        Deadline is disabled: this is a correctness property over random inputs;
+        Hypothesis's default 200 ms wall-clock deadline flakes under suite load
+        (the real DDL assertion below is the test)."""
 
         assembler = PromptAssembler(session_budget=budget)
         mandatory = assembler.assemble(

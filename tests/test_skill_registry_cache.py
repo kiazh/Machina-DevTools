@@ -19,6 +19,8 @@ triggers:
   - test
 version: 1.0.0
 enabled: true
+schema_version: 2
+skill_id: {name}
 ---
 
 Body for {name}.
@@ -161,3 +163,42 @@ def test_telemetry_save_does_not_mask_out_of_band_instruction_edit(tmp_path):
     registry.record_use("alpha")
     registry.load_all()
     assert "New instruction." in registry.get_skill_content("alpha")
+
+
+def test_warm_search_does_not_rehash_every_body(tmp_path, monkeypatch):
+    """A6 ledger: warm search must not pay content_revision for every skill.
+
+    The per-registry revision cache is keyed by (path, mtime_ns, size, version,
+    metadata object); a warm call is a cache hit, while an out-of-band body edit
+    still moves the revision (P0-8 freshness).
+    """
+    from machina.skills import runtime
+    from machina.skills import search as search_module
+
+    for name in ("alpha", "beta", "gamma"):
+        _write_skill(tmp_path, name)
+    registry = SkillRegistry(skills_dir=tmp_path)
+
+    calls: list[str] = []
+    original = search_module.content_revision
+
+    def counted(skill):
+        calls.append(skill.name)
+        return original(skill)
+
+    monkeypatch.setattr(search_module, "content_revision", counted)
+    first = runtime.search_skills(registry, "caching behaviour")
+    assert type(first).__name__ == "SearchResult"
+    cold_calls = len(calls)
+    assert cold_calls >= 3  # first search builds the revision identity
+
+    calls.clear()
+    runtime.search_skills(registry, "caching behaviour")
+    assert calls == [], f"warm search re-hashed {calls}"
+
+    # An out-of-band body edit with a new mtime recomputes that skill's revision.
+    path = tmp_path / "alpha" / "SKILL.md"
+    path.write_text(SKILL_MD.format(name="alpha") + "\nEdited body.\n", encoding="utf-8")
+    calls.clear()
+    runtime.search_skills(registry, "caching behaviour")
+    assert calls == ["alpha"]

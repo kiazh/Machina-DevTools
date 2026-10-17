@@ -84,6 +84,19 @@ PARITY_SINGLE_SHA256 = "328e411d9be132316b65bf638606f75716f0161f037c7c85dfdd66d7
 PARITY_TWO_SKILL_SHA256 = "879c7cacb251fdfed70ee3146c3ca8f4ab85b743af972a851bdba074935e75f7"
 
 
+def _give_minimal_metadata(skills: SkillRegistry, *names: str) -> None:
+    """Fail-closed policy: usable fixtures need schema-v2 metadata.
+
+    In-memory on purpose: the stat-only registry cache keeps it across loads,
+    and these tests exercise disclosure mechanics, not loading.
+    """
+    skills.load_all()
+    for name in names:
+        skill = skills.get(name)
+        if skill is not None and skill.skill_metadata is None:
+            skill.skill_metadata = SkillMetadata(skill_id=name)
+
+
 def _deploy_registry(tmp_path) -> SkillRegistry:
     """Local registry with one staged skill; ECC bundle excluded (tmp dir)."""
     skills = SkillRegistry(tmp_path)
@@ -128,7 +141,13 @@ def _coding_registry(tmp_path) -> SkillRegistry:
     skills.create_skill(
         "ecc-verification-loop", "Verify results before claiming success", "VERIFY-BODY"
     )
-    skills.load_all()
+    _give_minimal_metadata(
+        skills,
+        "ecc-python-patterns",
+        "ecc-search-first",
+        "ecc-tdd-workflow",
+        "ecc-verification-loop",
+    )
     return skills
 
 
@@ -140,7 +159,7 @@ def _whole_body_registry(tmp_path, *, with_emoji: bool = True):
     else:
         content = "Short deployment notes. " * 40
     skills.create_skill("deploy", "Deploy steps safely", content, triggers=["deploy"])
-    skills.load_all()
+    _give_minimal_metadata(skills, "deploy")
     return skills, content
 
 
@@ -150,7 +169,7 @@ def _two_whole_body_registry(tmp_path):
         "alpha-tools", "Alpha tooling notes", "ALPHA BODY " * 20, triggers=["alpha"]
     )
     skills.create_skill("beta-tools", "Beta tooling notes", "BETA BODY " * 20, triggers=["beta"])
-    skills.load_all()
+    _give_minimal_metadata(skills, "alpha-tools", "beta-tools")
     return skills
 
 
@@ -237,7 +256,7 @@ def test_explicit_request_carries_user_provenance(tmp_path):
 
     skills = SkillRegistry(tmp_path)
     skills.create_skill("team-workflow", "Follow team Python conventions", "TEAM RULE", triggers=["python"])
-    skills.load_all()
+    _give_minimal_metadata(skills, "team-workflow")
     plan = plan_workflow("Implement a Python API", skills=skills)
     requested = next(step for step in plan.steps if step.label == "requested workflow")
     assert requested.provenance == "user"

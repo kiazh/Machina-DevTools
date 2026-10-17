@@ -674,9 +674,14 @@ def test_a6_disabled_skill_is_the_only_documented_scope_difference(tmp_path):
     from machina.skills.runtime import search_skills
     from machina.skills.search import EXCLUDED, catalog_revision
 
+    from machina.skills.metadata import SkillMetadata
+
     registry = SkillRegistry(tmp_path / "skills")
     registry.create_skill("team-deploy", "Deploy services carefully", "S", triggers=["deploy"])
     registry.create_skill("old-deploy", "Deploy services with legacy steps", "S", triggers=["deploy"])
+    registry.load_all()
+    for name in ("team-deploy", "old-deploy"):
+        registry.persist_skill_metadata(registry.get(name), SkillMetadata(skill_id=name))
     registry.set_enabled("old-deploy", False)
 
     automatic = search_skills(registry, "deploy the service", limit=20)

@@ -418,6 +418,18 @@ class TestSkills:
         )["skill"]
         assert learned["name"] == "deploying" and learned["triggers"] == ["deploy"]
 
+        # Fail-closed: the test harness has no provider, so install-time
+        # generation fails and the skill is unusable until metadata exists.
+        unavailable = await h.call("skills.show", {"name": "deploying"})
+        assert "error" in unavailable, unavailable
+
+        from machina.skills.metadata import SkillMetadata
+
+        skill_registry.load_all()
+        skill_registry.persist_skill_metadata(
+            skill_registry.get("deploying"), SkillMetadata(skill_id="deploying")
+        )
+
         shown = result(await h.call("skills.show", {"name": "deploying"}))["skill"]
         assert "migrations first" in shown["content"]
         assert "deploying" in {s["name"] for s in result(await h.call("skills.list"))["skills"]}

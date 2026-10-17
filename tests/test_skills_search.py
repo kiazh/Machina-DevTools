@@ -35,8 +35,37 @@ from machina.skills.search import (
 )
 
 
+class _Registry(SkillRegistry):
+    """Test registry whose created skills carry minimal schema-v2 metadata.
+
+    Fail-closed policy: ``create_skill`` writes a v1 document, which is
+    intentionally unusable until metadata generation runs. Tests that are not
+    about that policy persist a minimal valid v2 document so search/runtime
+    behavior under test is unchanged.
+    """
+
+    def create_skill(self, *args, **kwargs):
+        from machina.skills.metadata import SkillMetadata
+
+        skill = super().create_skill(*args, **kwargs)
+        self.load_all()
+        current = self.get(skill.name)
+        self.persist_skill_metadata(current, SkillMetadata(skill_id=current.name))
+        return skill
+
+
 def _registry(tmp_path, name: str = "skills") -> SkillRegistry:
-    return SkillRegistry(tmp_path / name)
+    return _Registry(tmp_path / name)
+
+
+def _persist_minimal_metadata(reg: SkillRegistry, name: str) -> None:
+    """Fail-closed policy: every test skill needs schema-v2 metadata to be usable."""
+    from machina.skills.metadata import SkillMetadata
+
+    reg.load_all()
+    skill = reg.get(name)
+    if skill is not None and skill.skill_metadata is None:
+        reg.persist_skill_metadata(skill, SkillMetadata(skill_id=skill.name))
 
 
 def _skill(
@@ -47,7 +76,9 @@ def _skill(
     triggers: list[str] | None = None,
     content: str = "Steps",
 ) -> Skill:
-    return reg.create_skill(name, description, content, triggers=triggers or [])
+    skill = reg.create_skill(name, description, content, triggers=triggers or [])
+    _persist_minimal_metadata(reg, name)
+    return skill
 
 
 def _attach_metadata(reg: SkillRegistry, metadata_by_name: dict) -> None:
@@ -79,7 +110,9 @@ def _by_id(result: SearchResult) -> dict:
 
 
 def _filler(reg: SkillRegistry, index: int) -> None:
-    reg.create_skill(f"lathe-{index:02d}", f"Lathe calibration notes for wooden bowls {index}", "S")
+    name = f"lathe-{index:02d}"
+    reg.create_skill(name, f"Lathe calibration notes for wooden bowls {index}", "S")
+    _persist_minimal_metadata(reg, name)
 
 
 def test_search_result_contract_and_ranking_signal_semantics(tmp_path):
@@ -577,3 +610,39 @@ def test_automatic_skills_contract_excludes_disabled(tmp_path):
     assert isinstance(ranked, list)
     assert all(isinstance(skill, Skill) for skill in ranked)
     assert [skill.name for skill in ranked] == ["team-deploy"]
+
+
+# ─── vague web-build tolerance (deterministic catalogue, no model call) ──────
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "make this website",
+        "build a landing page for my business",
+        "make a web app",
+    ],
+)
+def test_vague_web_build_queries_reach_web_frontend(query):
+    """A vague build request must find the frontend skill deterministically."""
+    registry = SkillRegistry()
+    result = search_skills(registry, query, limit=10)
+    ids = _ids(result)
+    assert "web-frontend" in ids[:3], ids
+
+    automatic = automatic_skills(registry, query)
+    assert "web-frontend" in [skill.name for skill in automatic][:3]
+
+
+def test_website_query_surfaces_the_related_skill_cluster():
+    registry = SkillRegistry()
+    ids = _ids(search_skills(registry, "make this website", limit=10))
+    assert "web-frontend" in ids[:3]
+    assert "data-visualization" in ids
+    assert "docs-communication" in ids
+
+
+def test_dashboard_query_leads_with_data_visualization():
+    registry = SkillRegistry()
+    ids = _ids(search_skills(registry, "create a dashboard", limit=10))
+    assert ids[0] == "data-visualization", ids

@@ -55,11 +55,15 @@ DEPLOY_CONTENT = (
 
 
 def _registry(tmp_path):
+    from machina.skills.metadata import SkillMetadata
     from machina.skills.registry import SkillRegistry
 
     skills = SkillRegistry(tmp_path)
     skills.create_skill("guide", "A deployment guide", GUIDE, triggers=["guide"])
     skills.load_all()
+    # Fail-closed policy: this fixture is usable (metadata without sections).
+    # Persist it so the edit/reload tests keep a usable document.
+    skills.persist_skill_metadata(skills.get("guide"), SkillMetadata(skill_id="guide"))
     return skills
 
 

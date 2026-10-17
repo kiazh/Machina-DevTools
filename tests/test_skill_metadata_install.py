@@ -336,10 +336,24 @@ async def test_gateway_learn_hook_generates_metadata_once(tmp_path, monkeypatch,
 
 
 def test_hub_install_hook_generates_metadata_once(tmp_path, monkeypatch, no_network):
+    from machina.skills.metadata import SkillMetadata
+
     reg = SkillRegistry(tmp_path / "skills")
     hub = SkillHub(reg, hub_dir=tmp_path / "hub")
     reg.create_skill("hub-skill", "Hub", V1_BODY, triggers=["hub"])
+    # Publishing a fail-closed skill is refused; give the publisher metadata.
+    # The hub entry still stores the bare v1 body, so install generates it.
+    reg.load_all()
+    reg.persist_skill_metadata(reg.get("hub-skill"), SkillMetadata(skill_id="hub-skill"))
     hub.publish("hub-skill")
+    # Simulate a legacy hub entry (published before metadata travelled with it):
+    # the install path must generate exactly once.
+    import json
+
+    hub_path = hub._hub_file("hub-skill")
+    hub_data = json.loads(hub_path.read_text(encoding="utf-8"))
+    hub_data.pop("metadata", None)
+    hub_path.write_text(json.dumps(hub_data), encoding="utf-8")
     reg.delete_skill("hub-skill")
 
     seam = FakeSeam(_metadata_yaml("hub-skill"))

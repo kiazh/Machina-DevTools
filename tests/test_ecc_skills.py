@@ -250,7 +250,12 @@ def test_skill_list_description_discourages_catalog_enumeration():
 def test_representative_ecc_routing(query, expected):
     from machina.skills.runtime import automatic_skills
 
-    assert expected in [s.name for s in automatic_skills(SkillRegistry(), query)[:3]]
+    # Fresh registry on purpose: automatic selection must load the catalog
+    # before sizing its page (regression: the limit was computed from an empty
+    # registry, collapsing every automatic result to one candidate).
+    picked = [s.name for s in automatic_skills(SkillRegistry(), query)]
+    assert len(picked) >= 2, picked
+    assert expected in picked[:3]
 
 
 def test_bundled_names_cannot_be_shadowed_but_derived_names_survive(tmp_path, monkeypatch):
@@ -261,6 +266,13 @@ def test_bundled_names_cannot_be_shadowed_but_derived_names_survive(tmp_path, mo
     assert not (tmp_path / "ecc-python-testing").exists()
     skills.create_skill(
         "ecc-python-testing-learned", "Derived testing workflow", "Additional steps"
+    )
+    skills.load_all()
+    from machina.skills.metadata import SkillMetadata
+
+    skills.persist_skill_metadata(
+        skills.get("ecc-python-testing-learned"),
+        SkillMetadata(skill_id="ecc-python-testing-learned"),
     )
     skills.load_all()
     assert skills.get_skill_content("ecc-python-testing-learned") == "Additional steps"
@@ -296,6 +308,12 @@ def test_explicit_local_trigger_wins_without_a_technology_keyword(tmp_path):
     skills = SkillRegistry(tmp_path)
     skills.create_skill(
         "python-deploy", "A deployment workflow", "Deploy carefully", triggers=["deploy"]
+    )
+    skills.load_all()
+    from machina.skills.metadata import SkillMetadata
+
+    skills.persist_skill_metadata(
+        skills.get("python-deploy"), SkillMetadata(skill_id="python-deploy")
     )
     assert [s.name for s in automatic_skills(skills, "Deploy our service")] == ["python-deploy"]
 

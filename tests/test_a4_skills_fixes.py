@@ -35,6 +35,8 @@ triggers:
   - test
 version: 1.0.0
 enabled: true
+schema_version: 2
+skill_id: alpha
 ---
 
 {body}

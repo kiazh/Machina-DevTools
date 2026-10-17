@@ -28,6 +28,7 @@ from machina.skills.metadata import (
     CODE_ENRICHMENT_INVALID,
     CODE_ENRICHMENT_UNKNOWN_SKILL,
     CODE_METADATA_INVALID,
+    CODE_METADATA_MISSING,
     CODE_OVERSIZED,
     CODE_SECTION_DUPLICATE_HEADING,
     CODE_SECTION_MISSING_ANCHOR,
@@ -118,7 +119,15 @@ def _diagnostics(registry: SkillRegistry) -> list:
 # ─── v1 compatibility ────────────────────────────────────────────────────────
 
 
-def test_v1_skill_parses_unchanged_and_leaves_metadata_absent(tmp_path):
+def test_v1_skill_loads_but_is_unusable_and_reported(tmp_path):
+    """Product decision 2026-10-17: there is no v1 baseline fallback.
+
+    A metadata-less skill is still listed for operators, but it is reported as
+    an error, excluded from search, and refuses to serve content.
+    """
+    from machina.skills.registry import SkillMetadataUnavailable
+    from machina.skills.runtime import search_skills
+
     _write_skill(tmp_path, "plain-skill", V1_SKILL)
     registry = SkillRegistry(tmp_path)
     registry.load_all()
@@ -128,9 +137,16 @@ def test_v1_skill_parses_unchanged_and_leaves_metadata_absent(tmp_path):
     assert skill.description == "A v1 skill that must keep working unchanged"
     assert skill.triggers == ["plain"]
     assert skill.version == "1.2.3"
-    assert "Step one." in skill.content
-    assert skill.skill_metadata is None  # v1 -> baseline, not an invented v2 identity
-    assert _diagnostics(registry) == []
+    assert skill.skill_metadata is None
+    assert "metadata-missing" in skill.metadata_error
+    assert [s.name for s in registry.list_skills()] == ["plain-skill"]
+    assert search_skills(registry, "plain").candidates == []
+    with pytest.raises(SkillMetadataUnavailable, match="machina skills enrich"):
+        registry.get_skill_content("plain-skill")
+    report = _diagnostics(registry)
+    diag = next(d for d in report if d.skill_id == "plain-skill")
+    assert diag.code == CODE_METADATA_MISSING
+    assert diag.severity == "error"
 
 
 # ─── schema v2: parse, validate, serialize ───────────────────────────────────

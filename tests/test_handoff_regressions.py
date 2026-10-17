@@ -959,6 +959,14 @@ def test_skills_learn_off_loop(monkeypatch):
 
     from machina.gateway.features import skills as skillsmod
 
+    # Warm the lazy metadata-generation import before the measured window: this
+    # test asserts the slow learn fetch does not block the loop, not first-use
+    # import latency. Production startup does the same via instrumentation.warm.
+    from machina.skills import enrich as _enrich  # noqa: F401
+    from machina.observability import instrumentation as _instrumentation
+
+    _instrumentation.warm()
+
     def _slow_learn(source, **kw):
         time.sleep(0.3)
         return types.SimpleNamespace(
@@ -969,9 +977,19 @@ def test_skills_learn_off_loop(monkeypatch):
             source_type="learned",
             usage_count=0,
             enabled=True,
+            file_path="/tmp/s/SKILL.md",
         )
 
     monkeypatch.setattr(skillsmod.services, "learn_skill", _slow_learn)
+    # This test measures event-loop blocking of the learn fetch, not metadata
+    # generation. v2-only installs generate metadata once; stub that step so
+    # the fake skill (which has no on-disk file) is treated as usable.
+    from machina.skills import enrich
+
+    async def _fake_ensure(skill, **_kw):
+        skill.skill_metadata = object()
+
+    monkeypatch.setattr(enrich, "ensure_skill_metadata", _fake_ensure)
     gw = types.SimpleNamespace(require_db=lambda: None)
     gaps = []
 

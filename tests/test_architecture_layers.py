@@ -161,7 +161,23 @@ _CORE_IMPORT_CEILINGS = {
 # machina/research/benchmark.py's architecture section (round-2 review N6:
 # the hand-mirrored literal drifted once already). Moves only with the delta
 # table documented inside test_deferred_import_count_ratchet.
-DEFERRED_IMPORT_CAP = 758
+#   V2/logging/query-expansion wave (2026-10-17): census 758 -> 762 (+4 net).
+#     This wave deliberately keeps provider/controller edges out of module scope:
+#       +3 deferred `machina.observability.instrumentation` imports for
+#          metadata-missing logging and install-time generation reporting
+#          (skills/registry.py, skills/learning.py, gateway/features/skills.py);
+#       +2 deferred query-expansion imports (skills/workflow.py,
+#          controller/preselect.py) so the picker wiring never pulls the
+#          provider seam at import time;
+#       +1 deferred `skill_registry` import in the CLI `skills enrich` path;
+#       +1 deferred mcp types import in the tool/result adapter;
+#       -3 from consolidating existing lazy imports in the same files.
+#     Census 758 -> 762, so cap 758 -> 762.
+#   Hub metadata round-trip (2026-10-17): +1 deferred import in
+#   skills/registry.py (metadata parser used to preserve validated v2 metadata
+#   through SkillHub publish/install without a second model call).
+#   Census 762 -> 763, so cap 762 -> 763.
+DEFERRED_IMPORT_CAP = 763
 
 
 def test_module_level_core_imports_only_shrink():

@@ -551,6 +551,8 @@ class TestNamingConsistency:
         """SkillHub.publish should serialize usage_count."""
         import tempfile
 
+        from machina.skills.metadata import SkillMetadata
+
         registry = SkillRegistry()
         registry._skills["test"] = Skill(
             name="test",
@@ -558,6 +560,8 @@ class TestNamingConsistency:
             triggers=[],
             content="test content",
             file_path="/tmp/test.md",
+            # Fail-closed policy: publishing requires usable metadata.
+            skill_metadata=SkillMetadata(skill_id="test"),
         )
         registry.record_use("test")
 

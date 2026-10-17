@@ -90,6 +90,11 @@ async def test_e2e_overridden_job_runs_and_reconciles_session_owner(scheduler_db
     _quiet_agent_config(monkeypatch)
     provider = _FinalProvider()
     monkeypatch.setattr("machina.core.provider.get_provider", lambda **kwargs: provider)
+    # One routing-expansion call + one agent completion. Clear the expansion
+    # cache so the count does not depend on test order.
+    from machina.skills import query_expansion
+
+    query_expansion.clear_cache()
 
     session = await SessionManager().create(title="h03 override", agent_id="harness")
     job = await job_store.create(
@@ -110,7 +115,9 @@ async def test_e2e_overridden_job_runs_and_reconciles_session_owner(scheduler_db
     assert finished is not None
     assert finished.run_count == 1
     assert finished.status == "idle" and finished.last_error is None, finished.last_error
-    assert provider.calls == 1, "the selected specialist must actually execute"
+    assert provider.calls == 2, (
+        "one routing-expansion call (v2 skill vocabulary) plus the actual specialist execution"
+    )
 
     owner = await scheduler_db.fetchval("SELECT agent_id FROM sessions WHERE id = $1", session.id)
     assert owner == "researcher", "the durable owner must be reconciled with the executed identity"

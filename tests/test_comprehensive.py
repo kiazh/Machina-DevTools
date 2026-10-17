@@ -73,6 +73,20 @@ def sample_skill_dir(temp_dir):
         "  - test\n"
         "  - testing\n"
         "version: 1.0.0\n"
+        "schema_version: 2\n"
+        "skill_id: test-skill\n"
+        "task_families: [testing]\n"
+        "capabilities: [test-authoring]\n"
+        "aliases: [test-skill]\n"
+        "stack: {languages: [], frameworks: [], independent: true}\n"
+        "preconditions: []\n"
+        "required_tools: []\n"
+        "exclusions: []\n"
+        "sections:\n"
+        "  - id: overview\n"
+        "    heading: Test Skill\n"
+        "    stage: implement\n"
+        "    requires_sections: []\n"
         "---\n"
         "# Test Skill\n"
         "This is a test skill.\n",
@@ -1869,6 +1883,10 @@ class TestSkillHub:
         assert entry["name"] == "test-skill"
         assert entry["author"] == "test-author"
         assert "test" in entry["tags"]
+        # v2 metadata travels with the hub entry so reinstalls stay usable
+        # without a fresh model call.
+        assert entry["metadata"]["schema_version"] == 2
+        assert entry["metadata"]["task_families"] == ["testing"]
 
     def test_list_hub(self, sample_skill_dir, temp_dir):
         """Test listing hub skills."""
@@ -1902,6 +1920,8 @@ class TestSkillHub:
         skill = hub.install("test-skill")
         assert skill.name == "test-skill"
         assert skill.source_type == "hub"
+        assert skill.skill_metadata is not None
+        assert skill.skill_metadata.task_families == ("testing",)
 
     def test_install_not_found(self, sample_skill_dir, temp_dir):
         """Test installing a non-existent skill."""
@@ -1988,6 +2008,30 @@ class TestCLISkillCommands:
 
     def test_learn_command_file(self, temp_dir, monkeypatch):
         """Test learn command from file."""
+
+        # v2-only policy: learn performs one metadata generation call. Supply a
+        # deterministic seam so the CLI happy path does not need a provider.
+        from machina.skills import enrich
+
+        async def _seam(_prompt: str) -> str:
+            return (
+                "schema_version: 2\n"
+                "skill_id: my-learned-skill\n"
+                "task_families: [documentation]\n"
+                "capabilities: []\n"
+                "aliases: []\n"
+                "stack: {languages: [], frameworks: [], independent: true}\n"
+                "preconditions: []\n"
+                "required_tools: []\n"
+                "exclusions: []\n"
+                "sections:\n"
+                "  - id: overview\n"
+                "    heading: Test Skill\n"
+                "    stage: implement\n"
+                "    requires_sections: []\n"
+            )
+
+        monkeypatch.setattr(enrich, "default_agent_seam", lambda **_kw: _seam)
 
         # Write learned skills to a temp dir, never the repo's real skills/.
         monkeypatch.setattr(skill_registry, "skills_dir", temp_dir / "skills")

@@ -22,6 +22,12 @@ def test_learned_skill_weights_only_reorder_relevant_candidates(tmp_path):
     reg.create_skill("alpha-probe", "Probe workflow checks", "inspect and verify", triggers=["probe"])
     reg.create_skill("beta-probe", "Probe workflow checks", "inspect and verify", triggers=["probe"])
     reg.create_skill("rust-patterns", "Rust workflow checks", "rust")
+    # Fail-closed policy: usable fixtures carry schema-v2 metadata.
+    from machina.skills.metadata import SkillMetadata
+
+    reg.load_all()
+    for name in ("alpha-probe", "beta-probe", "rust-patterns"):
+        reg.persist_skill_metadata(reg.get(name), SkillMetadata(skill_id=name))
 
     ranked = automatic_skills(
         reg, "probe", weights={"beta-probe": 1.2, "alpha-probe": 0.8, "rust-patterns": 100000}
