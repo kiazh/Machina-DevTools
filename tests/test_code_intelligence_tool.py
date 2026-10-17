@@ -524,3 +524,32 @@ async def test_brief_never_carries_buffer_or_disk_text(tmp_path):
         assert planted not in json.dumps(configuration(session))
         # The live facts ARE present (the test proves they exist without text).
         assert '"workspace":{"available":true' in brief.replace(" ", "")
+
+
+def test_byte_cap_fallback_is_a_structured_refusal_not_a_bare_null():
+    """combined #45/#46: an unshrinkable result explains why it was dropped."""
+    payload = {
+        "workspaceId": "ws_x",
+        "source": "editor-buffer",
+        "uri": "file:///root/a.py",
+        "documentVersion": 1,
+        "serverGeneration": 1,
+        "workspaceEpoch": 1,
+        "operation": "symbols",
+        "state": "ready",
+        "freshness": "versioned",
+        "truncated": False,
+        "result": {"opaque": "x" * 50_000},
+    }
+    serialized = tool_module._bounded(payload)
+    assert len(serialized.encode("utf-8")) <= tool_module.MAX_RESULT_BYTES
+    parsed = json.loads(serialized)
+    assert parsed["truncated"] is True
+    assert parsed["result"] is None
+    refusal = parsed["truncation"]
+    assert refusal["reason"] == "result_too_large"
+    assert refusal["operation"] == "symbols"
+    assert refusal["resultType"] == "dict"
+    assert refusal["originalBytes"] > tool_module.MAX_RESULT_BYTES
+    assert refusal["budgetBytes"] == tool_module.MAX_RESULT_BYTES
+    assert len(refusal["digest"]) == 64
