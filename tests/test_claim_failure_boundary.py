@@ -117,3 +117,27 @@ async def test_claim_boundaries_record_sanitized_failures(monkeypatch):
     await lock.acquire()
     assert await turns._acquire_or_steal(lock, session_id, ("turn",)) is False
     assert [op for op, _ in recorded][-1] == "turns.acquire_or_steal"
+
+
+async def test_live_in_process_holder_is_not_stolen_before_db_claim_commits(monkeypatch):
+    """combined #11: a held mutex is never stolen while its task is alive.
+
+    _db_claim has not committed yet, so _live_claim sees no owner; the holder
+    map must still protect the in-flight critical section.
+    """
+    monkeypatch.setattr(db, "_pool", object())
+    monkeypatch.setattr(turns, "_live_claim", AsyncMock(return_value=False))
+    sid = uuid.uuid4()
+    lock = asyncio.Lock()
+    await lock.acquire()
+    holders = getattr(turns, "_lock_holders", None)
+    if holders is not None:
+        holders[lock] = asyncio.current_task()
+    try:
+        assert await turns._acquire_or_steal(lock, sid, ("turn", "mutation")) is False
+        assert lock.locked() is True
+    finally:
+        if lock.locked():
+            lock.release()
+        if holders is not None:
+            holders.pop(lock, None)
