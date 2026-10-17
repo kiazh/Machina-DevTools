@@ -235,3 +235,55 @@ async def test_mode_change_between_validation_and_execution_requires_new_approva
     assert not (root / arguments["path"]).exists()
     assert any(event["type"] == "needs_approval" for event in events(response))
     assert (await store.get_approval(rid))["status"] == "approved"
+
+
+@pytest.mark.parametrize("error_name", ["ConfigError", "ConnectionFailed", "ConnectorToolError"])
+async def test_http_resume_connector_failures_are_structured_conflicts(monkeypatch, error_name):
+    import uuid
+
+    from machina.connectors import models
+    from machina.core import approval_resume
+
+    session_id = str(uuid.uuid4())
+    record = {
+        "session_id": session_id,
+        "turn_id": "origin",
+        "agent_id": "agent",
+        "status": "approved",
+        "consumed": False,
+        "proposal_complete": True,
+        "proposal": {"tool": "read_file"},
+    }
+    monkeypatch.setenv("MACHINA_API_KEY", "approval-resume-test")
+    monkeypatch.setattr(store, "get_approval", AsyncMock(return_value=record))
+    monkeypatch.setattr(
+        approval_resume,
+        "resumed_request",
+        AsyncMock(side_effect=getattr(models, error_name)("private-token-must-not-escape")),
+    )
+    async with AsyncClient(
+        transport=ASGITransport(app=create_app()),
+        base_url="http://test",
+        headers={"Authorization": "Bearer approval-resume-test"},
+    ) as client:
+        response = await client.post(
+            "/api/v1/approvals/reviewed/resume",
+            json={"sessionId": session_id, "turnId": "origin", "toolArgs": {"path": "file.txt"}},
+        )
+    assert response.status_code == 409
+    assert response.json()["detail"]["type"] == "approval.continuation_unavailable"
+    assert "private-token" not in response.text
+
+
+async def test_http_v2_pause_markers_all_bind_the_originating_turn(approval_http):
+    client, session, *_ = approval_http
+    response = await client.post(
+        f"/api/v1/sessions/{session.id}/prompt", json={"text": "write", "protocolVersion": 2}
+    )
+    assert response.status_code == 200
+    pauses = [event for event in events(response) if event["type"] == "needs_approval"]
+    assert pauses
+    for pause in pauses:
+        record = await store.get_approval(pause["requestId"])
+        assert pause["originTurnId"] == record["turn_id"]
+        assert pause["durable"] is record.get("durable")

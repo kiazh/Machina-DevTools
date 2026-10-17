@@ -7,6 +7,7 @@ import pytest
 from machina.core import session_mode
 from machina.core.config import config
 from machina.core.session import SessionManager
+from machina.gateway.errors import TURN_IN_PROGRESS, RpcError
 from machina.gateway.features import mode as mode_feature
 from machina.permissions import store
 
@@ -89,10 +90,19 @@ async def test_full_grant_and_mode_update_rollback_together(durable_modes, monke
 async def test_concurrent_mode_changes_keep_grants_consistent(durable_modes):
     database, sessions, gateway, create = durable_modes
     session = await create()
-    await asyncio.gather(
-        mode_feature.mode_set(gateway, {"sessionId": str(session.id), "mode": "full"}),
-        mode_feature.mode_set(gateway, {"sessionId": str(session.id), "mode": "workspace"}),
+    modes = ("full", "workspace")
+    results = await asyncio.gather(
+        *(
+            mode_feature.mode_set(gateway, {"sessionId": str(session.id), "mode": mode})
+            for mode in modes
+        ),
+        return_exceptions=True,
     )
+    assert any(isinstance(result, dict) for result in results)
+    for mode, result in zip(modes, results):
+        if isinstance(result, BaseException):
+            assert isinstance(result, RpcError) and result.code == TURN_IN_PROGRESS
+            await mode_feature.mode_set(gateway, {"sessionId": str(session.id), "mode": mode})
     stored = (await sessions.get_fresh(session.id)).execution_mode
     full_grants = [g for g in await store.list_grants(str(session.id)) if g["mode"] == "full"]
     assert bool(full_grants) == (stored == "full")

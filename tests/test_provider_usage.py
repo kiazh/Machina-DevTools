@@ -174,13 +174,36 @@ async def test_openrouter_complete_calls_finish_with_failed_on_error(monkeypatch
 
 
 @pytest.mark.asyncio
+async def test_openrouter_complete_reserves_wire_max_for_free_models(monkeypatch):
+    """F32: the wire clamps free-tier max_tokens to 1024; reservation must match."""
+    provider = _make_openrouter_provider()
+    provider.model = "openrouter/free"
+
+    reserve = AsyncMock(return_value=uuid.uuid4())
+    finish = AsyncMock()
+    monkeypatch.setattr("machina.core.usage.usage_store.reserve", reserve)
+    monkeypatch.setattr("machina.core.usage.usage_store.finish", finish)
+
+    await provider.complete(
+        messages=[{"role": "user", "content": "hello"}],
+        max_tokens=4096,
+        session_id=uuid.uuid4(),
+        agent_id="test-agent",
+    )
+
+    assert provider.client.post.call_args.kwargs["json"]["max_tokens"] == 1024
+    assert reserve.call_args.args[-1] == 1024
+    finish.assert_awaited_once()
+
+
+@pytest.mark.asyncio
 async def test_openrouter_stream_complete_calls_usage_store_when_session_id_provided(monkeypatch):
     """OpenRouterProvider.stream_complete() should call usage_store.reserve() and usage_store.finish() when session_id is provided."""
     from machina.core.provider import OpenRouterProvider
 
     provider = OpenRouterProvider.__new__(OpenRouterProvider)
     provider.api_key = "test-key"
-    provider.model = "test-model"
+    provider.model = "openrouter/free"
     provider._default_effort = ""
     provider._rate_limiter = AsyncMock()
     provider.client = MagicMock()
@@ -223,6 +246,9 @@ async def test_openrouter_stream_complete_calls_usage_store_when_session_id_prov
         events.append(event)
 
     reserve.assert_awaited_once()
+    # F32: free-tier stream reserves the 1024 output cap actually sent.
+    assert reserve.call_args.args[-1] == 1024
+    assert provider.client.stream.call_args.kwargs["json"]["max_tokens"] == 1024
     finish.assert_awaited_once()
     assert len(events) == 3  # 2 text + 1 done
     assert events[-1].type == "done"
@@ -273,3 +299,5 @@ async def test_openrouter_stream_complete_skips_usage_store_when_no_session_id(m
     reserve.assert_not_awaited()
     finish.assert_not_awaited()
     assert len(events) == 2  # 1 text + 1 done
+    # Paid streams keep the requested maximum (no free-tier clamp).
+    assert provider.client.stream.call_args.kwargs["json"]["max_tokens"] == 4096

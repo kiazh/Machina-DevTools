@@ -268,3 +268,66 @@ class TestIdentityGate:
 
         assert result is False
         assert any("RuntimeError" in (record.exc_text or "") for record in caplog.records)
+
+
+class TestIdentityF34RelevanceAndSentiment:
+    """F34: relevance must not dilute with fact count; sentiment must strip
+    punctuation and respect local negation."""
+
+    def test_relevance_survives_more_than_ten_known_facts(self):
+        facts = {f"fact-{i}": 0.8 for i in range(11)}
+        facts["Python"] = 0.9
+        belief = _make_belief(known_facts=facts)
+        gate = IdentityGate()
+        assert gate._compute_relevance("I use Python daily.", belief) >= gate.RELEVANCE_THRESHOLD
+
+    def test_relevance_matches_whole_words_not_substrings(self):
+        belief = _make_belief(known_facts={"cat": 0.9})
+        gate = IdentityGate()
+        assert gate._compute_relevance("concatenate these strings", belief) == 0.0
+        assert gate._compute_relevance("the cat is here", belief) == 1.0
+
+    def test_consistency_strips_trailing_punctuation(self):
+        belief = _make_belief(known_facts={"Python": 0.9})
+        gate = IdentityGate()
+        assert gate._compute_consistency("Python is good.", belief) == pytest.approx(0.9)
+
+    @pytest.mark.parametrize(
+        "content",
+        [
+            "Python is not good.",
+            "Python isn't good.",
+            "I do not like Python.",
+        ],
+    )
+    def test_consistency_respects_local_negation(self, content):
+        belief = _make_belief(known_facts={"Python": 0.9})
+        gate = IdentityGate()
+        assert gate._compute_consistency(content, belief) == pytest.approx(0.1)
+
+    def test_consistency_negative_word(self):
+        belief = _make_belief(known_facts={"Python": 0.9})
+        gate = IdentityGate()
+        assert gate._compute_consistency("Python is bad.", belief) == pytest.approx(0.1)
+
+    def test_consistency_mixed_polarity_stays_neutral(self):
+        belief = _make_belief(known_facts={"Python": 0.9})
+        gate = IdentityGate()
+        assert gate._compute_consistency("Python is good and bad.", belief) == pytest.approx(0.5)
+
+    def test_relevance_is_capped_at_one(self):
+        facts = {f"fact-{i}": 0.8 for i in range(12)}
+        belief = _make_belief(known_facts=facts)
+        gate = IdentityGate()
+        content = " ".join(facts)
+        assert gate._compute_relevance(content, belief) == 1.0
+
+    def test_relevance_accepts_plural_fact_forms(self):
+        belief = _make_belief(known_facts={"API": 0.9})
+        gate = IdentityGate()
+        assert gate._compute_relevance("APIs are useful", belief) == 1.0
+
+    def test_negation_does_not_cross_an_unrelated_negator(self):
+        belief = _make_belief(known_facts={"Python": 0.9})
+        gate = IdentityGate()
+        assert gate._compute_consistency("Python without issues is good.", belief) == pytest.approx(0.9)

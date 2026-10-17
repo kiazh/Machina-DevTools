@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -120,3 +120,59 @@ def test_latest_instruction_takes_priority():
     )
     assert effective_instruction(cp, None) == "Map failed outcome to error status"
     assert effective_instruction(None, None) is None
+
+
+def test_checkpoint_chunk_inherits_newest_replaced_timestamp():
+    """F35: on the non-LLM path the checkpoint replaces old_chunks, so it must
+    carry their newest timestamp rather than jumping to now() after the
+    preserved recent turns."""
+    session_id = uuid.uuid4()
+    now = datetime.now(UTC).replace(tzinfo=None)
+    chunks = [
+        ContextChunk(
+            id=uuid.uuid4(),
+            session_id=session_id,
+            agent_id="harness",
+            chunk_type="user_message",
+            payload={"content": f"message {i} with enough text to compress"},
+            token_count=20,
+            created_at=now - timedelta(minutes=i),
+        )
+        for i in range(6)
+    ]
+    comp = ContextCompressor(config=CompressionConfig(llm_summarize=False, preserve_recent=2))
+    result = comp.compress(chunks, session_id, "harness", checkpoint=_checkpoint())
+
+    summary = next(c for c in result.compressed_chunks if c.chunk_type == "compression_summary")
+    recent = chunks[:2]
+    old = chunks[2:]
+    assert summary.created_at == max(c.created_at for c in old)
+    assert summary.created_at < min(c.created_at for c in recent)
+
+    ordered = sorted(result.compressed_chunks, key=lambda c: c.created_at)
+    assert ordered.index(summary) < ordered.index(recent[0])
+
+
+@pytest.mark.asyncio
+async def test_acompress_checkpoint_uses_replaced_timestamps_too():
+    """F35: the async non-LLM path shares the same checkpoint ordering."""
+    session_id = uuid.uuid4()
+    now = datetime.now(UTC).replace(tzinfo=None)
+    chunks = [
+        ContextChunk(
+            id=uuid.uuid4(),
+            session_id=session_id,
+            agent_id="harness",
+            chunk_type="user_message",
+            payload={"content": f"message {i} with enough text to compress"},
+            token_count=20,
+            created_at=now - timedelta(minutes=i),
+        )
+        for i in range(6)
+    ]
+    comp = ContextCompressor(config=CompressionConfig(llm_summarize=False, preserve_recent=2))
+    result = await comp.acompress(chunks, session_id, "harness", checkpoint=_checkpoint())
+
+    summary = next(c for c in result.compressed_chunks if c.chunk_type == "compression_summary")
+    assert summary.created_at == max(c.created_at for c in chunks[2:])
+    assert summary.created_at < min(c.created_at for c in chunks[:2])

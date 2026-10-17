@@ -277,28 +277,58 @@ async def test_login_timeout_emits_failed(fake_home, monkeypatch):
     assert feature._PENDING is None
 
 
-async def test_login_state_mismatch_emits_failed_without_exchanging(fake_home, monkeypatch):
+async def test_login_ignores_invalid_callbacks_before_valid_callback(fake_home, monkeypatch):
     port = _free_port()
     _install_login(monkeypatch, port)
+    exchanged = []
 
-    def fake_exchange(code, **kwargs):  # pragma: no cover - must not run
-        raise AssertionError("a rejected callback must never exchange")
+    def fake_exchange(code, **kwargs):
+        exchanged.append(code)
+        return {**_tokens(account="acct-gw"), "expires_at": time.time() + 60}
 
     monkeypatch.setattr(chatgpt_auth, "exchange_code", fake_exchange)
     harness = _Harness()
+    await harness.call("auth.chatgpt.login", {"no_browser": True})
+    pending = feature._PENDING
+    assert pending is not None
+    base = f"http://127.0.0.1:{port}/auth/callback"
+    hostile = urllib.request.Request(
+        f"{base}?code=bad&state=gw-state", headers={"Host": "attacker.example"}
+    )
+    status, _ = await asyncio.to_thread(_open_callback, hostile)
+    assert status == 400
+    assert not pending.task.done()
+    for query in (
+        "error=untrusted",
+        "code=bad&state=wrong",
+        "error=untrusted&state=wrong",
+    ):
+        status, _ = await asyncio.to_thread(_open_callback, f"{base}?{query}")
+        assert status == 400
+        assert not pending.task.done()
+        assert harness.events() == []
+        assert exchanged == []
+    await asyncio.to_thread(_open_callback, f"{base}?code=good&state=gw-state")
+    await asyncio.wait_for(pending.task, timeout=5)
+    assert exchanged == ["good"]
+    assert harness.events()[0]["type"] == "auth.chatgpt.completed"
 
+
+async def test_login_oauth_error_emits_fixed_reason_code(fake_home, monkeypatch):
+    port = _free_port()
+    _install_login(monkeypatch, port)
+    harness = _Harness()
     await harness.call("auth.chatgpt.login", {"no_browser": True})
     pending = feature._PENDING
     assert pending is not None
     status, _ = await asyncio.to_thread(
-        _open_callback, f"http://127.0.0.1:{port}/auth/callback?code=gw-code&state=wrong-state"
+        _open_callback,
+        f"http://127.0.0.1:{port}/auth/callback?error=secret-untrusted%0Avalue&state=gw-state",
     )
-    assert status == 400
+    assert status == 200
     await asyncio.wait_for(pending.task, timeout=5)
-
-    events = harness.events()
-    assert events[0]["type"] == "auth.chatgpt.failed"
-    assert events[0]["reason"] == "state_mismatch"
+    assert harness.events()[0]["reason"] == "oauth_error"
+    assert "secret-untrusted" not in str(harness.events())
 
 
 async def test_login_port_conflict_is_a_typed_rpc_error(fake_home, monkeypatch):

@@ -533,3 +533,33 @@ async def test_gateway_cancel_marks_trace_cancelled(monkeypatch):
     assert len(_completes(frames)) == 1
     assert _completes(frames)[0]["cancelled"] is True
     assert turn_report("gw-cancel")["status"] == "cancelled"
+
+
+@pytest.mark.parametrize("finish", [end_turn, cancel_turn])
+async def test_finishing_child_from_parent_keeps_parent_span_stack(finish):
+    start_turn("parent")
+    with llm_span("outer"):
+
+        async def child():
+            start_turn("child")
+
+        await asyncio.create_task(child())
+        with tool_span("parent-work", {}) as parent_work:
+            finish("child")
+            with tool_span("nested-parent-work", {}) as nested:
+                assert nested.parent_id == parent_work.id
+            assert current_turn_id() == "parent"
+    end_turn("parent")
+
+
+@pytest.mark.parametrize("finish", [end_turn, cancel_turn])
+def test_finishing_parent_out_of_order_keeps_child_span_stack(finish):
+    start_turn("parent")
+    with llm_span("parent-span"):
+        start_turn("child")
+        with tool_span("child-work", {}) as child_work:
+            finish("parent")
+            with tool_span("nested-child-work", {}) as nested:
+                assert nested.parent_id == child_work.id
+            assert current_turn_id() == "child"
+        end_turn("child")

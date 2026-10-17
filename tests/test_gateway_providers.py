@@ -544,3 +544,53 @@ async def test_resumed_session_route_drives_models_and_effort(sandbox, monkeypat
     cleared = await gw._methods["models.setEffort"]({"effort": "off"})
     assert cleared["effort"] is None
     assert config.get("reasoning_effort") == ""
+
+
+async def test_all_registered_builtins_are_discoverable(sandbox):
+    from machina.core.provider.specs import PROVIDERS
+
+    listing = await feature.providers_list(_gw(provider="copilot"), {})
+    rows = listing["providers"]
+    assert {row["name"] for row in rows if row["kind"] == "builtin"} == set(PROVIDERS)
+    assert next(row for row in rows if row["name"] == "copilot")["selected"] is True
+    out = await feature.models_list(_gw(provider="copilot"), {})
+    assert out["provider"] == "copilot"
+    assert out["source"] == "none"
+    assert out["models"] == []
+
+
+@pytest.mark.parametrize("models", [[{"id": "new-model"}], []])
+async def test_named_provider_refresh_replaces_removed_default(sandbox, monkeypatch, models):
+    from machina.security import providers as store
+
+    store.add_provider("acme", "http://127.0.0.1:9000/v1")
+    store.save_models("acme", [{"id": "old-model"}])
+    monkeypatch.setattr(store, "fetch_models", lambda *a, **k: models)
+    result = await feature.providers_add(
+        _gw(), {"name": "acme", "baseUrl": "http://127.0.0.1:9001/v1"}
+    )
+    entry = store.get_provider_entry("acme")
+    assert result["models"] == entry["models"] == models
+    assert entry["default_model"] == ("new-model" if models else None)
+
+
+def test_provider_catalog_keeps_default_only_while_present(sandbox):
+    from machina.security import providers as store
+
+    store.add_provider("acme", "http://127.0.0.1:9000/v1")
+    store.save_models("acme", [{"id": "a"}, {"id": "b"}])
+    store.save_models("acme", [{"id": "b"}, {"id": "a"}])
+    assert store.get_provider_entry("acme")["default_model"] == "a"
+    store.save_models("acme", [{"id": "b"}])
+    assert store.get_provider_entry("acme")["default_model"] == "b"
+
+
+def test_changing_provider_endpoint_invalidates_previous_catalog(sandbox):
+    from machina.security import providers as store
+
+    store.add_provider("acme", "http://127.0.0.1:9000/v1")
+    store.save_models("acme", [{"id": "old-model"}])
+    updated = store.add_provider("acme", "http://127.0.0.1:9001/v1")
+    assert updated["models"] == []
+    assert updated["default_model"] is None
+    assert updated["models_fetched_at"] is None

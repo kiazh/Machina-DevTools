@@ -659,3 +659,98 @@ def test_import_from_codex_refuses_after_a_concurrent_logout(fake_home, monkeypa
     monkeypatch.setattr(chatgpt_auth, "_read_codex_tokens", read_then_invalidate)
     assert chatgpt_auth.import_from_codex() is None
     assert not store.exists(), "a logout-fenced import must publish nothing"
+
+
+def test_refresh_refuses_tokens_invalidated_during_exchange(tmp_path):
+    target = tmp_path / "chatgpt.json"
+    chatgpt_auth.save_tokens(_opaque_tokens(), target)
+
+    def handler(request):
+        chatgpt_auth.invalidate_credentials(target)
+        return httpx.Response(200, json=_opaque_tokens("fresh"))
+
+    with _mock_client(handler) as client:
+        with pytest.raises(ChatGPTAuthError) as error:
+            chatgpt_auth.refresh(path=target, client=client)
+    assert error.value.code == "chatgpt_auth_cancelled"
+    assert chatgpt_auth.load_tokens(target)["refresh_token"] == _opaque_tokens()["refresh_token"]
+
+
+def test_logout_does_not_wait_for_in_flight_refresh(tmp_path):
+    target = tmp_path / "chatgpt.json"
+    chatgpt_auth.save_tokens(_opaque_tokens(), target)
+    dispatched = threading.Event()
+    release = threading.Event()
+
+    def handler(request):
+        dispatched.set()
+        assert release.wait(5)
+        return httpx.Response(200, json=_opaque_tokens("fresh"))
+
+    def refresh():
+        with _mock_client(handler) as client:
+            return chatgpt_auth.refresh(path=target, client=client)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        response = pool.submit(refresh)
+        assert dispatched.wait(5)
+        logout = pool.submit(chatgpt_auth.logout, path=target)
+        try:
+            assert logout.result(timeout=1) is True
+            assert not target.exists()
+        finally:
+            release.set()
+        with pytest.raises(ChatGPTAuthError) as error:
+            response.result(timeout=5)
+        assert error.value.code == "chatgpt_auth_cancelled"
+    assert not target.exists()
+
+
+@pytest.mark.parametrize("operation", ["refresh", "exchange", "import"])
+def test_logout_racing_token_publication_removes_new_tokens(tmp_path, monkeypatch, operation):
+    target = tmp_path / "chatgpt.json"
+    chatgpt_auth.save_tokens(_opaque_tokens(), target)
+    generation = chatgpt_auth.credential_generation(target)
+    save = chatgpt_auth.save_tokens
+
+    def save_then_logout(tokens, path):
+        save(tokens, path)
+        chatgpt_auth.invalidate_credentials(path)
+
+    monkeypatch.setattr(chatgpt_auth, "save_tokens", save_then_logout)
+    with _mock_client(lambda _: httpx.Response(200, json=_opaque_tokens("fresh"))) as client:
+        if operation == "import":
+            monkeypatch.setattr(
+                chatgpt_auth, "_read_codex_tokens", lambda _: _opaque_tokens("fresh")
+            )
+            assert chatgpt_auth.import_from_codex(path=target, force=True) is None
+        else:
+            with pytest.raises(ChatGPTAuthError) as error:
+                if operation == "refresh":
+                    chatgpt_auth.refresh(path=target, client=client)
+                else:
+                    chatgpt_auth.exchange_code(
+                        "code",
+                        code_verifier="verifier",
+                        path=target,
+                        client=client,
+                        generation=generation,
+                    )
+            assert error.value.code == "chatgpt_auth_cancelled"
+    assert not target.exists()
+
+
+def test_chatgpt_uses_shared_fallback_generation_when_disk_is_unwritable(tmp_path, monkeypatch):
+    from machina.security import store_fence
+
+    target = tmp_path / "chatgpt.json"
+
+    def fail_replace(*_args):
+        raise PermissionError("generation store is read-only")
+
+    monkeypatch.setattr(store_fence.os, "replace", fail_replace)
+    before = chatgpt_auth.credential_generation(target)
+    store_fence.invalidate_credentials(target)
+    assert chatgpt_auth.credential_generation(target) == before + 1
+    chatgpt_auth.invalidate_credentials(target)
+    assert store_fence.credential_generation(target) == before + 2

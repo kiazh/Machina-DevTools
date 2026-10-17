@@ -290,31 +290,41 @@ def test_login_settles_from_a_real_local_callback(fake_home, monkeypatch):
     assert "test-code" not in result.output
 
 
-def test_login_rejects_state_mismatch_without_exchanging(fake_home, monkeypatch):
+def test_login_ignores_invalid_callbacks_before_valid_callback(fake_home, monkeypatch):
     port = _free_port()
     _install_login(monkeypatch, port)
-    exchanged: list[str] = []
+    exchanged = []
 
-    def fake_exchange(code, **kwargs):  # pragma: no cover - must not run
+    def fake_exchange(code, **kwargs):
         exchanged.append(code)
-        raise AssertionError("a rejected callback must never exchange")
+        return {**_tokens(), "account_id": "acct-flow"}
 
     monkeypatch.setattr(chatgpt_auth, "exchange_code", fake_exchange)
-
     with ThreadPoolExecutor(max_workers=1) as pool:
         future = pool.submit(
-            runner.invoke, auth_cli.app, ["login", "--no-browser", "--timeout", "15"]
+            runner.invoke, auth_cli.app, ["login", "--no-browser", "--timeout", "3"]
         )
-        status, _ = _open_callback(
-            f"http://127.0.0.1:{port}/auth/callback?code=test-code&state=wrong-state"
+        base = f"http://127.0.0.1:{port}/auth/callback"
+        hostile = urllib.request.Request(
+            f"{base}?code=bad&state=cli-state", headers={"Host": "attacker.example"}
         )
-        result = future.result(timeout=20)
-
-    assert status == 400
-    assert result.exit_code == 1, result.output
-    assert "state did not match" in result.output
-    assert exchanged == []
-    assert not (fake_home / ".machina").exists()
+        status, _ = _open_callback(hostile)
+        assert status == 400
+        assert not future.done()
+        for query in (
+            "error=untrusted",
+            "code=bad&state=wrong",
+            "error=untrusted&state=wrong",
+        ):
+            status, _ = _open_callback(f"{base}?{query}")
+            assert status == 400
+            assert not future.done()
+            assert exchanged == []
+        status, _ = _open_callback(f"{base}?code=good&state=cli-state")
+        result = future.result(timeout=5)
+    assert status == 200
+    assert result.exit_code == 0, result.output
+    assert exchanged == ["good"]
 
 
 def test_login_timeout_is_a_clean_error_and_releases_the_port(fake_home, monkeypatch):
