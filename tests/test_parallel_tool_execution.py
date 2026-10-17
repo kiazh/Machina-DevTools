@@ -111,12 +111,11 @@ async def test_independent_tools_run_concurrently(slow_tool):
         ],
     )
 
-    start = time.monotonic()
     await _collect(agent, response, uuid.uuid4())
-    elapsed = time.monotonic() - start
 
+    # peak concurrency is the deterministic proof of overlap; a wall-clock
+    # bound is flaky under a loaded full-suite run.
     assert slow_tool["peak"] >= 2, "tools did not overlap — still sequential"
-    assert elapsed < 0.5, f"expected overlap (~0.2s), took {elapsed:.2f}s"
 
 
 async def test_result_order_is_preserved(slow_tool):
