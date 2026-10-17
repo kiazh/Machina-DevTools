@@ -566,3 +566,21 @@ async def test_live_self_connect_call_disconnect(monkeypatch, tmp_path):
         # Never leave a half-configured self server behind after a failure.
         with contextlib.suppress(Exception):
             await service.remove("machina-self")
+
+
+async def test_mcp_list_accepts_its_returned_continuation_offset(monkeypatch):
+    """combined #24: a next_offset the tool returns must be accepted."""
+    import machina.tools.mcp as mcp_tools
+    from machina.connectors.models import ConnectorConfig
+
+    service = ConnectorService()
+    for index in range(230):
+        service.registry.add(ConnectorConfig(id=f"s{index:03d}", command=sys.executable))
+    monkeypatch.setattr(mcp_tools, "_service", lambda: service)
+    monkeypatch.setattr(mcp_tools, "active_agent_scope", lambda: _agent_scope(AGENT))
+
+    first = json.loads(await mcp_tools.mcp_list(offset=200))
+    assert first["next_offset"] == 220
+    second = json.loads(await mcp_tools.mcp_list(offset=first["next_offset"]))
+    assert len(second["servers"]) == 10
+    assert second["next_offset"] is None
