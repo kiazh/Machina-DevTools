@@ -410,3 +410,26 @@ def test_metadata_capabilities_are_preserved_in_discovery_fingerprint(capability
         assert advertised.fingerprint != baseline.fingerprint
 
     asyncio.run(run())
+
+
+@pytest.mark.parametrize(
+    ("approved", "scope", "allowed"),
+    [
+        ((), "admin:write delete:all", False),
+        (("read",), "read write", False),
+        (("read", "write"), "read", True),
+        ((), "", True),
+        ((), None, True),
+    ],
+)
+def test_token_scopes_cannot_exceed_even_empty_approval(approved, scope, allowed):
+    client = OAuthNetworkClient(transport=StubTransport())
+    payload = {"access_token": "test-token", "token_type": "Bearer"}
+    if scope is not None:
+        payload["scope"] = scope
+    if allowed:
+        client._validate_token_payload(payload, approved=approved)
+    else:
+        with pytest.raises(OAuthNetworkError) as error:
+            client._validate_token_payload(payload, approved=approved)
+        assert error.value.reason == "oauth_scope_not_allowed"
