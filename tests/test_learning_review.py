@@ -1498,3 +1498,34 @@ async def test_revert_records_status_before_cleanup_and_retries(
         assert registry.get("revert-retry") is None
     finally:
         await db_pool.execute("DELETE FROM sessions WHERE id = $1", session.id)
+
+
+async def test_learning_prompt_redacts_before_truncating(db_pool, monkeypatch, tmp_path):
+    """combined #16: a secret crossing the 1,200-char cut must not leak."""
+    from machina.core.config import config
+
+    monkeypatch.setattr("machina.skills.learning.db", db_pool)
+    monkeypatch.setattr("machina.core.session.db", db_pool)
+    monkeypatch.setattr(config, "learning_review_auto_apply", False)
+    monkeypatch.setattr(config, "learning_review_max_per_session", 5)
+    agent_id = f"redact-{uuid.uuid4()}"
+    session = await SessionManager().create(title="redact order", agent_id=agent_id)
+    reviewer = LearningReviewer(registry=SkillRegistry(tmp_path / "skills"))
+    prefix = "Document the deployment workflow "
+    user_message = prefix + "x" * (1185 - len(prefix)) + "ghp_" + "A" * 36
+    provider = FakeProvider(_candidate("redact-boundary"))
+    try:
+        result = await reviewer.review_turn(
+            session.id,
+            agent_id,
+            user_message,
+            "First do health checks then inspect logs and verify readiness.",
+            provider,
+        )
+        assert result is not None
+        prompt = provider.calls[0]["messages"][0]["content"]
+        assert "ghp_" not in prompt
+        assert "A" * 20 not in prompt
+        assert "[REDACTED" in prompt
+    finally:
+        await db_pool.execute("DELETE FROM sessions WHERE id = $1", session.id)
