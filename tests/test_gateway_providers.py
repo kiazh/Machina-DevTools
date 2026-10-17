@@ -544,3 +544,16 @@ async def test_resumed_session_route_drives_models_and_effort(sandbox, monkeypat
     cleared = await gw._methods["models.setEffort"]({"effort": "off"})
     assert cleared["effort"] is None
     assert config.get("reasoning_effort") == ""
+
+
+async def test_all_registered_builtins_are_discoverable(sandbox):
+    from machina.core.provider.specs import PROVIDERS
+
+    listing = await feature.providers_list(_gw(provider="copilot"), {})
+    rows = listing["providers"]
+    assert {row["name"] for row in rows if row["kind"] == "builtin"} == set(PROVIDERS)
+    assert next(row for row in rows if row["name"] == "copilot")["selected"] is True
+    out = await feature.models_list(_gw(provider="copilot"), {})
+    assert out["provider"] == "copilot"
+    assert out["source"] == "none"
+    assert out["models"] == []
