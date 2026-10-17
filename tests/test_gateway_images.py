@@ -143,6 +143,18 @@ async def image_gateway(db_pool, monkeypatch):
         await db_pool.execute("DELETE FROM sessions WHERE id = $1", uuid.UUID(sid))
 
 
+
+
+def _user_blocks(provider) -> list[dict]:
+    """The multimodal user content blocks (system pins now render first)."""
+    messages = provider.messages[-1]
+    return next(
+        message["content"]
+        for message in messages
+        if isinstance(message.get("content"), list)
+    )
+
+
 async def test_png_submission_reaches_provider_and_persists_attachment(image_gateway, db_pool):
     harness, sid, provider = image_gateway
     result = await harness.call(
@@ -153,7 +165,7 @@ async def test_png_submission_reaches_provider_and_persists_attachment(image_gat
     assert complete["text"] == "A small image."
     assert not complete["cancelled"]
 
-    blocks = provider.messages[0][0]["content"]
+    blocks = _user_blocks(provider)
     text = next(block["text"] for block in blocks if block["type"] == "text")
     assert "Describe this picture" in text
     assert PNG_DATA not in text
@@ -249,7 +261,7 @@ async def test_followup_after_resume_keeps_recent_image_bytes(image_gateway):
         )
         assert response["result"]["turnId"]
         assert (await resumed.complete())["text"] == "A small image."
-        content = provider.messages[-1][0]["content"]
+        content = _user_blocks(provider)
         assert isinstance(content, list)
         assert {
             "type": "image_url",
@@ -330,7 +342,7 @@ async def test_followup_image_context_respects_budget_without_duplicating_text(i
         assert followup["result"]["turnId"]
         assert (await resumed.complete())["text"] == "A small image."
         assert len(provider.messages) == before + 1
-        content = provider.messages[-1][0]["content"]
+        content = _user_blocks(provider)
         assert {
             "type": "image_url",
             "image_url": {"url": "data:image/png;base64," + PNG_DATA},
@@ -378,7 +390,7 @@ async def test_followup_retains_image_after_tool_churn_and_compaction(image_gate
         )
         assert result["result"]["turnId"]
         await resumed.complete()
-        content = provider.messages[-1][0]["content"]
+        content = _user_blocks(provider)
         assert isinstance(content, list), (
             "tool churn must not discard the image referenced by a follow-up"
         )
@@ -688,7 +700,7 @@ async def test_upgrade_recovers_prior_image_turn_after_tool_churn(image_gateway,
     await db.initialize_runtime_schema()
     await harness.call("prompt.submit", {"sessionId": sid, "text": "Recall the prior image"})
     await harness.complete()
-    content = provider.messages[-1][0]["content"]
+    content = _user_blocks(provider)
     assert isinstance(content, list)
     assert content[-1]["image_url"]["url"].endswith(PNG_DATA)
 
@@ -730,7 +742,7 @@ async def test_legacy_fallback_seeds_cache_before_compaction(image_gateway, db_p
             )
             assert result["result"]["turnId"]
             await resumed.complete()
-            content = provider.messages[-1][0]["content"]
+            content = _user_blocks(provider)
             assert isinstance(content, list), "seeded cache must survive legacy compaction"
             image = next(block for block in content if block["type"] == "image_url")
             assert base64.b64decode(image["image_url"]["url"].split(",", 1)[1]) == base64.b64decode(

@@ -35,7 +35,7 @@ from httpx import ASGITransport, AsyncClient
 
 from machina.api import app as api
 from machina.api.routes.models import PromptRequest
-from machina.core.models import LLMResponse, StreamEvent
+from machina.core.models import AgentResponse, LLMResponse, StreamEvent
 from machina.core.provider import LLMProvider
 from machina.core.turns import end_turn, try_begin_turn
 
@@ -462,3 +462,47 @@ async def test_ownership_lost_and_cleanup_frames_carry_canonical_turn_id(sse_env
     with pytest.raises(StopAsyncIteration):
         await anext(stream)
     await asyncio.wait_for(provider.closed_event.wait(), 10)
+
+
+async def test_approval_pause_emits_one_canonical_frame(sse_env):
+    """combined #29: the live pause and the done summary must not both emit."""
+    sid = await _create_session(sse_env)
+
+    class _PausingAgent:
+        provider = None
+
+        async def run_stream(self, session_id, prompt, **kwargs):
+            yield StreamEvent(
+                type="needs_approval",
+                content="req-1",
+                tool_name="file.write",
+                tool_args={"requestId": "req-1", "operation": "file.write"},
+            )
+            yield StreamEvent(
+                type="done",
+                response=AgentResponse(
+                    content="paused",
+                    needs_approval=[
+                        {
+                            "request_id": "req-1",
+                            "operation": "file.write",
+                            "target": "x",
+                            "session_id": str(session_id),
+                            "turn_id": "turn-1",
+                        }
+                    ],
+                ),
+            )
+
+        async def close(self):
+            return None
+
+    async def _build(*args, **kwargs):
+        return _PausingAgent()
+
+    sse_env.monkeypatch.setattr(
+        "machina.core.agent_factory.build_agent_for_session", _build
+    )
+    _body, frames = await _prompt_frames(sse_env, sid)
+    approvals = [frame for frame in frames if frame["type"] == "needs_approval"]
+    assert len(approvals) == 1
