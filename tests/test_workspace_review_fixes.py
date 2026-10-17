@@ -410,3 +410,21 @@ async def test_incremental_sync_fallback_replaces_server_text_without_stale_rang
     service._apply_document_sync(connection, uri, "python", None)
 
     assert connection.did_change_calls == [(uri, 2, [{"text": "a"}])]
+
+
+# ─── 9. workspace close retires the active LSP manager ───────────────────────
+async def test_workspace_close_retires_the_active_manager(tmp_path):
+    """combined #13: `/workspace close` must stop its child language servers."""
+    gateway = _FakeGateway()
+    service = WorkspaceService(send_event=lambda _event: None)
+    service.open(str(tmp_path), trust=True)
+    gateway.workspace_service = service
+    manager = _SlowManager(delay=0)
+    gateway._workspace_lsp_manager = manager
+
+    result = await ws.workspace_close(gateway, {"workspaceId": service.workspace_id})
+    assert result is not None
+    assert gateway._workspace_lsp_manager is None
+
+    await ws.drain_retired_lsp_managers(gateway, timeout=5.0)
+    assert manager.completed is True
