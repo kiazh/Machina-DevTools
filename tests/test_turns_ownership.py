@@ -8,6 +8,8 @@ test_scheduler.py (local disposable database, never production).
 
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 
 
@@ -59,7 +61,9 @@ async def test_crash_expiry_recovery_and_stale_release():
     from machina.db.connection import db
 
     s = await _session()
-    token_a = await try_begin_turn(s.id)
+    # The acquiring task must be finished to model a dead worker: a live
+    # in-process holder legitimately keeps the mutex (combined #11).
+    token_a = await asyncio.create_task(try_begin_turn(s.id))
     assert token_a and await turn_active(s.id)
     # Simulate worker death: expire the claim directly.
     await db.execute(

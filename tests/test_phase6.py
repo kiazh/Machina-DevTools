@@ -372,7 +372,7 @@ async def test_versioned_memory_and_document_routes(monkeypatch):
     add_memory = AsyncMock(return_value=memory)
     monkeypatch.setattr(memory_store, "add", add_memory)
     pipeline = SimpleNamespace(index_document=AsyncMock(return_value=[object(), object()]))
-    monkeypatch.setattr(rag, "get_rag_pipeline", AsyncMock(return_value=pipeline))
+    monkeypatch.setattr(rag, "acquire_rag_pipeline", AsyncMock(return_value=pipeline))
     app = create_app()
     headers = {"Authorization": "Bearer phase6-test"}
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:

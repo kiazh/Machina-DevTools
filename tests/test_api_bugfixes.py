@@ -210,7 +210,7 @@ class TestDocumentOwnership:
         with patch("machina.api.app.session_manager.get", new_callable=AsyncMock) as mock_get:
             mock_get.return_value = session
             with patch(
-                "machina.tools.rag.get_rag_pipeline", new_callable=AsyncMock
+                "machina.tools.rag.acquire_rag_pipeline", new_callable=AsyncMock
             ) as mock_pipeline:
                 mock_pipeline.return_value = AsyncMock()
                 mock_pipeline.return_value.index_document = AsyncMock(return_value=[object()])
@@ -233,7 +233,7 @@ class TestDocumentOwnership:
         with patch("machina.api.app.session_manager.get", new_callable=AsyncMock) as mock_get:
             mock_get.return_value = session
             with patch(
-                "machina.tools.rag.get_rag_pipeline", new_callable=AsyncMock
+                "machina.tools.rag.acquire_rag_pipeline", new_callable=AsyncMock
             ) as mock_pipeline:
                 mock_pipeline.return_value = AsyncMock()
                 mock_pipeline.return_value.index_document = AsyncMock(return_value=[object()])
@@ -267,7 +267,7 @@ class TestDocumentOwnership:
         with patch("machina.api.app.session_manager.get", new_callable=AsyncMock) as mock_get:
             mock_get.return_value = session
             with patch(
-                "machina.tools.rag.get_rag_pipeline", new_callable=AsyncMock
+                "machina.tools.rag.acquire_rag_pipeline", new_callable=AsyncMock
             ) as mock_pipeline:
                 mock_pipeline.return_value = AsyncMock()
                 mock_pipeline.return_value.search = AsyncMock(return_value=[])
@@ -284,7 +284,7 @@ class TestDocumentOwnership:
         with patch("machina.api.app.session_manager.get", new_callable=AsyncMock) as mock_get:
             mock_get.return_value = session
             with patch(
-                "machina.tools.rag.get_rag_pipeline", new_callable=AsyncMock
+                "machina.tools.rag.acquire_rag_pipeline", new_callable=AsyncMock
             ) as mock_pipeline:
                 mock_pipeline.return_value = AsyncMock()
                 mock_pipeline.return_value.search = AsyncMock(return_value=[])

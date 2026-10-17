@@ -21,7 +21,7 @@ async def test_rag_tool_rejects_another_session(monkeypatch, operation):
     session_token = current_session_id.set(own_session)
     monkeypatch.setattr("machina.tools.agents.db.fetchval", AsyncMock(return_value="owner"))
     pipeline = AsyncMock()
-    monkeypatch.setattr(rag, "get_rag_pipeline", AsyncMock(return_value=pipeline))
+    monkeypatch.setattr(rag, "acquire_rag_pipeline", AsyncMock(return_value=pipeline))
     try:
         with pytest.raises(ToolError, match="session"):
             if operation == "index_document":
@@ -42,7 +42,7 @@ async def test_rag_tool_allows_its_own_session(monkeypatch):
     monkeypatch.setattr("machina.tools.agents.db.fetchval", AsyncMock(return_value="owner"))
     pipeline = AsyncMock()
     pipeline.search.return_value = []
-    monkeypatch.setattr(rag, "get_rag_pipeline", AsyncMock(return_value=pipeline))
+    monkeypatch.setattr(rag, "acquire_rag_pipeline", AsyncMock(return_value=pipeline))
     try:
         assert "No results" in await rag.search_documents("query", str(session))
         pipeline.search.assert_awaited_once()
@@ -59,7 +59,7 @@ async def test_rag_tool_defaults_to_the_active_session(monkeypatch):
     monkeypatch.setattr("machina.tools.agents.db.fetchval", AsyncMock(return_value="owner"))
     pipeline = AsyncMock()
     pipeline.search.return_value = []
-    monkeypatch.setattr(rag, "get_rag_pipeline", AsyncMock(return_value=pipeline))
+    monkeypatch.setattr(rag, "acquire_rag_pipeline", AsyncMock(return_value=pipeline))
     try:
         assert "No results" in await rag.search_documents("query")
         assert "No results" in await rag.search_documents("query", "current")
