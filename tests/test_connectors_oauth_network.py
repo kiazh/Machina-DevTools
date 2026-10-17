@@ -433,3 +433,39 @@ def test_token_scopes_cannot_exceed_even_empty_approval(approved, scope, allowed
         with pytest.raises(OAuthNetworkError) as error:
             client._validate_token_payload(payload, approved=approved)
         assert error.value.reason == "oauth_scope_not_allowed"
+
+
+@pytest.mark.parametrize("dns", [False, True])
+@pytest.mark.parametrize(
+    "address",
+    ["169.254.169.254", "100.100.100.100", "169.254.1.1", "224.0.0.1", "0.0.0.0"],
+)
+def test_mapped_ipv4_unsafe_destinations_remain_blocked_with_local_access(
+    monkeypatch, dns, address
+):
+    import socket
+
+    from machina.connectors import oauth_network
+
+    mapped = f"::ffff:{address}"
+    host = mapped
+    if dns:
+        host = "mapped.example.test"
+        monkeypatch.setattr(
+            oauth_network,
+            "awaitable_dns",
+            lambda _: [(socket.AF_INET6, socket.SOCK_STREAM, 6, "", (mapped, 443, 0, 0))],
+        )
+    with pytest.raises(OAuthNetworkError) as error:
+        oauth_network.classify_url_host(host, local_access=True)
+    assert error.value.reason == "oauth_unsafe_destination"
+
+
+@pytest.mark.parametrize("address", ["127.0.0.1", "10.0.0.1"])
+def test_mapped_ipv4_local_destinations_require_consent(address):
+    from machina.connectors.oauth_network import classify_url_host
+
+    mapped = f"::ffff:{address}"
+    assert classify_url_host(mapped, local_access=True)
+    with pytest.raises(OAuthNetworkError):
+        classify_url_host(mapped, local_access=False)
