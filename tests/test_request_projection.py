@@ -768,3 +768,27 @@ def test_import_subprocess_loads_zero_provider_modules():
         or name.split(".")[0] in {"anthropic", "openai", "httpx", "litellm", "ollama", "cohere"}
     )
     assert banned == [], banned
+
+
+def test_derived_system_pins_precede_the_user_instruction():
+    """combined #15: never emit [user, system, ...] for strict providers."""
+    inp = ProjectionInput(
+        messages=(
+            ProjectionMessage(
+                unit_id="m0",
+                role="user",
+                content="Review only; do not edit.",
+                kind="required",
+            ),
+        ),
+        pins=ProjectionPins(read_only_scope=("operation_scope=read-only",)),
+        budget_tokens=10_000,
+        count_tokens=Counting(),
+        artifacts=None,
+        safety_headroom_tokens=0,
+        min_recent_groups=1,
+    )
+    result = project_request(inp)
+    assert result.refusal is None
+    roles = [message["role"] for message in result.planned_messages]
+    assert roles == ["system", "user"]
