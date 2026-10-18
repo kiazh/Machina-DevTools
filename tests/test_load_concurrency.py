@@ -536,10 +536,7 @@ async def test_rpc_gateway_concurrent_calls(load_db, monkeypatch):
         def __init__(self):
             self._db_ready = True
 
-        async def handle_line(self, line: str) -> None:
-            import json
-
-            frame = json.loads(line)
+        async def handle_message(self, frame: dict) -> None:
             rid = frame.get("id")
             # Simulate some async work
             await asyncio.sleep(0.001)

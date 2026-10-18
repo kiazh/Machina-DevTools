@@ -72,8 +72,7 @@ class TestRpcGatewayThreadSafety:
             gw = _RpcGateway()
 
             # Simulate the gateway processing requests with a delay
-            async def mock_handle(line):
-                frame = json.loads(line)
+            async def mock_handle(frame):
                 rid = frame.get("id")
                 # Small delay to increase chance of interleaving
                 await asyncio.sleep(0.001)
@@ -85,7 +84,7 @@ class TestRpcGatewayThreadSafety:
                     }
                 )
 
-            mock_gw_instance.handle_line = mock_handle
+            mock_gw_instance.handle_message = mock_handle
 
             # Fire 10 concurrent calls
             results = await asyncio.gather(*[gw.call("test.method", {"i": i}) for i in range(10)])
@@ -112,8 +111,7 @@ class TestRpcGatewayThreadSafety:
             seen_ids = []
             lock = asyncio.Lock()
 
-            async def mock_handle(line):
-                frame = json.loads(line)
+            async def mock_handle(frame):
                 rid = frame.get("id")
                 async with lock:
                     seen_ids.append(rid)
@@ -127,7 +125,7 @@ class TestRpcGatewayThreadSafety:
                     }
                 )
 
-            mock_gw_instance.handle_line = mock_handle
+            mock_gw_instance.handle_message = mock_handle
 
             # Fire 20 concurrent calls
             results = await asyncio.gather(*[gw.call("test.method", {}) for _ in range(20)])
@@ -153,8 +151,7 @@ class TestRpcGatewayThreadSafety:
             assigned_ids = []
             id_lock = asyncio.Lock()
 
-            async def mock_handle(line):
-                frame = json.loads(line)
+            async def mock_handle(frame):
                 rid = frame.get("id")
                 async with id_lock:
                     assigned_ids.append(rid)
@@ -167,7 +164,7 @@ class TestRpcGatewayThreadSafety:
                     }
                 )
 
-            mock_gw_instance.handle_line = mock_handle
+            mock_gw_instance.handle_message = mock_handle
 
             # Fire 50 concurrent calls
             await asyncio.gather(*[gw.call("test.method", {}) for _ in range(50)])
@@ -374,11 +371,10 @@ class TestRpcGatewayTTL:
         """A completed call leaves nothing pending — nothing to expire."""
         gw, fake = self._build_gateway()
 
-        async def handle_line(line):
-            frame = json.loads(line)
+        async def handle_message(frame):
             gw._capture({"jsonrpc": "2.0", "id": frame["id"], "result": {"ok": True}})
 
-        fake.handle_line = handle_line
+        fake.handle_message = handle_message
 
         result = await gw.call("session.list", {})
 
@@ -390,12 +386,11 @@ class TestRpcGatewayTTL:
         """100 answered calls leave zero pending entries, not 100."""
         gw, fake = self._build_gateway()
 
-        async def handle_line(line):
-            frame = json.loads(line)
+        async def handle_message(frame):
             rid = frame["id"]
             gw._capture({"jsonrpc": "2.0", "id": rid, "result": {"id": rid}})
 
-        fake.handle_line = handle_line
+        fake.handle_message = handle_message
 
         for _ in range(100):
             await gw.call("test.method", {})
@@ -410,10 +405,10 @@ class TestRpcGatewayTTL:
 
         gw, fake = self._build_gateway()
 
-        async def handle_line(line):
+        async def handle_message(frame):
             return None
 
-        fake.handle_line = handle_line
+        fake.handle_message = handle_message
 
         with pytest.raises(RpcError):
             await gw.call("session.list", {})

@@ -8,7 +8,6 @@ dependency, the redaction pass, the error mapping, and the real
 
 from __future__ import annotations
 
-import json
 import os
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -51,10 +50,9 @@ async def rpc():
             responses={},
         )
 
-        async def handle_line(line: str) -> None:
-            frame = json.loads(line)
-            state.seen.append(frame)
-            rid = frame["id"]
+        async def handle_message(message: dict) -> None:
+            state.seen.append(message)
+            rid = message["id"]
             if state.responses.get("no_response"):
                 return
             if "error" in state.responses:
@@ -68,7 +66,7 @@ async def rpc():
                     }
                 )
 
-        fake_gw.handle_line = handle_line
+        fake_gw.handle_message = handle_message
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             state.client = client
