@@ -62,6 +62,10 @@ def isolate_config_secrets(monkeypatch):
         if k in LEGACY_ENV_VARS:
             monkeypatch.setenv(LEGACY_ENV_VARS[k], "")
             monkeypatch.setenv(f"{LEGACY_ENV_VARS[k]}_FILE", "")
+    # Provenance signing is optional and not a provider credential; a
+    # developer's .env must not turn it on for tests that stub the DB.
+    monkeypatch.delenv("MACHINA_PROVENANCE_KEY", raising=False)
+    monkeypatch.delenv("MACHINA_PROVENANCE_KEY_FILE", raising=False)
     yield
     secrets._redaction_values.clear()
     secrets._redaction_values.update(known_values)
@@ -153,6 +157,12 @@ def reset_singletons(monkeypatch):
 
     reset_session_modes()
 
+    # Optimization circuit breakers are process-global; one test's induced
+    # timeout must not make a later test skip its subsystem.
+    from machina.core.optimization.policy import reset_breakers
+
+    reset_breakers()
+
     # The audit writer is a process-global, loop-bound singleton. A test that
     # initialized a gateway without closing it leaks an ownership reference and
     # a writer task bound to its now-dead event loop; a later test's stop()
@@ -171,6 +181,15 @@ def reset_singletons(monkeypatch):
     config._session_overrides.clear()
     config._session_overrides.update(saved_overrides)
     reset_session_modes()
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def drain_optimization_shadow_tasks():
+    """Settle fire-and-forget optimization telemetry before the loop closes."""
+    from machina.core.optimization.shadow import drain_shadow_tasks
+
+    yield
+    await drain_shadow_tasks(timeout=1.0)
 
 
 @pytest_asyncio.fixture

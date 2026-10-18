@@ -252,6 +252,9 @@ async def test_real_loop_preserves_long_context_and_executes_reported_chain(
         response = await agent.run(session.id, "verify shell", verbose=False)
     assert response.content == "finished" and response.tokens_used == 90007
     assert len(provider.calls) == 2
-    assert "tail-sentinel" in provider.calls[0]["messages"][0]["content"]
+    assert any(
+        "tail-sentinel" in str(message.get("content", ""))
+        for message in provider.calls[0]["messages"]
+    )
     assert str(tmp_path) in provider.calls[1]["messages"][-1]["content"]
     assert not response.needs_approval

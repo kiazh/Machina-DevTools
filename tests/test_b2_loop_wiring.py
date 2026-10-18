@@ -238,9 +238,12 @@ async def test_flag_off_logs_bounded_shadow_and_payloads_stay_byte_identical(
     assert CONSTRAINT not in caplog.text
     assert "deterministic round filler" not in caplog.text
 
-    # Flag off: no pins were injected and the payloads are the unprojected list.
+    # Flag off: no pins were injected and the payloads are the unprojected
+    # native list (system instructions lead; the live request is a user turn).
     assert all(
-        call["messages"][0]["role"] == "user" for call in shadow_provider.calls
+        call["messages"][0]["role"] in ("system", "user")
+        and any(message["role"] == "user" for message in call["messages"])
+        for call in shadow_provider.calls
     )
 
     # Pre-B2 reference: the seam bypassed entirely (old guard-free passthrough).
