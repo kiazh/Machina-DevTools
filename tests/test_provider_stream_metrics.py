@@ -11,7 +11,7 @@ import pytest
 
 import machina
 from machina.core.provider import OpenRouterProvider
-from machina.core.provider import openrouter as openrouter_module
+from machina.core.provider import streaming as streaming_module
 
 
 class _Ctx:
@@ -54,7 +54,7 @@ async def test_openrouter_stream_records_success_metrics(monkeypatch):
     def _record(*args, **kwargs):
         recorded.append({"args": args, **kwargs})
 
-    monkeypatch.setattr(openrouter_module, "_record_llm_call", _record)
+    monkeypatch.setattr(streaming_module, "record_llm_call", _record)
 
     events = [
         event
@@ -81,7 +81,7 @@ async def test_openrouter_stream_records_error_metrics(monkeypatch):
     def _record(*args, **kwargs):
         recorded.append({"args": args, **kwargs})
 
-    monkeypatch.setattr(openrouter_module, "_record_llm_call", _record)
+    monkeypatch.setattr(streaming_module, "record_llm_call", _record)
 
     with pytest.raises(Exception):
         _ = [
@@ -91,10 +91,24 @@ async def test_openrouter_stream_records_error_metrics(monkeypatch):
     assert recorded and recorded[-1]["is_error"] is True
 
 
-@pytest.mark.parametrize("name", ["openrouter", "anthropic", "direct", "ollama"])
+@pytest.mark.parametrize(
+    "name", ["openrouter", "anthropic", "direct", "ollama", "chatgpt", "copilot"]
+)
 def test_every_stream_provider_calls_record_llm_call(name):
+    """Every stream transport routes accounting through the shared lifecycle.
+
+    The metric seam itself lives once in ``provider.streaming`` (see
+    ``complete_stream``/``fail_stream``); each transport must still call it on
+    both the success and error exits.
+    """
     path = Path(machina.__file__).resolve().parent / "core/provider" / f"{name}.py"
     source = path.read_text(encoding="utf-8")
     stream = source[source.index("async def stream_complete") :]
-    assert "_record_llm_call" in stream
-    assert "is_error=True" in stream
+    assert "complete_stream" in stream
+    assert "fail_stream" in stream
+
+
+def test_shared_stream_lifecycle_records_calls():
+    source = Path(streaming_module.__file__).read_text(encoding="utf-8")
+    assert "record_llm_call(" in source
+    assert "is_error=True" in source
