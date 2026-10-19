@@ -204,7 +204,12 @@ _CORE_IMPORT_CEILINGS = {
 #   tracing module. The consolidator's candidate-embedding block was extracted
 #   into one shared helper used by both consolidation paths (net 0: two
 #   deferred import pairs collapsed into one). Census 780 -> 781, cap -> 781.
-DEFERRED_IMPORT_CAP = 781
+#   CLI approval-origin fix (2026-10-19): +1 in cli/__init__.py — the headless
+#   chat turn binds permissions.broker.set_approval_handler inside the command
+#   (never at CLI import) so pause records carry the turn origin and
+#   poll-based HTTP resume can validate and attribute the continuation.
+#   Census 781 -> 782, cap -> 782.
+DEFERRED_IMPORT_CAP = 782
 
 
 def test_module_level_core_imports_only_shrink():

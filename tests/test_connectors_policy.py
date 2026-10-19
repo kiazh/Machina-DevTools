@@ -31,6 +31,14 @@ def test_only_explicit_trust_plus_allowlist_reads():
     assert classify_tool(trusted, _tool("other")) == "needs_approval"
 
 
+def test_namespaced_allowlist_entry_matches_too():
+    # Listings show namespaced names, so administrators may allowlist that
+    # exact form; it grants the same single tool, never a wildcard.
+    trusted = _config(trust="trusted_read", tool_allowlist=["alpha__read_note"])
+    assert classify_tool(trusted, _tool("read_note")) == "trusted_read"
+    assert classify_tool(trusted, _tool("other")) == "needs_approval"
+
+
 def test_annotations_and_descriptions_never_upgrade():
     injected = _tool(
         "read_note",
