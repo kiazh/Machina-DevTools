@@ -10,7 +10,9 @@ from tests.test_deep_rag_scope import ChunkRows, QueryEmbedder
 class BackfillRows(ChunkRows):
     async def fetch(self, query, *args):
         if "embedding IS NULL" in query:
-            assert args == (self.session_id,)
+            # Keyset paging seam: the first call carries no cursor and the
+            # fixtures always fit in one bounded batch (default 200).
+            assert args == (self.session_id, None, None, 200)
             return [row.copy() for row in self.rows if row["embedding"] is None]
         return await super().fetch(query, *args)
 

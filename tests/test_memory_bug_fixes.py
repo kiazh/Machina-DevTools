@@ -775,6 +775,11 @@ async def _fake_dedup_embed(text: str):
     return list(_DEDUP_VECTOR if "green cluster" in text.lower() else _OTHER_VECTOR)
 
 
+async def _fake_dedup_embed_many(texts: list[str]):
+    """Batch seam the consolidator now uses (one call per extraction)."""
+    return [await _fake_dedup_embed(text) for text in texts]
+
+
 async def _run_production_consolidation(db_pool, monkeypatch, agent_id: str, response_json: str):
     """Drive ``MemoryConsolidator.consolidate_session`` over the real DB path.
 
@@ -800,6 +805,7 @@ async def _run_production_consolidation(db_pool, monkeypatch, agent_id: str, res
         return SimpleNamespace(content=response_json)
 
     monkeypatch.setattr(embeddings_module, "embed_query", _fake_dedup_embed)
+    monkeypatch.setattr(embeddings_module, "embed_texts", _fake_dedup_embed_many)
     monkeypatch.setattr(usage_module.usage_store, "complete_call", fake_complete)
     consolidator = MemoryConsolidator(llm_provider=object(), store=MemoryStore())
     return await consolidator.consolidate_session(session_id, agent_id)

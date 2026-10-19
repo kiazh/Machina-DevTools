@@ -433,6 +433,9 @@ async def test_save_creates_new_file_and_refuses_unexpected_existing(tmp_path):
     created = await files.save_text("new.txt", "hi\n", None)
     assert created.ok is True
     assert (root / "new.txt").read_bytes() == b"hi\n"
+    # New files are owner-only (the agent file writer uses 0600 too); a
+    # permissive umask must not widen workspace content.
+    assert stat.S_IMODE((root / "new.txt").stat().st_mode) == 0o600
 
     blocked = await files.save_text("new.txt", "bye\n", None)
     assert blocked.ok is False

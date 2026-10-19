@@ -262,6 +262,6 @@ class TestReplacementErrorBoundaries:
         assert metrics.get_counter("diagnostic.failures") == before + 2
         # Archived with None derived fields rather than losing the row.
         archive_calls = [
-            c for c in connection.execute.await_args_list if "context_archive" in str(c)
+            c for c in connection.executemany.await_args_list if "context_archive" in str(c)
         ]
         assert archive_calls, "archive insert must still run with fallback derived fields"

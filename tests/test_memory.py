@@ -1118,10 +1118,10 @@ class TestMemoryConsolidator:
         consolidator.store = mock_store
         monkeypatch.setattr(consolidator, "_extract_memories", AsyncMock(return_value=[candidate]))
 
-        async def boom_embed(_content):
+        async def boom_embed(_texts):
             raise RuntimeError("embedding provider offline")
 
-        monkeypatch.setattr("machina.memory.embeddings.embed_query", boom_embed)
+        monkeypatch.setattr("machina.memory.embeddings.embed_texts", boom_embed)
         with patch("machina.memory.consolidator.context_manager") as mock_cm:
             mock_cm.get_chunks = AsyncMock(return_value=[chunk])
             mock_cm.get_chunks_since = AsyncMock(return_value=[chunk])

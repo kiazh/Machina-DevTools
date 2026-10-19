@@ -198,7 +198,13 @@ _CORE_IMPORT_CEILINGS = {
 #   imports in the upstream-synchronized auth/settings work merged during this
 #   branch; this wave adds no new provider/controller module-scope edges.
 #   Cap 776 -> 780. Further growth still fails.
-DEFERRED_IMPORT_CAP = 780
+#   Perf/debug sweep (2026-10-18): +1 in permissions/broker.py — the
+#   approval-resume wait hop binds observability.traces.record_approval_resume
+#   only on the resume path, so the permission hot path never imports the
+#   tracing module. The consolidator's candidate-embedding block was extracted
+#   into one shared helper used by both consolidation paths (net 0: two
+#   deferred import pairs collapsed into one). Census 780 -> 781, cap -> 781.
+DEFERRED_IMPORT_CAP = 781
 
 
 def test_module_level_core_imports_only_shrink():
