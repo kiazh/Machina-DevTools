@@ -172,6 +172,33 @@ def test_absolute_link_into_pristine_fixture_is_rejected_after_copy(
     assert not (tmp_path / "runs" / "task" / "opencode").exists()
 
 
+def test_run_destination_cannot_alias_the_pristine_task(tmp_path: Path) -> None:
+    """The task/machina layout must not make rmtree delete the fixture.
+
+    Regression for the data-loss case: task ``<base>/machina/machina`` with
+    ``--runs-dir <base>`` and harness ``machina`` computes the task pathname
+    itself. The destination check must run before any mutation.
+    """
+    task_dir = tmp_path / "machina" / "machina"
+    test_path = _make_task(task_dir)
+    args = Namespace(
+        runs_dir=str(tmp_path),
+        test_path=test_path,
+        prompt="Keep the fixture intact.",
+        model="fake/model",
+        machina_model=None,
+        machina_agent="harness",
+        timeout=60.0,
+        opencode_db=str(tmp_path / "absent-opencode.db"),
+    )
+
+    with pytest.raises(ValueError, match="overlaps --task-dir"):
+        head_to_head.run_one("machina", args, task_dir, Path(sys.executable))
+
+    assert (task_dir / "calc.py").is_file()
+    assert (task_dir / "tests" / "test_calc.py").is_file()
+
+
 # ---------------------------------------------------------------------------
 # Control: internal relative links keep working, genuine fix still scores
 # ---------------------------------------------------------------------------
