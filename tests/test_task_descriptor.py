@@ -304,6 +304,28 @@ def test_negated_intent_with_want_to_is_a_constraint_not_permission():
     assert d.operation_scope == "read-only"
 
 
+def test_constraint_detection_is_scanned_once(monkeypatch):
+    import machina.core.task_descriptor as module
+
+    calls: list[str] = []
+    real = module.detect_constraints
+
+    def counting(query):
+        calls.append(query)
+        return real(query)
+
+    monkeypatch.setattr(module, "detect_constraints", counting)
+    state = {
+        "active_class": "implement",
+        "constraints": ["read-only", "no-edit", "no-deploy"],
+        "revision": 1,
+    }
+    query = "don't install anything; keep it read-only"
+    d = _descriptor(query, task_state=state)
+    assert calls == [query]
+    assert {"read-only", "no-edit", "no-deploy", "no-install"} <= set(d.constraints)
+
+
 def test_negated_build_with_explain_clause_is_an_explanation_with_a_constraint():
     d = _descriptor("don't build anything, just explain how sites work")
     assert d.task_class == "explain"
