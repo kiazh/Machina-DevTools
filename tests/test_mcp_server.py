@@ -190,6 +190,7 @@ async def test_delegate_many_bounds_waves_and_preserves_order(monkeypatch):
             return [_delegation_result(steps[0][0]), RuntimeError("child failed")]
 
     monkeypatch.setattr(orchestrator_module, "orchestrator", FakeOrchestrator())
+    monkeypatch.setattr(mcp_server, "_mcp_mode_ceiling", lambda: "ask")
     _patch_delegation_db(monkeypatch)
     payload = json.loads(
         await mcp_server.machina_delegate_many(
@@ -199,6 +200,7 @@ async def test_delegate_many_bounds_waves_and_preserves_order(monkeypatch):
     )
     assert captured["steps"] == [("researcher", "one"), ("coder", "two")]
     assert captured["max_concurrency"] == 2
+    assert captured["authority"] == {"max_mode": "ask"}
     assert payload["requested"] == 2
     assert payload["concurrency"] == 2
     assert payload["status"] == "partial"

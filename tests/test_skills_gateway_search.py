@@ -124,6 +124,25 @@ def test_skills_gateway_methods_registered():
     assert "skills.list" in features.METHODS and "skills.show" in features.METHODS
 
 
+async def test_skills_list_applies_browse_filters_without_changing_shape(tmp_path, monkeypatch):
+    reg = _registry(tmp_path)
+    monkeypatch.setattr(feature, "_registry", lambda: reg)
+    gw = FakeGateway()
+
+    result = await feature.skills_list(gw, {"filters": {"source": ["learned"]}})
+
+    assert [skill["name"] for skill in result["skills"]] == ["python-testing"]
+    assert set(result["skills"][0]) == {
+        "name",
+        "description",
+        "triggers",
+        "version",
+        "sourceType",
+        "usageCount",
+        "enabled",
+    }
+
+
 async def test_skills_list_response_shape_unchanged(tmp_path, monkeypatch):
     """U07 backward compat: no new field may leak into skills.list."""
     reg = _registry(tmp_path)

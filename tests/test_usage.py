@@ -8,13 +8,17 @@ import uuid
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
+import httpx
 import pytest
 
 from machina.core.agent import ReActAgent
 from machina.core.config import config
 from machina.core.exceptions import DatabaseError, UsageBudgetExceededError, ValidationError
 from machina.core.models import LLMResponse, Session, StreamEvent
-from machina.core.usage import UsageStore, _check_limit, _estimate_tokens, _limits
+from machina.core.provider.caches import _cache_clear
+from machina.core.provider.direct import DirectProvider
+from machina.core.provider.specs import ProviderSpec
+from machina.core.usage import UsageStore, _check_limit, _estimate_tokens, _limits, usage_store
 from machina.gateway.server import Gateway
 
 
@@ -330,6 +334,66 @@ async def test_reserve_propagates_db_exceptions(monkeypatch):
     store = UsageStore()
     with pytest.raises(RuntimeError, match="connection lost"):
         await store.reserve(uuid.uuid4(), "agent", "fake", "fake", [], [], 8)
+
+
+@pytest.mark.asyncio
+async def test_complete_call_owns_one_reservation_for_self_accounting_provider(monkeypatch):
+    """The wrapper and a real provider must not both reserve one request."""
+    reservations: list[object] = []
+    finishes: list[object] = []
+
+    async def reserve(*_args, **kwargs):
+        reservations.append(kwargs.get("purpose", "agent"))
+        return uuid.uuid4()
+
+    async def finish(*_args, **kwargs):
+        finishes.append(kwargs)
+        return True
+
+    monkeypatch.setattr(usage_store, "reserve", reserve)
+    monkeypatch.setattr(usage_store, "finish", finish)
+    provider = DirectProvider(
+        ProviderSpec("fake", "https://example.invalid", "FAKE_API_KEY", "fake"),
+        api_key="fake",
+    )
+    await provider.client.aclose()
+    posts: list[httpx.Request] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        posts.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "model": "fake",
+                "choices": [{"message": {"content": "OK"}}],
+                "usage": {"prompt_tokens": 10, "completion_tokens": 1, "total_tokens": 11},
+            },
+        )
+
+    provider.client = httpx.AsyncClient(
+        base_url="https://example.invalid", transport=httpx.MockTransport(handle)
+    )
+
+    class NoLimit:
+        async def acquire(self):
+            return None
+
+    provider._rate_limiter = NoLimit()
+    _cache_clear()
+    try:
+        await usage_store.complete_call(
+            provider,
+            uuid.uuid4(),
+            "harness",
+            [{"role": "user", "content": "hi"}],
+            tools=[],
+        )
+    finally:
+        await provider.close()
+
+    assert len(posts) == 1
+    assert reservations == ["agent"], "the wrapper owns the only reservation"
+    assert len(finishes) == 1, "the wrapper owns the only settlement"
 
 
 @pytest.mark.asyncio
