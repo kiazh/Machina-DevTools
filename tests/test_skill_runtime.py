@@ -163,6 +163,14 @@ def test_skill_name_cannot_carry_prompt_instructions(tmp_path):
         SkillParser.parse(bad_file)
 
 
+def test_normalize_tokens_returns_a_fresh_list_from_the_cache():
+    from machina.skills.search import normalize_tokens
+
+    first = normalize_tokens("python testing")
+    first.append("mutated")
+    assert "mutated" not in normalize_tokens("python testing")
+
+
 def test_reload_preserves_skill_creation_time_for_stale_archiving(tmp_path):
     from datetime import UTC, datetime, timedelta
 

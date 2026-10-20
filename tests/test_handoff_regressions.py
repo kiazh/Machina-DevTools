@@ -413,6 +413,30 @@ def test_identify_pairs_by_call_id_not_name():
     assert pairs[1] == 2 and pairs[2] == 1
 
 
+def test_identify_pairs_repeated_call_id_matches_in_order():
+    import uuid as _uuid
+
+    from machina.core.compression import ContextCompressor
+    from machina.core.models import ContextChunk
+
+    sid = _uuid.uuid4()
+
+    def _c(t):
+        return ContextChunk(
+            id=_uuid.uuid4(),
+            session_id=sid,
+            agent_id="h",
+            chunk_type=t,
+            payload={"tool": "read_file", "call_id": "repeated"},
+            token_count=10,
+        )
+
+    chunks = [_c("tool_call"), _c("result"), _c("tool_call"), _c("result")]
+    pairs = ContextCompressor()._identify_tool_pairs(chunks)
+    # Repeated IDs pair in encounter order, not quadratically or by recency.
+    assert pairs == {0: 1, 1: 0, 2: 3, 3: 2}
+
+
 # ─── AH-013: tokenizer-bound truncation ────────────────────────────────────
 
 

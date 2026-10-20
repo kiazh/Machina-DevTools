@@ -33,6 +33,19 @@ WORKSPACE_METHODS = {
 }
 
 
+@pytest.fixture(autouse=True)
+def _no_implicit_lsp_startup(monkeypatch):
+    """Keep handler tests hermetic: no real language-server tasks leak.
+
+    LSP lifecycle and startup are covered end-to-end in
+    ``test_workspace_lsp_integration.py``; these handler tests only need the
+    workspace/gateway contract.
+    """
+    from machina.workspace.service import WorkspaceService
+
+    monkeypatch.setattr(WorkspaceService, "start_language_servers", lambda self: None)
+
+
 async def _opened(tmp_path: Path, *, trust: bool = True) -> tuple[FakeGateway, dict, str]:
     gw = FakeGateway()
     opened = await ws.workspace_open(gw, {"root": str(tmp_path), "trust": trust})
