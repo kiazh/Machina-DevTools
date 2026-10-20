@@ -196,7 +196,7 @@ async def test_no_progress_records_skipped_no_progress(live_db, monkeypatch):
     )
     monkeypatch.setattr(services_module, "session_context_window", AsyncMock(return_value=100))
     monkeypatch.setattr(services_module, "_estimate_next_request", AsyncMock(return_value=10**6))
-    monkeypatch.setattr(context_manager, "get_token_usage", AsyncMock(return_value=5))
+    monkeypatch.setattr(context_manager, "get_compressible_token_usage", AsyncMock(return_value=5))
     try:
         before = _snapshot()
         assert await services_module.maybe_auto_compact(session_id) is None

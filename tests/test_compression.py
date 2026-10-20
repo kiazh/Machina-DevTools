@@ -444,6 +444,30 @@ class _EchoSummarizer:
         pass
 
 
+async def test_compressible_token_usage_excludes_documents(live_db):
+    from machina.core.context import context_manager
+    from machina.core.session import session_manager
+
+    session = await session_manager.create(title="compressible-scope", agent_id="harness")
+    try:
+        await context_manager.add_chunk(
+            session.id, "harness", "user_message", {"content": "talk"}, token_count=5
+        )
+        await context_manager.add_chunk(
+            session.id, "harness", "document", {"content": "indexed"}, token_count=999
+        )
+        assert await context_manager.get_compressible_token_usage(session.id) == 5
+        assert await context_manager.get_token_usage(session.id) == 1004
+        assert [
+            chunk.chunk_type
+            for chunk in await context_manager.get_all_chunks(
+                session.id, include_documents=False
+            )
+        ] == ["user_message"]
+    finally:
+        await live_db.execute("DELETE FROM sessions WHERE id = $1", session.id)
+
+
 async def test_e2e_compaction_keeps_delegated_result_text(live_db, monkeypatch):
     """Real DB + real ``services.compress_session`` path; fake only the network.
 

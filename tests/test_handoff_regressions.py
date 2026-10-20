@@ -1076,7 +1076,7 @@ def _compress_session_with(chunks, provider, monkeypatch, **kw):
     import machina.core.provider as provmod
     from machina.core import context as ctxmod
 
-    async def _all_chunks(session_id):
+    async def _all_chunks(session_id, **kwargs):
         return list(chunks)
 
     monkeypatch.setattr(ctxmod.context_manager, "get_all_chunks", _all_chunks)
@@ -1154,7 +1154,7 @@ def test_compress_session_closes_provider_on_persistence_failure(monkeypatch):
     import machina.core.provider as provmod
     from machina.core import context as ctxmod
 
-    async def _all_chunks(session_id):
+    async def _all_chunks(session_id, **kwargs):
         return list(chunks)
 
     async def _boom_replace(sid, ids, new_chunks, archive_reason="compressed", **kwargs):
@@ -1199,7 +1199,7 @@ def test_compress_session_closes_provider_on_cancel(monkeypatch):
     import machina.core.provider as provmod
     from machina.core import context as ctxmod
 
-    async def _all_chunks(session_id):
+    async def _all_chunks(session_id, **kwargs):
         return list(chunks)
 
     async def _cancel_replace(sid, ids, new_chunks, archive_reason="compressed", **kwargs):

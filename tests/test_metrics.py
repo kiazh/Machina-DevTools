@@ -73,3 +73,18 @@ def test_json_formatter():
     record = logging.LogRecord("t", logging.INFO, "t.py", 1, "hello", (), None)
     data = json.loads(JsonFormatter().format(record))
     assert data["message"] == "hello" and data["level"] == "INFO"
+
+
+def test_metric_series_are_bounded_into_other():
+    m = MetricsCollector()
+    m._MAX_SERIES = 2
+    for index in range(5):
+        m.record_latency(f"op{index}", 1.0)
+        m.increment_counter(f"op{index}")
+        m.record_error(f"op{index}")
+    assert len(m._latencies) == 3
+    assert len(m._counters) == 3
+    assert len(m._errors) == 3
+    assert m.get_counter("other") == 3
+    assert m.get_error_count("other") == 3
+    assert m.get_latency_stats("other")["count"] == 3

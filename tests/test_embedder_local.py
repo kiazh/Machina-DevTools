@@ -7,6 +7,7 @@ keyword-only fallback when the local runtime is absent.
 
 from __future__ import annotations
 
+import asyncio
 import importlib
 import json
 import uuid
@@ -696,3 +697,23 @@ async def test_search_archive_dense_is_read_only(monkeypatch):
 def test_embedding_settings_dataclass_shape():
     settings = EmbeddingSettings("none", reason="x")
     assert settings.kind == "none" and settings.backend == "auto" and settings.reason == "x"
+
+
+async def test_scheduled_embedder_close_is_retained_until_done():
+    class _SlowCloser:
+        def __init__(self) -> None:
+            self.closed = False
+            self.release = asyncio.Event()
+
+        async def close(self) -> None:
+            await self.release.wait()
+            self.closed = True
+
+    closer = _SlowCloser()
+    embedder_module._closing_embedders.clear()
+    embedder_module._schedule_close(closer)
+    task = next(iter(embedder_module._closing_embedders))
+    closer.release.set()
+    await asyncio.wait_for(task, timeout=1)
+    assert closer.closed
+    assert not embedder_module._closing_embedders

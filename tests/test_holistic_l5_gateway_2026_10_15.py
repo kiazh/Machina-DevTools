@@ -155,7 +155,7 @@ def test_compress_services_route_matches_agent_factory_precedence(monkeypatch):
         for i in range(4)
     ]
 
-    async def _all_chunks(session_id):
+    async def _all_chunks(session_id, **kwargs):
         return list(chunks)
 
     async def _replace(sid, ids, new_chunks, archive_reason="compressed", **kwargs):
