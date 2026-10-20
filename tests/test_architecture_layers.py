@@ -209,7 +209,7 @@ _CORE_IMPORT_CEILINGS = {
 #   (never at CLI import) so pause records carry the turn origin and
 #   poll-based HTTP resume can validate and attribute the continuation.
 #   Census 781 -> 782, cap -> 782.
-DEFERRED_IMPORT_CAP = 782
+DEFERRED_IMPORT_CAP = 789
 
 
 def test_module_level_core_imports_only_shrink():
@@ -440,7 +440,17 @@ def test_deferred_import_count_ratchet():
     #        hoisted to module level for the cron fallback/UTC clock, replacing
     #        the function-local import.
     #   Census measured 758 on this tree; cap 750 -> 758. No other ceiling moved.
-    # Procedure: this number may only move with a delta table like the above
+    #   MCP subagent delegation (2026-10-20, reviewed): 782 -> 789 (+7),
+    #   all in machina/mcp_server/__init__.py so the stdio shim keeps its
+    #   import-light startup contract:
+    #     +2 ``_delegation_payload``: redact_diagnostic + protocol.approval_summary
+    #        are bound only when a child result is serialized.
+    #     +1 ``_delegation_error_payload``: redact_diagnostic for failure text.
+    #     +1 ``machina_agents``: agent_def.agent_registry (DB/YAML stack).
+    #     +1 ``machina_delegate``: core.orchestrator + AgentNotFoundError.
+    #     +1 ``machina_delegate_many``: core.config for the default wave size.
+    #     +1 ``machina_delegate_many``: core.orchestrator for run_parallel.
+    #   Procedure: this number may only move with a delta table like the above
     # in this comment; silent growth fails the suite by design.
     total = sum(_deferred_import_count(p) for p in ROOT.rglob("*.py"))
     assert total <= DEFERRED_IMPORT_CAP, (

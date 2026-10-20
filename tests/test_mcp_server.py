@@ -63,20 +63,161 @@ def _fake_runner(result: ProcessResult, capture: dict | None = None):
 # ---------------------------------------------------------------------------
 
 
-async def test_toolset_is_exactly_the_three_phase1_tools():
+async def test_toolset_includes_chat_sessions_and_subagents():
     server = mcp_server.build_server()
     tools = await server.list_tools()
     assert sorted(tool.name for tool in tools) == [
+        "machina_agents",
         "machina_chat",
+        "machina_delegate",
+        "machina_delegate_many",
         "machina_session_create",
         "machina_status",
     ]
     chat = next(tool for tool in tools if tool.name == "machina_chat")
     assert chat.input_schema["required"] == ["prompt"]
     assert set(chat.input_schema["properties"]) == {"prompt", "session_id", "mode"}
+    delegate = next(tool for tool in tools if tool.name == "machina_delegate")
+    assert delegate.input_schema["required"] == ["agent", "task"]
+    batch = next(tool for tool in tools if tool.name == "machina_delegate_many")
+    assert batch.input_schema["required"] == ["tasks"]
     status = next(tool for tool in tools if tool.name == "machina_status")
     assert status.annotations is not None
     assert status.annotations.read_only_hint is True
+    agents = next(tool for tool in tools if tool.name == "machina_agents")
+    assert agents.annotations is not None
+    assert agents.annotations.read_only_hint is True
+
+
+def _patch_delegation_db(monkeypatch):
+    class FakeDb:
+        async def initialize_runtime_schema(self):
+            return None
+
+    @contextlib.asynccontextmanager
+    async def fake_section():
+        yield FakeDb()
+
+    monkeypatch.setattr(mcp_server, "_db_section", fake_section)
+
+
+def _delegation_result(agent: str, response: str = "done"):
+    return SimpleNamespace(
+        agent=agent,
+        task="task",
+        response=response,
+        session_id=uuid.uuid4(),
+        tokens=12,
+        iterations=1,
+        status="complete",
+        needs_approval=[],
+    )
+
+
+async def test_agents_lists_delegatable_roles(monkeypatch):
+    from machina.core import agent_def as agent_def_module
+
+    async def fake_list():
+        return [
+            SimpleNamespace(name="coder", description="Edits code", source="builtin"),
+            SimpleNamespace(name="researcher", description="Finds facts", source="db"),
+        ]
+
+    monkeypatch.setattr(agent_def_module.agent_registry, "list", fake_list)
+    _patch_delegation_db(monkeypatch)
+    payload = json.loads(await mcp_server.machina_agents())
+    assert payload["agents"] == [
+        {"name": "coder", "description": "Edits code", "source": "builtin"},
+        {"name": "researcher", "description": "Finds facts", "source": "db"},
+    ]
+
+
+async def test_delegate_spawns_child_with_mode_ceiling(monkeypatch):
+    from machina.core import orchestrator as orchestrator_module
+
+    captured: dict = {}
+
+    class FakeOrchestrator:
+        async def delegate(self, agent, task, **kwargs):
+            captured.update({"agent": agent, "task": task, **kwargs})
+            return _delegation_result(agent)
+
+    monkeypatch.setattr(orchestrator_module, "orchestrator", FakeOrchestrator())
+    _patch_delegation_db(monkeypatch)
+    parent = str(uuid.uuid4())
+    payload = json.loads(
+        await mcp_server.machina_delegate(
+            "coder",
+            "fix the test",
+            parent_session_id=parent,
+            expected_output="a passing test",
+            expected_artifact_path="report.txt",
+        )
+    )
+    assert payload["status"] == "complete"
+    assert payload["agent"] == "coder"
+    assert payload["tokens"] == 12
+    assert captured["agent"] == "coder"
+    assert captured["task"] == "fix the test"
+    assert str(captured["parent_session_id"]) == parent
+    assert captured["authority"]["max_mode"] in mcp_server.VALID_MODES
+    assert captured["expected_output"] == "a passing test"
+    assert captured["expected_artifact_path"] == "report.txt"
+
+
+async def test_delegate_rejects_unknown_agent(monkeypatch):
+    from machina.core import orchestrator as orchestrator_module
+
+    class FakeOrchestrator:
+        async def delegate(self, agent, task, **kwargs):
+            raise orchestrator_module.AgentNotFoundError(f"no agent named {agent!r}")
+
+    monkeypatch.setattr(orchestrator_module, "orchestrator", FakeOrchestrator())
+    _patch_delegation_db(monkeypatch)
+    payload = json.loads(await mcp_server.machina_delegate("ghost", "task"))
+    assert payload["status"] == "invalid_request"
+    assert "ghost" in payload["error"]
+
+
+async def test_delegate_many_bounds_waves_and_preserves_order(monkeypatch):
+    from machina.core import orchestrator as orchestrator_module
+
+    captured: dict = {}
+
+    class FakeOrchestrator:
+        async def run_parallel(self, steps, **kwargs):
+            captured.update({"steps": steps, **kwargs})
+            return [_delegation_result(steps[0][0]), RuntimeError("child failed")]
+
+    monkeypatch.setattr(orchestrator_module, "orchestrator", FakeOrchestrator())
+    _patch_delegation_db(monkeypatch)
+    payload = json.loads(
+        await mcp_server.machina_delegate_many(
+            [{"agent": "researcher", "task": "one"}, {"agent": "coder", "task": "two"}],
+            max_concurrency=2,
+        )
+    )
+    assert captured["steps"] == [("researcher", "one"), ("coder", "two")]
+    assert captured["max_concurrency"] == 2
+    assert payload["requested"] == 2
+    assert payload["concurrency"] == 2
+    assert payload["status"] == "partial"
+    assert payload["results"][0]["agent"] == "researcher"
+    assert payload["results"][1]["status"] == "error"
+
+
+@pytest.mark.parametrize(
+    "tasks",
+    [
+        [],
+        [{"agent": "", "task": "x"}],
+        [{"agent": "coder"}],
+        [{"agent": "coder", "task": "x"}] * (mcp_server.MAX_DELEGATE_TASKS + 1),
+    ],
+)
+async def test_delegate_many_rejects_invalid_batches(tasks):
+    payload = json.loads(await mcp_server.machina_delegate_many(tasks))
+    assert payload["status"] == "invalid_request"
 
 
 # ---------------------------------------------------------------------------
@@ -812,7 +953,10 @@ async def test_stdio_handshake_lists_tools_and_roundtrips(tmp_path):
                     await session.initialize()
                     listed = await session.list_tools()
                     assert sorted(tool.name for tool in listed.tools) == [
+                        "machina_agents",
                         "machina_chat",
+                        "machina_delegate",
+                        "machina_delegate_many",
                         "machina_session_create",
                         "machina_status",
                     ]

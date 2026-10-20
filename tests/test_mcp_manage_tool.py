@@ -525,14 +525,17 @@ async def test_live_self_connect_call_disconnect(monkeypatch, tmp_path):
             assert report["connected"] is True, report
             assert report["server"]["state"] == "connected"
             assert sorted(report["tools"]) == [
+                "machina-self__machina_agents",
                 "machina-self__machina_chat",
+                "machina-self__machina_delegate",
+                "machina-self__machina_delegate_many",
                 "machina-self__machina_session_create",
                 "machina-self__machina_status",
             ]
 
             listing = json.loads(await invoke("mcp_list", {}))
             entry = next(s for s in listing["servers"] if s["id"] == "machina-self")
-            assert entry["state"] == "connected" and entry["tool_count"] == 3
+            assert entry["state"] == "connected" and entry["tool_count"] == 6
 
             outcome = json.loads(
                 await invoke(

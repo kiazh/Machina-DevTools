@@ -176,6 +176,38 @@ class TestOrchestrator:
         assert {r.agent for r in results} == {"researcher", "coder", "harness"}
         assert all(r.status == "complete" for r in results)
 
+    async def test_parallel_is_bounded_into_waves(self, orch, monkeypatch):
+        import asyncio
+        from types import SimpleNamespace
+
+        active = 0
+        peak = 0
+
+        async def fake_delegate(agent, task, **kwargs):
+            nonlocal active, peak
+            active += 1
+            peak = max(peak, active)
+            await asyncio.sleep(0.01)
+            active -= 1
+            return SimpleNamespace(
+                agent=agent,
+                task=task,
+                response="ok",
+                session_id=uuid.uuid4(),
+                tokens=0,
+                iterations=0,
+                status="complete",
+                needs_approval=[],
+            )
+
+        monkeypatch.setattr(orch, "delegate", fake_delegate)
+        results = await orch.run_parallel(
+            [("researcher", str(index)) for index in range(6)],
+            max_concurrency=2,
+        )
+        assert len(results) == 6
+        assert peak == 2
+
 
 @needs_db
 @pytest.mark.usefixtures("connected_db")
