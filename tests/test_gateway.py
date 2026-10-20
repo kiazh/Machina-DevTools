@@ -231,6 +231,7 @@ class TestAuthentication:
         response = await h.call("session.list", {"token": "wrong-token"})
         assert response["error"]["code"] == UNAUTHORIZED
 
+    @needs_db
     async def test_correct_token_accepted(self):
         h = Harness()
         h.gateway._auth_token = "secret-token"
@@ -238,6 +239,7 @@ class TestAuthentication:
         response = await h.call("initialize", {"token": "secret-token"})
         assert "result" in response
 
+    @needs_db
     async def test_initialize_without_token_when_no_auth(self):
         h = Harness()
         # No token set — initialize should work without auth
@@ -260,6 +262,7 @@ class TestAuthentication:
 class TestErrorMessages:
     """Error messages should not leak internal details to clients."""
 
+    @needs_db
     async def test_handle_line_returns_generic_error(self):
         """handle_line should return generic error, not exception details."""
         h = Harness()
@@ -276,6 +279,7 @@ class TestErrorMessages:
 class TestTurnTimeout:
     """Turn timeout and cleanup mechanism."""
 
+    @needs_db
     async def test_turn_timeout_configurable(self):
         """The turn timeout should be configurable via config."""
         from machina.core.config import config
@@ -298,6 +302,7 @@ class TestTurnTimeout:
         finally:
             config.set("turn_timeout", original)
 
+    @needs_db
     async def test_turns_dict_cleaned_up_after_completion(self):
         """After a turn completes, the entry should be removed from _turns."""
         h = Harness()
