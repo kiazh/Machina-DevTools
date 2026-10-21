@@ -1,0 +1,22 @@
+{
+  "_stack_from_package_json": {
+    "before": {
+      "seconds": 0.013278,
+      "peak_bytes": 67241335
+    },
+    "after": {
+      "seconds": 0.000166,
+      "peak_bytes": 394058
+    }
+  },
+  "_recent_snippets": {
+    "before": {
+      "seconds": 0.008656,
+      "peak_bytes": 8000080
+    },
+    "after": {
+      "seconds": 1.2e-05,
+      "peak_bytes": 104
+    }
+  }
+}

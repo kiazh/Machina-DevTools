@@ -1,0 +1,5 @@
+WRAP: {"staleHasX":false,"freshHasX":true}
+COPY: {"selection":{"documentId":"doc-1","cursorOffset":2,"selectionAnchorOffset":0,"scrollLine":0,"horizontalCellOffset":0},"route":{"consume":true},"exited":1,"copied":0}
+MODE: full
+MEDIA: {"osc52Survives":true}
+SKILLS: {"filter":false,"shown":[["on",true],["off",false]],"catalogs":2,"searches":0}

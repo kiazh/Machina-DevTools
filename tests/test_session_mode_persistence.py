@@ -22,7 +22,8 @@ class ModeGateway:
     async def get_session(self, params):
         import uuid
 
-        return await self.sessions.get_fresh(uuid.UUID(params["sessionId"]))
+        sid = params.get("sessionId") or params.get("session_id")
+        return await self.sessions.get_fresh(uuid.UUID(sid))
 
 
 @pytest.fixture
@@ -55,6 +56,16 @@ async def test_mode_survives_registry_restart_and_other_worker(durable_modes, mo
     assert result["mode"] == "workspace"
     assert (await SessionManager().get_fresh(session.id)).execution_mode == "workspace"
     assert config.get("execution_mode") == "ask"
+
+
+async def test_session_mode_set_accepts_snake_case_session_id(durable_modes):
+    database, sessions, gateway, create = durable_modes
+    session = await create()
+    result = await mode_feature.mode_set(
+        gateway, {"session_id": str(session.id), "mode": "workspace"}
+    )
+    assert result["mode"] == "workspace"
+    assert result["scope"] == "session"
 
 
 async def test_global_default_affects_only_new_sessions(durable_modes, monkeypatch):

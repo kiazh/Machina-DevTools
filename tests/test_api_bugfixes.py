@@ -333,6 +333,15 @@ class TestAuthDisabledBypass:
                 )
             assert exc_info.value.status_code == 401
 
+    async def test_empty_configured_key_never_authenticates_empty_input(self):
+        """An empty configured value must be unavailable, not an empty-key match."""
+        from machina.api.auth import require_api_key
+
+        with patch("machina.api.auth.configured_key", return_value=""):
+            with pytest.raises(HTTPException) as exc_info:
+                await require_api_key(authorization="Bearer ", x_api_key="")
+            assert exc_info.value.status_code == 503
+
 
 # ─── Bug 4: _RpcGateway._responses cannot grow ───────────────────────────────
 

@@ -77,6 +77,9 @@ class SessionRows:
         if "INSERT INTO context_chunks" in query:
             assert len(args) == 2 and all(sid in self.rows for sid in args)
             return "INSERT 0 0"
+        if "INSERT INTO context_archive" in query:
+            assert len(args) == 2 and all(sid in self.rows for sid in args)
+            return "INSERT 0 0"
         assert "SET state_msgpack = $2" in query and len(args) == 2
         self.rows[args[0]]["state_msgpack"] = args[1]
         return "UPDATE 1"

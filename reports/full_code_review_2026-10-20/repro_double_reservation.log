@@ -1,0 +1,5 @@
+2026-10-20 15:08:04,378 [AUDIT] {"timestamp": 1792523284.378956, "event": "llm_call_start", "provider": "fake", "model": "fake", "message_count": 1}
+Audit event dropped before the writer started; event was not persisted
+2026-10-20 15:08:04,419 [AUDIT] {"timestamp": 1792523284.41906, "event": "llm_call_complete", "provider": "fake", "model": "fake", "prompt_tokens": 10, "completion_tokens": 1, "total_tokens": 11, "tool_calls": 0}
+Audit event dropped before the writer started; event was not persisted
+{'network_posts': 1, 'reservations': 2, 'finishes': 2, 'purposes': ['agent', 'agent']}

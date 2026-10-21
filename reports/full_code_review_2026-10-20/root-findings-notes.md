@@ -1,0 +1,7 @@
+# Root reviewer working notes
+
+Confirmed: head_to_head.run_one computed run_dir can alias pristine task_dir when task is <base>/machina/machina and --runs-dir=<base>, harness=machina. main only checks runs_dir relative to task, then run_one shutil.rmtree deletes task before copy. Independent temporary fixture proof h2h-data-loss-repro.json. Needs computed destination overlap validation before mutation (equal/ancestor/descendant of task) in run_one, not only CLI root check. P1 data loss.
+
+Candidates to reproduce later: ObservedEventLog.record_verification_evidence validates raw truthiness before whitespace-normalizing IDs/revisions; whitespace-only values produce observed evidence with empty required links. events._reasons materializes all iterable reasons before four-item cap. LoCoMo lexical baseline tokenizes entire identical corpus again per question (and at k5/k10). evaluate_answers ignores missing evidence rather than skip as evaluate_rankings does.
+
+Read roles: entry points install safe logging/CLI; fsops standard descriptor primitives; plugins explicit opt-in entry points, failure-isolated bounded thread executor/cooldown; protocol central schema validation/wire translation/TS generation; repomap current externally edited validation/pruning retained; research benchmark wraps reusable external test harnesses, LoCoMo/head-to-head scoring and optional workflow durability trials. Most API/export seams are compatibility contracts, not removal candidates.

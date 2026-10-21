@@ -1,0 +1,7 @@
+{
+  "fixture_existed_before": true,
+  "fixture_exists_after": false,
+  "original_source_exists_after": false,
+  "exception": "FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/sk/y8w9dwmd4lnc2yvygqqxd4xw0000gn/T/machina-review-h2h-df5bqil9/machina/machina'",
+  "stderr": "[head_to_head] running machina on machina (timeout 240s)\n"
+}

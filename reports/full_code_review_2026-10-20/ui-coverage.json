@@ -1,0 +1,1902 @@
+{
+  "scope": "ui-files.txt",
+  "reviewer": "ui_review",
+  "complete": false,
+  "files": [
+    {
+      "path": "ui/package.json",
+      "sha256": "7d3c6ce0a2ca73cdeb7dce515f4aef7a436c6a15ae4a7ec55fb213eb07b9e298",
+      "line_count": 30,
+      "status": "full-read-reviewed",
+      "role": "UI package/compiler configuration",
+      "read_ranges": [
+        [
+          1,
+          30
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/app.ts",
+      "sha256": "c52c22f5e56a4582d6bcf75a6832f4c1cdc80d21657c61db47a7f4ee1e9c1874",
+      "line_count": 4168,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          4168
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/autocomplete.ts",
+      "sha256": "e340cd6033e9abacfbecbae014b6a241d37951f35d5577ee0ddb8785809f4b2a",
+      "line_count": 39,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          39
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/clipboard.ts",
+      "sha256": "9c2bd9e5d26d988140983ad05edc1d5819d3d8cd0a2651ba4160c5025542b0a2",
+      "line_count": 65,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          65
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/commandDispatch.ts",
+      "sha256": "c12d8917796c385f44461555f012b75242962827ad9f49316a250964f600cb2a",
+      "line_count": 106,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          106
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/commands.ts",
+      "sha256": "7cf0ac5a550ae1ae939c852136ab04d202699aaf3339a443bbf5bd42ea64e87b",
+      "line_count": 78,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          78
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/components.ts",
+      "sha256": "181cdf9b0f5318f4596f4beb8e5489dd7d2584499442ebc359305ca40bdc38ea",
+      "line_count": 421,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          421
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/components/AppShell.ts",
+      "sha256": "3001be0108a815c8abcfb67b321dfb51d34c62a2d395ac3463fe371190e20546",
+      "line_count": 346,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          346
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/components/ApprovalCard.ts",
+      "sha256": "f88245e718bdabb87df3af37d0b779c1794f5c006e60b997924b198c675138eb",
+      "line_count": 276,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          276
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/components/AssistantTurn.ts",
+      "sha256": "989513e1b4174e7185e09348360cee7d5ed626f48d224c6666bc9f0b9ec3fffc",
+      "line_count": 128,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          128
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/components/DiffBlock.ts",
+      "sha256": "c861a5d5f8603d1398d723121fb4cd5f009bdc3126e40ba1cd72ee5284739d7d",
+      "line_count": 47,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          47
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/components/EditorPane.ts",
+      "sha256": "2151b1d52557f90fb2b3b4aec038f532cd156c9c8a24c49c383f001d22bf92a5",
+      "line_count": 707,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          707
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/components/Footer.ts",
+      "sha256": "43786cb7de2b5579f31591c007f07e3c421317ff22c407572170cc3257e659c2",
+      "line_count": 162,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          162
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/components/Form.ts",
+      "sha256": "8c8b2ae3892d50315781b6d3bd16dcac0af235d3511f1c31aefa350c40a85c0a",
+      "line_count": 301,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          301
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/components/HelpMenu.ts",
+      "sha256": "09e150c4130fd92883e127a40df30b1417350e72c4de2c2a6073bdce8e2ba971",
+      "line_count": 360,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          360
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/components/IntelligencePopups.ts",
+      "sha256": "cd67c24d7eea20a15c4af48e3cfb3eb39513d6c8cea6b5e9f3c7a067d4770f08",
+      "line_count": 318,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          318
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/components/Menu.ts",
+      "sha256": "be36f08d2a6bae1ac9bf6a47280000c8a87a5fad50518eedadb77156e180d336",
+      "line_count": 357,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          357
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/components/Notice.ts",
+      "sha256": "a923c38a9f82c336a9311f08e4d64b05ff17edae3740c5516b6a10459857030c",
+      "line_count": 51,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          51
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/components/NowPlayingBar.ts",
+      "sha256": "b37d52e9fcc3de3c61a43e14a87410e259a75b5f5b34a607d72be3870fb4181e",
+      "line_count": 244,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          244
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/components/OAuthProgress.ts",
+      "sha256": "406afd084042048fc02b885491defa6cf9fc4c5b659db8cecc8f077ef56db201",
+      "line_count": 114,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          114
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/components/OutputViewer.ts",
+      "sha256": "f20baf81a4cd849cfd8e54781ae6b9887c7332502bf06b1996259f3f111cc185",
+      "line_count": 184,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          184
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/components/ProblemsPane.ts",
+      "sha256": "7163f8c3968017c3d3c1a0a6715dbcda38a4365566ff5853c139246c8a194995",
+      "line_count": 314,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          314
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/components/SkillsMenu.ts",
+      "sha256": "ebe1c2b2600782e4334a53ebf7fadc5a64570fe7e6dc0d41f2177adba8b6c91b",
+      "line_count": 1271,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          1271
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/components/ToolPanel.ts",
+      "sha256": "7d6a22bc615fc6b0eb5bf725c7d38d4cfbba0d603875854d8a6e842e84bcef2b",
+      "line_count": 31,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          31
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/components/ToolTurn.ts",
+      "sha256": "b5647d8a0e76aa7d45f239e8ca92e9dcb05eb32a8d6e2942ae9d3efa2a65b450",
+      "line_count": 152,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          152
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/components/UserTurn.ts",
+      "sha256": "c35b43f278e55f860f9a1aced921ccc3d687740aa359f71bd2fc9728a13d4b08",
+      "line_count": 37,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          37
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/components/WorkspaceShell.ts",
+      "sha256": "e2829bbc21029ec9d9d3cb262279b2945ea7f04d1abb39fd250eb4f78d129cb6",
+      "line_count": 359,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          359
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/design/icons.ts",
+      "sha256": "477977fdf2f1aeb72730ca32dd20689fc54ae4f7a003c5e697742c432ca07eb0",
+      "line_count": 40,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          40
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/design/motion.ts",
+      "sha256": "2fd57d25a0a2fae1a6aab557ef51c147d80bc46ef781d2218e0657270e019613",
+      "line_count": 189,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          189
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/design/responseLayout.ts",
+      "sha256": "624ea7ceac1d1a166ef988f147233617164f377d3fe4dbea5f4e8ff2eef3df16",
+      "line_count": 257,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          257
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/design/shortcuts.ts",
+      "sha256": "4f0caf169c8fef58c8b9ed1ab69fe67a00df6ea56e72bbf32cd70b810eb5bf63",
+      "line_count": 40,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          40
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/design/spacing.ts",
+      "sha256": "63c1fa099cf463d18d99a54dfc46a6fb4fca6643c59932af293f324e4bb909ff",
+      "line_count": 3,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          3
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/design/terminal.ts",
+      "sha256": "68fc985f0289a807286d77c8d27ea9efe1fe00e71322d724764e05ec247e17da",
+      "line_count": 75,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          75
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/design/text.ts",
+      "sha256": "2b885f4a31c087867630db010f06eb1e283e0f9cea859165308745fc4a2f3080",
+      "line_count": 229,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          229
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/design/theme.ts",
+      "sha256": "d472ae0f2432794d16d193ddaf1763f66fdfc8760e64dd88891fcac556133406",
+      "line_count": 1295,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          1295
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/design/tokens.ts",
+      "sha256": "89b3c7c95d9e86929b23422350f40d0d1067ecd25345d48344ee5460b4752fc5",
+      "line_count": 76,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          76
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/editor/display.ts",
+      "sha256": "0b33cc8e7abd4ff1e5f2ba8637593d37c1cc795387eeed255b5eba33f539297d",
+      "line_count": 20,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          20
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/editor/explorer.ts",
+      "sha256": "64ae5e150c0d9c0cc46dee0ff6630f802bbdec6423891306a8fba53ea001699f",
+      "line_count": 790,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          790
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/editor/intelligence.ts",
+      "sha256": "24db07e628b2afe688725929fd24f40aa37f550140bee6f80c985e9263b84633",
+      "line_count": 1530,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          1530
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/editor/model.ts",
+      "sha256": "7de4596a3c70c0261d3355973c55dd5d87b85607b262dc470ac8d71633e09090",
+      "line_count": 1074,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          1074
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/editor/navigation.ts",
+      "sha256": "2a2272dc4d05c4bfdb6ed407c23abb16091b648c0853d7cf940460d28fb5a320",
+      "line_count": 81,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          81
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/editor/positions.ts",
+      "sha256": "85352f2595ce3dea4beb85bd8365e31ba1cb7279215c3d9702bff891a4b63fc8",
+      "line_count": 318,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          318
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/editor/quickOpen.ts",
+      "sha256": "73355daa26cff6944d01688f1c842c32cac3d65d008c1b0c3a1babfd9b42220b",
+      "line_count": 477,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          477
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/editor/syntax.ts",
+      "sha256": "99626418892feb0d57f88ac242712ab2fb2d58cfa07781f02138f389cc39a061",
+      "line_count": 708,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          708
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/editor/syntaxTheme.ts",
+      "sha256": "bcf826357cfc2c6c04a961847733f934dbe49d8b869c6e623052fc06dca7e3fd",
+      "line_count": 57,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          57
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/editor/tabs.ts",
+      "sha256": "36c4c8d1dd999b13d1e0865b3c5f42e994242a11258615776b854be73ca33334",
+      "line_count": 212,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          212
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/editor/view.ts",
+      "sha256": "c98b39142b703f2a9fa3e8391d36738e7478e2b6ed9e5c884e690005b7976eb7",
+      "line_count": 1467,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          1467
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/editor/workspaceEdits.ts",
+      "sha256": "813a03b8088e14e5e94deb22188b1212518b8b34474f62240bb66a1447b3e24e",
+      "line_count": 549,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          549
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/events.ts",
+      "sha256": "28e56f0c6627e8d43e7199e6ebbde507f4f0bab49c10f2b3a70f6fda6ba06da7",
+      "line_count": 40,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          40
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/family.ts",
+      "sha256": "e878dc904f9c1ca651db0ba6ccc4d2115f9810e06e3b6cfa46cb8238d9541146",
+      "line_count": 257,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          257
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/features/agents.ts",
+      "sha256": "12490c98bc1d8b2fce4148c9db7d3def37ec97e3d0e731000941793c18b02882",
+      "line_count": 294,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          294
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/features/auth.ts",
+      "sha256": "b39cc3e1fa08d3849a2027c6a0c14a86bc71e44199de8d004e7edee74b1c335f",
+      "line_count": 221,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          221
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/features/codex.ts",
+      "sha256": "2d425fc94b464124faef3174d9343ff46c112e7ad03af132c610c231ce38da4a",
+      "line_count": 55,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          55
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/features/context.ts",
+      "sha256": "af1b28876de55a5ce295c0b11199de870e6ed8acde818e5cb69f5e79fbe74fbf",
+      "line_count": 37,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          37
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/features/growth.ts",
+      "sha256": "91dca14dba0e85f92fbf3916e7dbf9c2281d4efc8a4d664af655c6902d346fed",
+      "line_count": 118,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          118
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/features/harnesses.ts",
+      "sha256": "18a200d1bf97cdcedc66a7e04f1526fe9a0b3e70397ae775badfc533a6f08bd8",
+      "line_count": 222,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          222
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/features/index.ts",
+      "sha256": "f875573aea99504c2abd3939390c443ce1d500bc1fb72c874d29a6e74fd3eaaf",
+      "line_count": 116,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          116
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/features/interop.ts",
+      "sha256": "e084788c6978d8c0e5624a59f88f843832b25215b62ccfea110500591a0f8160",
+      "line_count": 170,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          170
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/features/jobs.ts",
+      "sha256": "981bb96713f4d8c70b7845dd1448b7be435e14edb825cb35b54d489a4ea6ca1d",
+      "line_count": 172,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          172
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/features/keys.ts",
+      "sha256": "fd64d5924aac689624634a5c60aec669bb1a727ecdea52f1436210bdfb2ffe6f",
+      "line_count": 245,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          245
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/features/mcp-oauth.ts",
+      "sha256": "3ba0275f7f30276b0d20e913ac29f0b2a223b17dd837d8cb7875be6aa8061b7d",
+      "line_count": 287,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          287
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/features/mcp.ts",
+      "sha256": "2e58e410f6a9412fdbdd53a202e404137053e9bb7e99c1182a0108b430bf8b47",
+      "line_count": 202,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          202
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/features/memory.ts",
+      "sha256": "7b26568ee704466e775feffbf98e1d8cfe1556e206ae6a8cac48d8347f51f57c",
+      "line_count": 221,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          221
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/features/mode.ts",
+      "sha256": "746c985888273562f3d13e5d681e53998790a05d9e50454d18e2f00ce503fce6",
+      "line_count": 131,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          131
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/features/models.ts",
+      "sha256": "40f13ea14eee475f72819eccccc1787772b7553d7572e24d0ce249d7c26a971a",
+      "line_count": 405,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          405
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/features/music.ts",
+      "sha256": "435fac78ee40dc1d18dd04888fa9e56a6763101a948fb1638add217a59b8c090",
+      "line_count": 166,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          166
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/features/output.ts",
+      "sha256": "911c7fd13e8c50e64bd6502300f71363dde5adc17bae2f940960d2e2abb79f81",
+      "line_count": 12,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          12
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/features/sessions.ts",
+      "sha256": "592cecc21328ff080d14bc0f6eced4378ab4975cf746a373d506e875d28ea3da",
+      "line_count": 267,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          267
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/features/settings.ts",
+      "sha256": "dcf20c5d19cd96181d2db80aec928a2b778d715395d021a0a5ecbba70d645bab",
+      "line_count": 1003,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          1003
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/features/skills.ts",
+      "sha256": "717b1892fe0813342f7d39253698e3dcbdc7ac2689f18e0e41b5346f9af87320",
+      "line_count": 205,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          205
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/features/theme.ts",
+      "sha256": "affdb4c89d8a44ca9558719203b229e6877f9797001c7e19a7f465504bf9bc1d",
+      "line_count": 70,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          70
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/features/types.ts",
+      "sha256": "f58ec59401a200e8ca50471ae108596b22ec22e8e71c318ea7c8ff72ae1aed6f",
+      "line_count": 312,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          312
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/features/workspace.ts",
+      "sha256": "607b1596d73d767f587143ae4717e214da3da3e7cdc6daaf0c03acffc0984743",
+      "line_count": 399,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          399
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/format.ts",
+      "sha256": "3d860b7cb33a0739e13a532a7e63db8e58ade01b2304cccad5d1e03963597286",
+      "line_count": 61,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          61
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/gateway.ts",
+      "sha256": "095062760a14bcd95fea7cd33abefe37469d25a80ab602279603e911f08eb1ef",
+      "line_count": 224,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          224
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/images.ts",
+      "sha256": "5ba16299551745cebecbbd65b9c16fe96b6d02a73911d95c261cbe06450f4f63",
+      "line_count": 197,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          197
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/main.ts",
+      "sha256": "ef1fe06aa4cbe34b93fb9d188ceb87f779daedf2b00c53668e98c9e2b0b1c873",
+      "line_count": 83,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          83
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/nowplaying/controller.ts",
+      "sha256": "0cb4d5a0cb4f72c0f75d4fe38367fa12bcf0b611dc53de6da73da8245bf99fff",
+      "line_count": 217,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          217
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/protocol.ts",
+      "sha256": "f8c24cb6d01ecdd59fdf468868226979f9f2c4b28962efa4ccc680d1dc47be62",
+      "line_count": 603,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          603
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/tail.ts",
+      "sha256": "aeb4e5e50df326b16cefd680ac5e26e8868ae84eca649b5328a3903ef157bbc8",
+      "line_count": 221,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          221
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/theme.ts",
+      "sha256": "e2e606cf492406efe0ef17ac9b445c94caea3c6e8188999c68403467a2cbe13f",
+      "line_count": 28,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          28
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/transcript.ts",
+      "sha256": "a84b3d4e964aff5e9b9dd37aabcc97d9ea691a42ae55997cea7eb7bb55ec63ce",
+      "line_count": 336,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          336
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/workspace/controller.ts",
+      "sha256": "3af370dd8feaf023b32b9bf589d8000cc417d29c3e81233a0ff6c1654b0b7f71",
+      "line_count": 1915,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          1915
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/workspace/gateway.ts",
+      "sha256": "14ab810e1aea9c328c065c3a67013fee70dbd3552408354f28e9787b0b08d964",
+      "line_count": 276,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          276
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/workspace/layout.ts",
+      "sha256": "08be089fac4d9f69adfc38fba5d1c9f80fac0de0beabf046df47298ac44f5422",
+      "line_count": 177,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          177
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/workspace/persistence.ts",
+      "sha256": "6f7041625fe37fa67cc7af1d99b707b1d34a66b47f1b2538b871478c8a13cac5",
+      "line_count": 354,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          354
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/workspace/preferences.ts",
+      "sha256": "cadada511f1867215cbc015263901db78bbd12095054dbdefa45eba95b843a98",
+      "line_count": 116,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          116
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/workspace/protocol.ts",
+      "sha256": "8eb109a89dd8c1c97065bf86e823dbc9b14b5f93a74be6280756eafa49373df0",
+      "line_count": 265,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          265
+        ]
+      ]
+    },
+    {
+      "path": "ui/src/workspace/state.ts",
+      "sha256": "593d11992acbf932df77325109e72b498850f73ad4f71f79641f5bc99754f9fd",
+      "line_count": 123,
+      "status": "full-read-reviewed",
+      "role": "UI source module",
+      "read_ranges": [
+        [
+          1,
+          123
+        ]
+      ]
+    },
+    {
+      "path": "ui/test/app.test.ts",
+      "sha256": "1c002b649cc4ea40899268eb90e5ee41d09711b755882b0e5ff99c5d6bc0d776",
+      "line_count": 646,
+      "status": "full-read-reviewed",
+      "role": "UI test/support",
+      "read_ranges": [
+        [
+          1,
+          646
+        ]
+      ]
+    },
+    {
+      "path": "ui/test/approval.test.ts",
+      "sha256": "68c22039846c1017ce79a39a2f4a93c60ac72421ef95a04713836577d3bba1f2",
+      "line_count": 155,
+      "status": "full-read-reviewed",
+      "role": "UI test/support",
+      "read_ranges": [
+        [
+          1,
+          155
+        ]
+      ]
+    },
+    {
+      "path": "ui/test/auth.test.ts",
+      "sha256": "6ff535d9629d697290dfd862994785b43bc4ef13da7752ee4079402851a5abb6",
+      "line_count": 314,
+      "status": "full-read-reviewed",
+      "role": "UI test/support",
+      "read_ranges": [
+        [
+          1,
+          314
+        ]
+      ]
+    },
+    {
+      "path": "ui/test/autocomplete.test.ts",
+      "sha256": "c1ae3e46b07fc18b69d5e21fe3d82cc6370bf0cb49fc79bdadbe38da8e1006f7",
+      "line_count": 75,
+      "status": "full-read-reviewed",
+      "role": "UI test/support",
+      "read_ranges": [
+        [
+          1,
+          75
+        ]
+      ]
+    },
+    {
+      "path": "ui/test/channel.test.ts",
+      "sha256": "626a0719c830a3369de578e246b0df4a97ccebfe55491ab36defbd1ff07104dc",
+      "line_count": 62,
+      "status": "full-read-reviewed",
+      "role": "UI test/support",
+      "read_ranges": [
+        [
+          1,
+          62
+        ]
+      ]
+    },
+    {
+      "path": "ui/test/clipboard.test.ts",
+      "sha256": "2c1fd2b58bb18e5ccd41550ee5a4cc02a9191797d687686d2fa856f6a9203a41",
+      "line_count": 89,
+      "status": "full-read-reviewed",
+      "role": "UI test/support",
+      "read_ranges": [
+        [
+          1,
+          89
+        ]
+      ]
+    },
+    {
+      "path": "ui/test/command-dispatch.test.ts",
+      "sha256": "e191dc9b412c1d08d2387625a35d59efaf6a39a6e3414d5ec9e56ad2be774a65",
+      "line_count": 100,
+      "status": "full-read-reviewed",
+      "role": "UI test/support",
+      "read_ranges": [
+        [
+          1,
+          100
+        ]
+      ]
+    },
+    {
+      "path": "ui/test/cursor-blink.test.ts",
+      "sha256": "0374022b0993ab3b7d12aead01f2ec3db3e99dfbaccd064d023f6e18732c00fb",
+      "line_count": 513,
+      "status": "full-read-reviewed",
+      "role": "UI test/support",
+      "read_ranges": [
+        [
+          1,
+          513
+        ]
+      ]
+    },
+    {
+      "path": "ui/test/design.test.ts",
+      "sha256": "e1df18d05550a108581ad6ca1be49a3cd15232ef1233a03f5b9217b6cf0e6819",
+      "line_count": 343,
+      "status": "full-read-reviewed",
+      "role": "UI test/support",
+      "read_ranges": [
+        [
+          1,
+          343
+        ]
+      ]
+    },
+    {
+      "path": "ui/test/dialogs.test.ts",
+      "sha256": "c27d2b49e92a49191a27d62663014117a49ac4a04cd43252f56cb54121ecfbd6",
+      "line_count": 708,
+      "status": "full-read-reviewed",
+      "role": "UI test/support",
+      "read_ranges": [
+        [
+          1,
+          708
+        ]
+      ]
+    },
+    {
+      "path": "ui/test/editor-display-safety.test.ts",
+      "sha256": "e53978ada8da876b3af76edf67ac38c1fc6b18e8f3c65055c2e513c283336d6a",
+      "line_count": 194,
+      "status": "full-read-reviewed",
+      "role": "UI test/support",
+      "read_ranges": [
+        [
+          1,
+          194
+        ]
+      ]
+    },
+    {
+      "path": "ui/test/editor-intelligence.test.ts",
+      "sha256": "efb395d742c359aea1e293f40c0b0a17d7f1d9d10576a954e1e46df65c8d0f72",
+      "line_count": 1063,
+      "status": "full-read-reviewed",
+      "role": "UI test/support",
+      "read_ranges": [
+        [
+          1,
+          1063
+        ]
+      ]
+    },
+    {
+      "path": "ui/test/editor-model.test.ts",
+      "sha256": "6e8f9604dba6e3aa8b471b5c6c711ec7fdb811827aa4e90a06302aafcd051f4c",
+      "line_count": 900,
+      "status": "full-read-reviewed",
+      "role": "UI test/support",
+      "read_ranges": [
+        [
+          1,
+          900
+        ]
+      ]
+    },
+    {
+      "path": "ui/test/editor-navigation.test.ts",
+      "sha256": "82eaa0829306fb3c3cd176511acc0e97d7e19c1cc6201959646d89d2a807e9bc",
+      "line_count": 111,
+      "status": "full-read-reviewed",
+      "role": "UI test/support",
+      "read_ranges": [
+        [
+          1,
+          111
+        ]
+      ]
+    },
+    {
+      "path": "ui/test/editor-pane.test.ts",
+      "sha256": "595fe79257f30e708b2398fc326a1a05413072a7bb758ce299c9c9734c3939b6",
+      "line_count": 469,
+      "status": "full-read-reviewed",
+      "role": "UI test/support",
+      "read_ranges": [
+        [
+          1,
+          469
+        ]
+      ]
+    },
+    {
+      "path": "ui/test/editor-positions.test.ts",
+      "sha256": "52edc31cacb98221607300641dcdd1638367b26ff45b64bf877bbdea21c857de",
+      "line_count": 373,
+      "status": "full-read-reviewed",
+      "role": "UI test/support",
+      "read_ranges": [
+        [
+          1,
+          373
+        ]
+      ]
+    },
+    {
+      "path": "ui/test/editor-problems.test.ts",
+      "sha256": "bcaf491009abbb5cae604f4c2e09f7dd1e32e6b7e41e1e59fe61eac888aed65e",
+      "line_count": 528,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/editor-syntax-theme.test.ts",
+      "sha256": "065af81d66ec31fd415e65def72225512cccb4a3443b9333db5bde85190691d8",
+      "line_count": 83,
+      "status": "full-read-reviewed",
+      "role": "UI test/support",
+      "read_ranges": [
+        [
+          1,
+          83
+        ]
+      ]
+    },
+    {
+      "path": "ui/test/editor-syntax.test.ts",
+      "sha256": "a50159927141c005462a6e808be925c16eac6bfa98d58277b60a05cf18b5e0d0",
+      "line_count": 653,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/editor-tabs.test.ts",
+      "sha256": "e14c6ee57d57c35bd951de49f3dc62d7a60f70ebc3673bb83ec1fb9e4159ec40",
+      "line_count": 276,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/editor-view-syntax.test.ts",
+      "sha256": "800a5d5a71f98d16021713e47ba8fd574d1ec653a539b20764fd61c6954928ed",
+      "line_count": 197,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/editor-view.test.ts",
+      "sha256": "68b245bba6640d6e9a1204396ade7fbe1607882383bf24fdae182c8f65bf2c48",
+      "line_count": 706,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/editor-workspace-edits.test.ts",
+      "sha256": "4579abe4469a957a8304661160a8bc5d7885d9b128143d1ff45d09e9c4903c7f",
+      "line_count": 670,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/family.test.ts",
+      "sha256": "10730c4a63ba6a827f93ed021bbc94977db2cc625953749b546facdf7fa33298",
+      "line_count": 492,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/features.test.ts",
+      "sha256": "28e33e2352f520765e33fd715d5f41a52c0228a166dac019ead25b1a8852f382",
+      "line_count": 2291,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/final-review-ui-fix.test.ts",
+      "sha256": "14721b70ca096c3f8e77db83ed4a1ae61713e9194846dd53d43a74d9dae7f5a1",
+      "line_count": 72,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/final-review-ui-followups.test.ts",
+      "sha256": "ec70f3426a34fed6130c9df177cd86545721c7a5cc7c4db1cda43f8ac45f6800",
+      "line_count": 71,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/fm7-display.test.ts",
+      "sha256": "05a87893c3116b86f0b0de387f0293d97bf27d895aca7e8bcac2cc81e65d3ae5",
+      "line_count": 318,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/footer-hints.test.ts",
+      "sha256": "d1785dda5b70203f77cb10845d2388d0b49b520842481e6414eae2247570a953",
+      "line_count": 48,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/gateway.e2e.test.ts",
+      "sha256": "c41219ecb15a912837f850a82fb22563d3601f451861e369dfcc415e8fd2fc70",
+      "line_count": 238,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/harnesses.test.ts",
+      "sha256": "bc293bfeac1381ac81abb38ba3dd6578034e9f90acb644e43e71785fc70dac1c",
+      "line_count": 295,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/help-menu.test.ts",
+      "sha256": "fad93ff5a11299e3442752d2d4f62cba49349f4b715a01ef728e8631c7b3e376",
+      "line_count": 447,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/holistic-h24-delegate-pause.test.ts",
+      "sha256": "b13f763a3234c03e6c32e9416754908c40d8b2e5ffc433ce51743150076e6c86",
+      "line_count": 243,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/images.test.ts",
+      "sha256": "80a2eb10f2dac332057354366a1947769cb02c1f7461f1dea279ec9992fd5280",
+      "line_count": 80,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/interop.test.ts",
+      "sha256": "80f59b6aa984b6923b55d7f3abcde8760a2e4b19eed3123b66c3dca5a54137c8",
+      "line_count": 265,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/layout.test.ts",
+      "sha256": "80745519a0380d335e8f08de6faffe09c3d96f0f435e89dfa902f10798729cf5",
+      "line_count": 416,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/mcp-oauth.test.ts",
+      "sha256": "5178fe91e726b96644731991984e28a706e00fb0574f41140f370c3a2dd7c4cb",
+      "line_count": 476,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/menu-sizing.test.ts",
+      "sha256": "fbb8659d82997a0e8921c17d48447fb04539837bff1783e7af481e37e13799b9",
+      "line_count": 83,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/motion.test.ts",
+      "sha256": "aed309452d8b5567dd63f4c70dacb810180e43be6c8f4f68613fdd652ab69f2a",
+      "line_count": 325,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/nowplaying-app-anim.test.ts",
+      "sha256": "b9812417b067078635cc80491dbb4b70ff788c46567e316c0ce81964eabf475c",
+      "line_count": 359,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/nowplaying-app-boot.test.ts",
+      "sha256": "69003d28feba6ae5a24b0b4d2fe406cfd73a34eca2174a9e6f3b3d8496fb06b8",
+      "line_count": 151,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/nowplaying-bar.test.ts",
+      "sha256": "273a8c3ab2e95add759f3798e1f001f54b82d236eb2f6523cd580f93985203bd",
+      "line_count": 172,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/nowplaying-command.test.ts",
+      "sha256": "081b47818e809daeb3cfa4d5bb7fae2af1c79c43c8e57e975cd12fc8b078825f",
+      "line_count": 135,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/nowplaying-controller.test.ts",
+      "sha256": "fad9b4cbc73d6de4940bf9cb2c1910cfc6a126f8f1a7b0f9bbf93b46206c1919",
+      "line_count": 421,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/nowplaying-live-update.test.ts",
+      "sha256": "c1952dc72f84f13cc8745eea8e33ab0d8b512bd0c4b0c295246e5fe999d5ae41",
+      "line_count": 144,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/nowplaying-review-fixes.test.ts",
+      "sha256": "2c92b39d7d52681743426f0a5f7540f915e43cc1f0af3474be4c52e31d93857f",
+      "line_count": 252,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/output.test.ts",
+      "sha256": "f2246d18dba4cccadd416a33aa171deb7865d98f2a92e7c7add963a8029c439e",
+      "line_count": 158,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/p0-22-delegate-empty-result.test.ts",
+      "sha256": "c2b8a0055ec9d2d4ed0b24a57be96b200da4dbb973f68901b2e1f6ceb55621fd",
+      "line_count": 127,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/panels.test.ts",
+      "sha256": "f539e46072691a68b74ea41ec3b2507f6dbc34940c3441dfe9d63047881b7dca",
+      "line_count": 60,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/protocol-parity.test.ts",
+      "sha256": "0fc22f51cce45e5d1992d8e0c69cc60f502f33349d8bbee730ac49693824affa",
+      "line_count": 175,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/r4-094-tui.test.ts",
+      "sha256": "c6769a3495a2ae5562b978421cea90338083f8d906b5f7093a9efe3f1d8a44e8",
+      "line_count": 506,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/r4-approval-expiry.test.ts",
+      "sha256": "2d093783d23c1252bf1e1c956db6fd3586ded2589f44c2d017376eed07175905",
+      "line_count": 284,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/r4-honesty.test.ts",
+      "sha256": "6303cbe502468d55a389428f9053a7f7b287e4807aa6f4aa59414480c5fadfb3",
+      "line_count": 337,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/r5-010-menu-rows.test.ts",
+      "sha256": "44337ab05863a0fc3eecbcaee1dac13236850b78310904737024956707403309",
+      "line_count": 109,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/r5-021_022-ui-affordances.test.ts",
+      "sha256": "7a2cbad93e95d5f2f99ba577d28f57088a0613ed9d8a47b6dfadc7d49d6dab5c",
+      "line_count": 313,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/r5-mode-indicator.test.ts",
+      "sha256": "b3067f6ad1bf5824c4386040937c99578ffab8e146265f005a11915fef29e783",
+      "line_count": 171,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/reference.test.ts",
+      "sha256": "69ed527a97811ae291a4154e333eff442bc928cbe14bd15ff1fcbb1af89eae32",
+      "line_count": 178,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/response-layout.test.ts",
+      "sha256": "0cc2041b466a169693dd905baa657111c1edf89851f5d19cd93fd487016cb316",
+      "line_count": 219,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/skills-menu.test.ts",
+      "sha256": "121c37691c638ed94b19a4ff7302d135de96fe3c586896499468b97a62ba50a1",
+      "line_count": 1085,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/skills-revert.test.ts",
+      "sha256": "a590aa7815814a852b1dfed231ed902f8dffd6b35f37bf29115f167956e58d79",
+      "line_count": 177,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/state.test.ts",
+      "sha256": "f9d0b19eb0e598a3ba4be97d11dbcc4b400ba92b5c6303b8b19bfbf7bc5f0491",
+      "line_count": 1205,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/support/capture-reference.ts",
+      "sha256": "b0ccde6efa0f7acde4c436abb8e3c8d90265e9d1b77b07655f2e816af06064a4",
+      "line_count": 37,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/support/pty-driver.py",
+      "sha256": "bf46bd9806ceff31c122b3b7d8928cc4d9c1e38f235c1d6d7574473d6f616f53",
+      "line_count": 188,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/support/reference.ts",
+      "sha256": "0d0a39b56cab5692ba96c39c6f7c1d0dc011eab010cb3d6956f195897bf58ea4",
+      "line_count": 40,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/tail-replay.test.ts",
+      "sha256": "00b4a72d15000687ef65f64df38d06982f97e0e0bba1c483e034027f59b19602",
+      "line_count": 136,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/theme-background.test.ts",
+      "sha256": "2f19346af5a32f97698267ae2d251fe63cf18193cdd7b0c26ef2609232c5f24a",
+      "line_count": 350,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/themes-extended.test.ts",
+      "sha256": "cb37e17a500e76208c5a6b3e572b27aba3945295d13c6480163b8809af1e072f",
+      "line_count": 160,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/ui.test.ts",
+      "sha256": "622e361aa4ba4623d04105388d0118e9bae471875039f074da64cbb4e2c2b2f7",
+      "line_count": 682,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/workspace-app-integration.test.ts",
+      "sha256": "46ae9bed94ad7dfb240f64a2ce78bab672e817e6bdca680b73133b0266b02b1b",
+      "line_count": 1820,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/workspace-attachment.test.ts",
+      "sha256": "07426730041fbe36e48e990aca2e226bd1da9acc2eff9a269e351c6b04124ec5",
+      "line_count": 415,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/workspace-controller.test.ts",
+      "sha256": "d9cf206f5fa54bcb5daab71e2d6b202cd2f032098a5dc43a7315accafc60a0a9",
+      "line_count": 1624,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/workspace-event-routing.test.ts",
+      "sha256": "f5a31f4b5ed06176b4ed1766ff2e68acb018ea23e06835eee91a52a496cce26e",
+      "line_count": 71,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/workspace-explorer.test.ts",
+      "sha256": "eecddbdbeca8caa55f13dfc3cb8d816a79215a3f1e0d40ccd74fff4494bc31b7",
+      "line_count": 568,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/workspace-focus-integrity.test.ts",
+      "sha256": "fb9bb466acdc579d1b84ae673b3b0d7605b17df3c64c10b48f1b1e04dd7d22e8",
+      "line_count": 1007,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/workspace-layout.test.ts",
+      "sha256": "e7a41f8f63338ee9f4eed6fd9be1eebffbd0965c8d0eab2eaee4f4a0d051b9ab",
+      "line_count": 198,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/workspace-persistence.test.ts",
+      "sha256": "aee2fafa9a2ea75d75cfa67792b45c16b56d53cb5441038028fbadfe2afb3332",
+      "line_count": 328,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/workspace-preferences.test.ts",
+      "sha256": "25eb3f12e406344e36a8f9ef1137a55509aad69e453a02f8fee1bf5653d25aed",
+      "line_count": 89,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/workspace-quickopen.test.ts",
+      "sha256": "2674ff2d23fdcc6b629797d28eb30f72d4de2c26fc0a58db89f24f69de517a3c",
+      "line_count": 404,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/workspace-shell.test.ts",
+      "sha256": "08cd25c55a1eb5e80a12365423a4dad8b7124f48c312d7ba7d0bdf7d0fd9bea8",
+      "line_count": 691,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/test/workspace-ux-polish.test.ts",
+      "sha256": "efe789df8b4189c73791bbf8f8835b9c4ccc64f24aa82118f3e80cb375ebf424",
+      "line_count": 204,
+      "status": "not-yet-full-read",
+      "role": "UI test/support",
+      "read_ranges": []
+    },
+    {
+      "path": "ui/tsconfig.json",
+      "sha256": "26a55924c69969d359182038ae0a3fb4c6608e923a3d668213a1dfe0857c87ec",
+      "line_count": 19,
+      "status": "full-read-reviewed",
+      "role": "UI package/compiler configuration",
+      "read_ranges": [
+        [
+          1,
+          19
+        ]
+      ]
+    }
+  ]
+}

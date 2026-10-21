@@ -1,0 +1,1940 @@
+{
+  "scope": "runtime",
+  "files": [
+    {
+      "path": "machina/core/__init__.py",
+      "sha256": "7d73cad2a0e243a5e26e69752564f27630817ee1d546897fd796f8abbb7db9da",
+      "line_count": 56,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "  init  ",
+      "read_ranges": [
+        [
+          1,
+          56
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/agent.py",
+      "sha256": "fb296a0bb2c8ba8ce182df6f711e5f8d8eab895c84a2e8136001ea881d214c1a",
+      "line_count": 2285,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "agent",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          800
+        ],
+        [
+          801,
+          1200
+        ],
+        [
+          1201,
+          1600
+        ],
+        [
+          801,
+          1200
+        ],
+        [
+          1201,
+          1600
+        ],
+        [
+          1601,
+          2000
+        ],
+        [
+          2001,
+          2285
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/agent_def.py",
+      "sha256": "569bd9c26e0f46eb6ea43ef2f1b3badf4e4f3dade14cfcadc4fc4349926f8dfb",
+      "line_count": 426,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "agent def",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          426
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/agent_factory.py",
+      "sha256": "7f71c78aceabf1f43d69be0efa57391db63145aaca7f8f23498d9f92bc556c13",
+      "line_count": 430,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "agent factory",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          430
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/approval_resume.py",
+      "sha256": "4f3aee3cefe00cbaf3a6eba694a02ce18dc4ccd2ddae4e6381b67c795af37b03",
+      "line_count": 81,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "approval resume",
+      "read_ranges": [
+        [
+          1,
+          81
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/artifacts.py",
+      "sha256": "e5e78f5a1e3493506b636967fc3b3c3c0cc76b66e274c83a53a768a5361da7f3",
+      "line_count": 821,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "artifacts",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          800
+        ],
+        [
+          801,
+          821
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/assembler.py",
+      "sha256": "9d01d17732dcafb0d5297b87ad5a778a15000775d3a2e391154d08d64531d639",
+      "line_count": 726,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "assembler",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          726
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/background_tasks.py",
+      "sha256": "dbc8b854e45b11afeaabf36980b1017e5bfa1ae6860f516d0be447e5f46c61f8",
+      "line_count": 237,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "background tasks",
+      "read_ranges": [
+        [
+          1,
+          237
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/cache_breakpoints.py",
+      "sha256": "2c39a7099a13d4119f97f5b5b6a72c51258ccc2acd88927d4971f2176588304c",
+      "line_count": 84,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "cache breakpoints",
+      "read_ranges": [
+        [
+          1,
+          84
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/checkpoint.py",
+      "sha256": "2efc169f8d0d9176a6cc72395f055e0b513f0ee3f85a479d06c7f42b03b08061",
+      "line_count": 175,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "checkpoint",
+      "read_ranges": [
+        [
+          1,
+          175
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/child_process.py",
+      "sha256": "60397b1629f5b446de3f11715ccfdbcb3a83254f822a94112b312d3abc3feb6d",
+      "line_count": 378,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "child process",
+      "read_ranges": [
+        [
+          1,
+          378
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/cleanup.py",
+      "sha256": "8c80b89f1f0ebd73bceefdb37b0c411b54e92fc326c65ed68f1d86758babc526",
+      "line_count": 96,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "cleanup",
+      "read_ranges": [
+        [
+          1,
+          96
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/compression.py",
+      "sha256": "821a96fbb02860fbe3374f3aeced0ff12a572077d10eed574483be72d8cc9d4c",
+      "line_count": 892,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "compression",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          800
+        ],
+        [
+          801,
+          892
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/config.py",
+      "sha256": "0478f57d034486633698513cf5f5018f7600094c35e51f7fa0a9ac1a0cfa35e7",
+      "line_count": 967,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "config",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          800
+        ],
+        [
+          801,
+          967
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/context.py",
+      "sha256": "c9a357f231a9922305e87754689aa65f9ba27ace62bfdbc0b4ec32b00de603c7",
+      "line_count": 1864,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "context",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          800
+        ],
+        [
+          801,
+          1200
+        ],
+        [
+          1201,
+          1600
+        ],
+        [
+          1601,
+          1864
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/context_windows.py",
+      "sha256": "efef78b34a510e017a072f22a5c7d688186328309af25b5acc3bf0854761317a",
+      "line_count": 202,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "context windows",
+      "read_ranges": [
+        [
+          1,
+          202
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/continuity.py",
+      "sha256": "fc67a7b42b7e8499ecc61953cda670799001f6d4312838b5e2fd380a5bbdabb5",
+      "line_count": 205,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "continuity",
+      "read_ranges": [
+        [
+          1,
+          205
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/cron.py",
+      "sha256": "f61c17590e8b45092634f02cd3bdeeaf22917e9ef684b5ee74a8765153b9607c",
+      "line_count": 82,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "cron",
+      "read_ranges": [
+        [
+          1,
+          82
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/exceptions.py",
+      "sha256": "3d38612956d8971a02c561e4017a211f00d9ba954c345e0458ca7fed2d9c148f",
+      "line_count": 114,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "exceptions",
+      "read_ranges": [
+        [
+          1,
+          114
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/execution_context.py",
+      "sha256": "6e90ae87ed216e47d19881bba7e69e463bc0622cd5711a8c06db6fe9ef526c3b",
+      "line_count": 122,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "execution context",
+      "read_ranges": [
+        [
+          1,
+          122
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/firecrawl_lifecycle.py",
+      "sha256": "4d4dda2b11b8d113725b569daa2aaa6e6d452f66b1e3b07aa2dd455b015c9bd1",
+      "line_count": 603,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "firecrawl lifecycle",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          603
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/images.py",
+      "sha256": "208347ac9ae926aaa96c329aa4fbdb01fd0a5427251d61d7219f07bb4e34683f",
+      "line_count": 139,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "images",
+      "read_ranges": [
+        [
+          1,
+          139
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/intent.py",
+      "sha256": "4bde2ff43bbb62cac13e0b8717d93d39463660e32c7c242a2988f9d57cef6a8b",
+      "line_count": 350,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "intent",
+      "read_ranges": [
+        [
+          1,
+          350
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/job_scripts.py",
+      "sha256": "0244c5fb01ed3818e215273b750e7532043e4364f48b615e2c5b50e3b5d96fe6",
+      "line_count": 361,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "job scripts",
+      "read_ranges": [
+        [
+          1,
+          361
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/metrics.py",
+      "sha256": "1e8971b080a05fb4e7305dab84a234e5714ab532fe761da88d3ce2e2a16f2558",
+      "line_count": 325,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "metrics",
+      "read_ranges": [
+        [
+          1,
+          325
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/models.py",
+      "sha256": "ef380b7b1f53c0be544b5d539cb541b02471b9220a843e126e3d4b84613a0bdd",
+      "line_count": 170,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "models",
+      "read_ranges": [
+        [
+          1,
+          170
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/nowplaying.py",
+      "sha256": "23d397170c36d98d46d04944df2ac95e00ac9b8c1eb31317dfb305d71d6d04c4",
+      "line_count": 802,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "nowplaying",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          800
+        ],
+        [
+          801,
+          802
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/optimization/__init__.py",
+      "sha256": "4163b173398623b359fb902475a5dc69776461186b4494c2014e70e6c4eb3723",
+      "line_count": 12,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "  init  ",
+      "read_ranges": [
+        [
+          1,
+          12
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/optimization/cache_context.py",
+      "sha256": "a9361f71b99c6b6bfa19a0844d35cd21cac2cc4708de8d946aacd7c153238e27",
+      "line_count": 177,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "cache context",
+      "read_ranges": [
+        [
+          1,
+          177
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/optimization/canonicalizer.py",
+      "sha256": "879c9ed7c90a6e4c101d8cce8afcb93e0e358e7ef7ce73ff559c87a822a0b040",
+      "line_count": 194,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "canonicalizer",
+      "read_ranges": [
+        [
+          1,
+          194
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/optimization/capabilities.py",
+      "sha256": "dfea711adac308c8e97417e1bbf194dfffff15b200d9b1a453ac90e0b3d5b854",
+      "line_count": 152,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "capabilities",
+      "read_ranges": [
+        [
+          1,
+          152
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/optimization/compression/__init__.py",
+      "sha256": "bff0814b553b654af70feab7c814f5b915561ceec0a44da7618be58a55bef866",
+      "line_count": 27,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "  init  ",
+      "read_ranges": [
+        [
+          1,
+          27
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/optimization/compression/learned.py",
+      "sha256": "b29749d32afd0eb8a5a6e595b6a8312678586639989391f7264a702f79a84179",
+      "line_count": 382,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "learned",
+      "read_ranges": [
+        [
+          1,
+          382
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/optimization/compression/quality_guard.py",
+      "sha256": "e4d757aa357c1691a192290002cc7e3ee5c39b3f4f5d167a89d23cc840754186",
+      "line_count": 102,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "quality guard",
+      "read_ranges": [
+        [
+          1,
+          102
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/optimization/compression/span_protector.py",
+      "sha256": "1cd772f19a9555cba3b0cda228a069dce67cdf13457cf36c248e9c7c9d92288a",
+      "line_count": 99,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "span protector",
+      "read_ranges": [
+        [
+          1,
+          99
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/optimization/policy.py",
+      "sha256": "f3b394b368685bdd7fe7b255d9305bc146e93cc4ae9b5e9fcce3bab8fa52127b",
+      "line_count": 314,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "policy",
+      "read_ranges": [
+        [
+          1,
+          314
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/optimization/semantic_cache.py",
+      "sha256": "4e0c103eca5676a4ca5493d31dcbff9ee3791b969d8f1da49ce0bd88db7893d8",
+      "line_count": 369,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "semantic cache",
+      "read_ranges": [
+        [
+          1,
+          369
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/optimization/shadow.py",
+      "sha256": "25af6a698300729304e5f6e5f426c230fa5895fa619ff86ed2c10f08cacdc52d",
+      "line_count": 207,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "shadow",
+      "read_ranges": [
+        [
+          1,
+          207
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/optimization/warmers/__init__.py",
+      "sha256": "2aa6c7785783ed813c715e068c4be655812c098858decc02df64cc91ff9c85ba",
+      "line_count": 1,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "  init  ",
+      "read_ranges": [
+        [
+          1,
+          1
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/optimization/warmers/prefix.py",
+      "sha256": "5076527d17babd881597864a8e6a9aa10eedbbfe8cd64442a89d0174c017a99a",
+      "line_count": 69,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "prefix",
+      "read_ranges": [
+        [
+          1,
+          69
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/optimization/warmers/reuse.py",
+      "sha256": "31ebf21e3cb5f305c48cd1c339c8f80f6ae3c3b5ca53dc62003fb51a78bc5a5d",
+      "line_count": 47,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "reuse",
+      "read_ranges": [
+        [
+          1,
+          47
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/optimization/warmers/startup.py",
+      "sha256": "7dda3326b65a6d451dc212fbbaa7ce8668d01e25050ca1ffe3abc900e1c250e8",
+      "line_count": 160,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "startup",
+      "read_ranges": [
+        [
+          1,
+          160
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/orchestrator.py",
+      "sha256": "95d17a8a30e1b258b367703dd01b03cc9b61ba1b5a2f48b7fbdb0cf93fa639f5",
+      "line_count": 694,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "orchestrator",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          694
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/pricing.py",
+      "sha256": "6a897c2aa6a93c34129ad225a2b496c07c8036c6e13ed8b6121056ec2e266d40",
+      "line_count": 223,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "pricing",
+      "read_ranges": [
+        [
+          1,
+          223
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/progress.py",
+      "sha256": "65bbabc77dfbc2ae05af972e4ab3beffae5b6ff9f2d6cd587ba647126e0f460f",
+      "line_count": 108,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "progress",
+      "read_ranges": [
+        [
+          1,
+          108
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/projection.py",
+      "sha256": "3320eb6cd4f062a1f8cd1520d1c5cf5472e72bf1d59d6aae7581a1ba2482c170",
+      "line_count": 199,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "projection",
+      "read_ranges": [
+        [
+          1,
+          199
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/prompt.py",
+      "sha256": "0f5ff6760b2cfa8240756602c3f73a7ca4e591a8939ad4e0650a918436cd937d",
+      "line_count": 567,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "prompt",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          567
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/provider/__init__.py",
+      "sha256": "574b9d124394ae99602b31e213f0d5360f0b557303339549ea0c785f837785f5",
+      "line_count": 53,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "  init  ",
+      "read_ranges": [
+        [
+          1,
+          53
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/provider/_log.py",
+      "sha256": "7cedf7cb4f22f3ea0566aed11df999af0642e72070c992eeeceb2194c10d711e",
+      "line_count": 10,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": " log",
+      "read_ranges": [
+        [
+          1,
+          10
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/provider/anthropic.py",
+      "sha256": "bdfb5f9d3db1828e3596609e1fe6b0ce8bd4366e55298bc5bd56e0f3d1e8a223",
+      "line_count": 566,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "anthropic",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          566
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/provider/audit.py",
+      "sha256": "132fdabcbfff0bbce4a3e5d4e0872ba857140aa14e46f8feac9a2cb41cb4a81b",
+      "line_count": 247,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "audit",
+      "read_ranges": [
+        [
+          1,
+          247
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/provider/base.py",
+      "sha256": "4380857346bed9b582cd7a57810b7613ddcad676e1f3598c9bd83fcc30d5a95b",
+      "line_count": 60,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "base",
+      "read_ranges": [
+        [
+          1,
+          60
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/provider/caches.py",
+      "sha256": "19a1040cd7013b1e07fce25eb337c588c292c4aa74b60b1300d73997a1180e39",
+      "line_count": 97,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "caches",
+      "read_ranges": [
+        [
+          1,
+          97
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/provider/catalog.py",
+      "sha256": "7263d843764edf734ddc4ffd2f524137e82d7bd876e253fc7447bc893fb7eb6a",
+      "line_count": 547,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "catalog",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          547
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/provider/chatgpt.py",
+      "sha256": "9fa1bee49e1664e98e9bb6e00cd12ff20b39e003230fc42874029b07a01a329c",
+      "line_count": 640,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "chatgpt",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          640
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/provider/copilot.py",
+      "sha256": "54a5e8d6da9198f172ad1e9c5548301644370f88645cfa82aad2fa4873e894cb",
+      "line_count": 340,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "copilot",
+      "read_ranges": [
+        [
+          1,
+          340
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/provider/direct.py",
+      "sha256": "c00a4306ff01d99d8579b1510f3319a79100d96f531282cf9fdc5f483b87b76a",
+      "line_count": 281,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "direct",
+      "read_ranges": [
+        [
+          1,
+          281
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/provider/factory.py",
+      "sha256": "cd747f6f3ec67b575dbc2ed291ec07e838e7f2b4a20601598a5d9fc839fdd589",
+      "line_count": 138,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "factory",
+      "read_ranges": [
+        [
+          1,
+          138
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/provider/ollama.py",
+      "sha256": "8c6410ac8d1d63c6d1233a4f229049b45ca53baceb49187c0bb77e65977321cd",
+      "line_count": 345,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "ollama",
+      "read_ranges": [
+        [
+          1,
+          345
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/provider/openrouter.py",
+      "sha256": "de8159b61bad633f70e589fb9975b6a281fc1aab56b7f8e25907275035004c7e",
+      "line_count": 497,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "openrouter",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          497
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/provider/prompt_cache.py",
+      "sha256": "fab8c51fe60bc32d016fa13a25a664a0cb824a328f840c718dfe99329582bb9b",
+      "line_count": 382,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "prompt cache",
+      "read_ranges": [
+        [
+          1,
+          382
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/provider/rate_limit.py",
+      "sha256": "eb812c7be2fd0f8eae18ccbbedc90d3d1d06427feee367b610eba716bab9ac7a",
+      "line_count": 120,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "rate limit",
+      "read_ranges": [
+        [
+          1,
+          120
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/provider/reasoning.py",
+      "sha256": "1a111f50d803fc67649e24db8c1d124c990fa3ae5a2d92bb9a67870ab09826d0",
+      "line_count": 55,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "reasoning",
+      "read_ranges": [
+        [
+          1,
+          55
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/provider/specs.py",
+      "sha256": "71847041bd637a09a55661406381cce7d5e4c56ab9aa87397bc212006ae63a5c",
+      "line_count": 188,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "specs",
+      "read_ranges": [
+        [
+          1,
+          188
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/provider/sse.py",
+      "sha256": "414e3c5fe47729b643ff76a098462100165adb78f1a218aeac1fc4082651be69",
+      "line_count": 54,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "sse",
+      "read_ranges": [
+        [
+          1,
+          54
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/provider/streaming.py",
+      "sha256": "4a335868c8ba0e039b0e1ecb53a9353c7a51f57f6a35101a38b0f4dbcc8f15d8",
+      "line_count": 259,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "streaming",
+      "read_ranges": [
+        [
+          1,
+          259
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/provider/transport.py",
+      "sha256": "d4d8a389ae44edd2cbb8983003532cb2e64fc7dd45f909ef495b1c8baa4a6996",
+      "line_count": 321,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "transport",
+      "read_ranges": [
+        [
+          1,
+          321
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/provider/usage_map.py",
+      "sha256": "a7fb8b95d0edcffe00c5a56beb6cfe73f887da5e754041a9082a72fb6d76179d",
+      "line_count": 240,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "usage map",
+      "read_ranges": [
+        [
+          1,
+          240
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/reducers.py",
+      "sha256": "b38a432c491ded81cb85e970b1579ab1a1fa7ca6a69a499407ac09238227853c",
+      "line_count": 438,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "reducers",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          438
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/request_gate.py",
+      "sha256": "7618a91f466e6cbf779e57d217b562415f3ee87afb215f965d68827c1078fd31",
+      "line_count": 618,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "request gate",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          618
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/request_projection.py",
+      "sha256": "31310021287769b851d99e1cebc2a0288ef5749e2edd3635f8699bcc6716963a",
+      "line_count": 1161,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "request projection",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          800
+        ],
+        [
+          801,
+          1161
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/runtime.py",
+      "sha256": "8e3be5c0b6a4be3a385f32a1ca25554183f9a06709376e6ec8242deb52c93407",
+      "line_count": 665,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "runtime",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          665
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/scheduler.py",
+      "sha256": "d463017c84b8544e101e185bee7421874c473f1bd709118667b439d035888cfa",
+      "line_count": 1353,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "scheduler",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          800
+        ],
+        [
+          801,
+          1200
+        ],
+        [
+          1201,
+          1353
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/self_knowledge.py",
+      "sha256": "095c75d870c67fabae655524c2debbefe792b249c064bfcc10e6a49f21359c0a",
+      "line_count": 130,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "self knowledge",
+      "read_ranges": [
+        [
+          1,
+          130
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/serialization.py",
+      "sha256": "b84441ec375ea22688d80ee6d6f4bce9125d4c54bcf249a2fdfb22af97e77fe7",
+      "line_count": 85,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "serialization",
+      "read_ranges": [
+        [
+          1,
+          85
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/session.py",
+      "sha256": "db139350a8f9b5229e24b3ff9fce53ceb300e64e998cad312b1eb5f10d20f106",
+      "line_count": 521,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "session",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          521
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/session_mode.py",
+      "sha256": "10bef3dc3ad1f4b11f7754145b02dd7b2be0d7b325e1813dbc420682a644cfa5",
+      "line_count": 346,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "session mode",
+      "read_ranges": [
+        [
+          1,
+          346
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/session_recall.py",
+      "sha256": "46842c9a1376891a1be977c8d997a34cd3c43d67452f780c65ab376a3bc16859",
+      "line_count": 288,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "session recall",
+      "read_ranges": [
+        [
+          1,
+          288
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/task_descriptor.py",
+      "sha256": "6df8ec66ada9fa05f333b24434a8e2e5fd8092362adaf448459418791ca87d37",
+      "line_count": 674,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "task descriptor",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          674
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/text_search.py",
+      "sha256": "32807507319fb614f37669d5c028d37c49665a3c37ad4ea147ed400151462952",
+      "line_count": 61,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "text search",
+      "read_ranges": [
+        [
+          1,
+          61
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/tool_views.py",
+      "sha256": "672ebfb517685500a9a03df594871c80cdb941c64f40e6f9603dfc1ef1e62ed7",
+      "line_count": 404,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "tool views",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          404
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/turn_engine.py",
+      "sha256": "0a87eaa9c9ae08874e40002248e4e7b0006a81fe73347644fb45950367bfbfc7",
+      "line_count": 748,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "turn engine",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          748
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/turn_flow.py",
+      "sha256": "cc4374393230c619155f3634d65026a66a513fb25312b736218429548401f6c2",
+      "line_count": 137,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "turn flow",
+      "read_ranges": [
+        [
+          1,
+          137
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/turns.py",
+      "sha256": "8bd4b9e6ad76e7c6add4222a3e3957b4afc56165570624bbde03e810fe849ca8",
+      "line_count": 904,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "turns",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          800
+        ],
+        [
+          801,
+          904
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/usage.py",
+      "sha256": "abbfbdbdf3efda3b4411765ba8580fb6091d6fc6ef6ed900b7a9a44e4de32c40",
+      "line_count": 803,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "usage",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          800
+        ],
+        [
+          801,
+          803
+        ]
+      ]
+    },
+    {
+      "path": "machina/core/windows_job.py",
+      "sha256": "2a54fd874143da8416aa29d2219cf62f818662781962821c556646b87b786d34",
+      "line_count": 95,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "windows job",
+      "read_ranges": [
+        [
+          1,
+          95
+        ]
+      ]
+    },
+    {
+      "path": "machina/db/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "line_count": 0,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "  init  ",
+      "read_ranges": []
+    },
+    {
+      "path": "machina/db/connection.py",
+      "sha256": "0f43d8a85e9781c51d5d3088a60174047774e2d092b45bad72c12deecb0b0a03",
+      "line_count": 414,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "connection",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          414
+        ]
+      ]
+    },
+    {
+      "path": "machina/db/delegation_schema.sql",
+      "sha256": "34c295452021ed782aa48b00d46e4782fce595789cb261c2b22485902e1018d4",
+      "line_count": 50,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "delegation schema.sql",
+      "read_ranges": [
+        [
+          1,
+          50
+        ]
+      ]
+    },
+    {
+      "path": "machina/db/growth_schema.sql",
+      "sha256": "9e05cb92bd039155d66bc5d78ef64d3a2f283fcb861d1d0889cd2ccf8a4c5737",
+      "line_count": 56,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "growth schema.sql",
+      "read_ranges": [
+        [
+          1,
+          56
+        ]
+      ]
+    },
+    {
+      "path": "machina/db/image_context_schema.sql",
+      "sha256": "2372c1f1eae2658b6745eec76be0ee8d3f83872ced249501b07311b4a225a5af",
+      "line_count": 19,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "image context schema.sql",
+      "read_ranges": [
+        [
+          1,
+          19
+        ]
+      ]
+    },
+    {
+      "path": "machina/db/lazy.py",
+      "sha256": "218e7c0498028dc84fdca1c0bb676314ac48c2eb4fdfe1c5247290861d0c3ec0",
+      "line_count": 74,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "lazy",
+      "read_ranges": [
+        [
+          1,
+          74
+        ]
+      ]
+    },
+    {
+      "path": "machina/db/schema.sql",
+      "sha256": "6aa1fa9df3d9fd702b6286406d7c9db7af3063cd5cc6fa619b08fb609c63d721",
+      "line_count": 735,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "schema.sql",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          735
+        ]
+      ]
+    },
+    {
+      "path": "machina/db/soulspec_schema.sql",
+      "sha256": "7876dbe978d553e4a8c519a9834f04a6fb0ca34b7556cf8ce31117c54040f2fc",
+      "line_count": 7,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "soulspec schema.sql",
+      "read_ranges": [
+        [
+          1,
+          7
+        ]
+      ]
+    },
+    {
+      "path": "machina/memory/__init__.py",
+      "sha256": "86eb3198f585d4cc9d49834bb432469aa70ba3f89002f0acad09e2ffc941adb8",
+      "line_count": 131,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "  init  ",
+      "read_ranges": [
+        [
+          1,
+          131
+        ]
+      ]
+    },
+    {
+      "path": "machina/memory/approval.py",
+      "sha256": "4451a865f5e7b55d47ee0d1dc6c4d1b02966c8b05ac94867e58f40cc51882dec",
+      "line_count": 630,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "approval",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          630
+        ]
+      ]
+    },
+    {
+      "path": "machina/memory/authority.py",
+      "sha256": "07808ef275277c84c11376e901e241689f33e7cb09699cd9d7f59eabb88245dc",
+      "line_count": 57,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "authority",
+      "read_ranges": [
+        [
+          1,
+          57
+        ]
+      ]
+    },
+    {
+      "path": "machina/memory/consolidator.py",
+      "sha256": "c47ccc7eee796be9a167c8435a89d6fe603960d0be56975b9c408fe69859379a",
+      "line_count": 810,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "consolidator",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          800
+        ],
+        [
+          801,
+          810
+        ]
+      ]
+    },
+    {
+      "path": "machina/memory/embeddings.py",
+      "sha256": "b2461595f035e2fa463db1a0389f6344e66d6cf81e0e3c5087e457620736eca5",
+      "line_count": 153,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "embeddings",
+      "read_ranges": [
+        [
+          1,
+          153
+        ]
+      ]
+    },
+    {
+      "path": "machina/memory/forgetting.py",
+      "sha256": "7abed13fa51810a9ce272cd62db7c7a25af44eaa86419e32f57c727958920fd1",
+      "line_count": 83,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "forgetting",
+      "read_ranges": [
+        [
+          1,
+          83
+        ]
+      ]
+    },
+    {
+      "path": "machina/memory/growth.py",
+      "sha256": "fbe24fc3d6210dceb6090b831f00ae2de08098f373d31e19674d277cbf40cf13",
+      "line_count": 415,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "growth",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          415
+        ]
+      ]
+    },
+    {
+      "path": "machina/memory/identity.py",
+      "sha256": "795d69f9b023fc8dabb4313472ddadd491011e21eef0443163010b379fcab371",
+      "line_count": 663,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "identity",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          663
+        ]
+      ]
+    },
+    {
+      "path": "machina/memory/models.py",
+      "sha256": "51ce96f9c3437c0600f9021e4ae915f0c52f25396adf65a04990e18798b9e466",
+      "line_count": 79,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "models",
+      "read_ranges": [
+        [
+          1,
+          79
+        ]
+      ]
+    },
+    {
+      "path": "machina/memory/persona.py",
+      "sha256": "4bd7198365bba4d2b78a622c08ed6fc082d3c250705828f12139775f1db98ddf",
+      "line_count": 401,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "persona",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          401
+        ]
+      ]
+    },
+    {
+      "path": "machina/memory/policy.py",
+      "sha256": "08bd49c91074487bd4548ca4cb1e7b610aa252b5ed0df5a18906bd4d527fcc57",
+      "line_count": 281,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "policy",
+      "read_ranges": [
+        [
+          1,
+          281
+        ]
+      ]
+    },
+    {
+      "path": "machina/memory/redaction.py",
+      "sha256": "d088a989d9df26303fd227ff73669427c4f27c4d44cd9a2e9e201410e24c6ad7",
+      "line_count": 971,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "redaction",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          800
+        ],
+        [
+          801,
+          971
+        ]
+      ]
+    },
+    {
+      "path": "machina/memory/retriever.py",
+      "sha256": "c4d1d82d892997a356d73d44436bc09c4b3e965583dba47553c36aa3a8fbeae0",
+      "line_count": 784,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "retriever",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          784
+        ]
+      ]
+    },
+    {
+      "path": "machina/memory/rl.py",
+      "sha256": "7e1024662c6d41a6d86a089a564c91ac27e827abd419664f7ea06b9d0027dd73",
+      "line_count": 144,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "rl",
+      "read_ranges": [
+        [
+          1,
+          144
+        ]
+      ]
+    },
+    {
+      "path": "machina/memory/rsi.py",
+      "sha256": "4c34161872aaca85b9bf0c0d476ec35529d7761a15aab676aacae708946b12e7",
+      "line_count": 455,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "rsi",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          455
+        ]
+      ]
+    },
+    {
+      "path": "machina/memory/scorer.py",
+      "sha256": "a059b196c3ee08b57b89dc7ea972208326cf42866f4792789ac7d8f7d71123a1",
+      "line_count": 90,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "scorer",
+      "read_ranges": [
+        [
+          1,
+          90
+        ]
+      ]
+    },
+    {
+      "path": "machina/memory/shared_bus.py",
+      "sha256": "1389c430bb20beb03afc9406b14a474ce755b0f5476660e88f66e5da13cfe9f3",
+      "line_count": 193,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "shared bus",
+      "read_ranges": [
+        [
+          1,
+          193
+        ]
+      ]
+    },
+    {
+      "path": "machina/memory/store.py",
+      "sha256": "3260e9de5c85dca6369a9aeb2cce3c3a379f7562f5e188de566f57b2ccc3bbfb",
+      "line_count": 688,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "store",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          688
+        ]
+      ]
+    },
+    {
+      "path": "machina/memory/user_profile.py",
+      "sha256": "bb03e4428b058daa6b909f3a74cc86a851033dccff83156ba3a0a6375f6bf95e",
+      "line_count": 464,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "user profile",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          464
+        ]
+      ]
+    },
+    {
+      "path": "machina/rag/__init__.py",
+      "sha256": "1656c382d2374f2e357caaa7a50d9ebdbfe02f9716a8194236aa4470b6c82114",
+      "line_count": 43,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "  init  ",
+      "read_ranges": [
+        [
+          1,
+          43
+        ]
+      ]
+    },
+    {
+      "path": "machina/rag/chunker.py",
+      "sha256": "3e57312bba273a894abe8fab017885b2f5d5ea949736ffc17ad86fca553a7ff3",
+      "line_count": 619,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "chunker",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          619
+        ]
+      ]
+    },
+    {
+      "path": "machina/rag/embedder.py",
+      "sha256": "7471371fc9e321906ce2f948ab5a0aecbd2cdb5dc66600a84589fe225334f301",
+      "line_count": 960,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "embedder",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          800
+        ],
+        [
+          801,
+          960
+        ]
+      ]
+    },
+    {
+      "path": "machina/rag/evaluation.py",
+      "sha256": "1338313901c808e34bc0da39c06b22f6503b4e659d2e41b2c70f507927cfefc5",
+      "line_count": 240,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "evaluation",
+      "read_ranges": [
+        [
+          1,
+          240
+        ]
+      ]
+    },
+    {
+      "path": "machina/rag/loaders.py",
+      "sha256": "d74c2b7faa37b07b4dd9a6d5d6fb7677b42a6179ee52ca6733c837d1167bcf75",
+      "line_count": 418,
+      "read_status": "complete",
+      "review_status": "reviewed",
+      "role": "loaders",
+      "read_ranges": [
+        [
+          1,
+          400
+        ],
+        [
+          401,
+          418
+        ]
+      ]
+    },
+    {
+      "path": "machina/rag/pipeline.py",
+      "sha256": "b39bdb2a2fd69700673605cf98113358b310e1d0e540896791453be3ac59a24f",
+      "line_count": 1065,
+      "read_status": "pending",
+      "review_status": "pending",
+      "role": "pipeline",
+      "read_ranges": []
+    },
+    {
+      "path": "machina/rag/reranker.py",
+      "sha256": "3e928ddc968329275560fcfd7410ffe0296bbffed8432ebadb7fceb09102bc3b",
+      "line_count": 683,
+      "read_status": "pending",
+      "review_status": "pending",
+      "role": "reranker",
+      "read_ranges": []
+    },
+    {
+      "path": "machina/rag/search.py",
+      "sha256": "89d59d633f964975f84020cc568304081b38190129ca5f158efb5a31e94a0b51",
+      "line_count": 408,
+      "read_status": "pending",
+      "review_status": "pending",
+      "role": "search",
+      "read_ranges": []
+    },
+    {
+      "path": "machina/services.py",
+      "sha256": "321f4339b859176a8706c1eb4b82b5b58388bd786236589a1f7d8f5c8527be17",
+      "line_count": 938,
+      "read_status": "pending",
+      "review_status": "pending",
+      "role": "services",
+      "read_ranges": []
+    }
+  ]
+}

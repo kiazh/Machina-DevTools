@@ -209,7 +209,7 @@ _CORE_IMPORT_CEILINGS = {
 #   (never at CLI import) so pause records carry the turn origin and
 #   poll-based HTTP resume can validate and attribute the continuation.
 #   Census 781 -> 782, cap -> 782.
-DEFERRED_IMPORT_CAP = 789
+DEFERRED_IMPORT_CAP = 793
 
 
 def test_module_level_core_imports_only_shrink():
@@ -450,6 +450,13 @@ def test_deferred_import_count_ratchet():
     #     +1 ``machina_delegate``: core.orchestrator + AgentNotFoundError.
     #     +1 ``machina_delegate_many``: core.config for the default wave size.
     #     +1 ``machina_delegate_many``: core.orchestrator for run_parallel.
+    #   Full-code review hardening (2026-10-20): 789 -> 793 (+4), all guarded:
+    #     +2 ``cli/__init__.py``: durable mode activation + local fallback bind
+    #        session_mode only when --mode changes the claimed turn.
+    #     +1 ``security/fetch.py``: URL-credential redaction is bound lazily in
+    #        ``_safe_error_url`` so the fetch leaf stays import-light.
+    #     +1 ``api/routes/jobs.py``: override audit binds core.provider.audit_log
+    #        only when a REST job changes the session's agent.
     #   Procedure: this number may only move with a delta table like the above
     # in this comment; silent growth fails the suite by design.
     total = sum(_deferred_import_count(p) for p in ROOT.rglob("*.py"))

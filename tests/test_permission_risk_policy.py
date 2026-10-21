@@ -47,6 +47,32 @@ def test_default_allows_routine_tools(workspace, name, args):
     assert decision.verdict == "allowed", decision.reason
 
 
+def test_delegate_and_memory_approvals_bind_their_payload(workspace):
+    first = build_request(
+        tool="delegate",
+        **action_for_tool("delegate", {"agent": "coder", "task": "change one"}),
+    )
+    second = build_request(
+        tool="delegate",
+        **action_for_tool("delegate", {"agent": "coder", "task": "change two"}),
+    )
+    assert first.content_digest and second.content_digest
+    assert first.digest != second.digest
+    assert "change one" in first.content_preview
+    assert "change two" in second.content_preview
+
+    memory_one = build_request(
+        tool="remember",
+        **action_for_tool("remember", {"content": "fact one", "category": "fact"}),
+    )
+    memory_two = build_request(
+        tool="remember",
+        **action_for_tool("remember", {"content": "fact two", "category": "fact"}),
+    )
+    assert memory_one.content_digest and memory_two.content_digest
+    assert memory_one.digest != memory_two.digest
+
+
 @pytest.mark.parametrize("path", ["docs/credentials.md", "secrets.py", ".env.example"])
 def test_security_documentation_is_not_credential_access(workspace, path):
     request = build_request(operation="file.read", targets=[path])

@@ -1,0 +1,128 @@
+.................................................FFFFF.................  [100%]
+=================================== FAILURES ===================================
+________________ TestAuthentication.test_correct_token_accepted ________________
+tests/test_gateway.py:239: in test_correct_token_accepted
+    assert "result" in response
+E   AssertionError: assert 'result' in {'jsonrpc': '2.0', 'id': 1, 'error': {'code': 1001, 'message': 'database unavailable (reference: 4d94e8250f6e)'}}
+----------------------------- Captured stderr call -----------------------------
+2026-10-20 02:12:25,724 [WARNING] MACHINA_GATEWAY_TOKEN not set — gateway accepts unauthenticated requests
+2026-10-20 02:12:25,736 [ERROR] Database connection failed (reference=4d94e8250f6e): ValueError
+ValueError
+/Users/shadow/Machina-DevTools/machina/gateway/server.py:578 (_initialize)
+/Users/shadow/Machina-DevTools/machina/db/connection.py:196 (connect)
+2026-10-20 02:12:25,739 [WARNING] ← initialize error 1001 (id=1)
+------------------------------ Captured log call -------------------------------
+WARNING  machina.gateway.server:server.py:240 MACHINA_GATEWAY_TOKEN not set — gateway accepts unauthenticated requests
+DEBUG    machina.gateway.server:server.py:352 → initialize (id=1)
+INFO     machina.gateway.server:server.py:551 Gateway initialize: model=openrouter/free provider=openrouter
+ERROR    machina.gateway.server:server.py:581 Database connection failed (reference=4d94e8250f6e): ValueError
+ValueError
+/Users/shadow/Machina-DevTools/machina/gateway/server.py:578 (_initialize)
+/Users/shadow/Machina-DevTools/machina/db/connection.py:196 (connect)
+WARNING  machina.instrumentation:instrumentation.py:409 gateway.rpc.error
+WARNING  machina.gateway.server:server.py:365 ← initialize error 1001 (id=1)
+________ TestAuthentication.test_initialize_without_token_when_no_auth _________
+tests/test_gateway.py:245: in test_initialize_without_token_when_no_auth
+    assert "result" in response
+E   AssertionError: assert 'result' in {'jsonrpc': '2.0', 'id': 1, 'error': {'code': 1001, 'message': 'database unavailable (reference: 25d35642b805)'}}
+----------------------------- Captured stderr call -----------------------------
+2026-10-20 02:12:25,811 [WARNING] MACHINA_GATEWAY_TOKEN not set — gateway accepts unauthenticated requests
+2026-10-20 02:12:25,819 [ERROR] Database connection failed (reference=25d35642b805): ValueError
+ValueError
+/Users/shadow/Machina-DevTools/machina/gateway/server.py:578 (_initialize)
+/Users/shadow/Machina-DevTools/machina/db/connection.py:196 (connect)
+2026-10-20 02:12:25,821 [WARNING] ← initialize error 1001 (id=1)
+------------------------------ Captured log call -------------------------------
+WARNING  machina.gateway.server:server.py:240 MACHINA_GATEWAY_TOKEN not set — gateway accepts unauthenticated requests
+DEBUG    machina.gateway.server:server.py:352 → initialize (id=1)
+INFO     machina.gateway.server:server.py:551 Gateway initialize: model=openrouter/free provider=openrouter
+ERROR    machina.gateway.server:server.py:581 Database connection failed (reference=25d35642b805): ValueError
+ValueError
+/Users/shadow/Machina-DevTools/machina/gateway/server.py:578 (_initialize)
+/Users/shadow/Machina-DevTools/machina/db/connection.py:196 (connect)
+WARNING  machina.instrumentation:instrumentation.py:409 gateway.rpc.error
+WARNING  machina.gateway.server:server.py:365 ← initialize error 1001 (id=1)
+___________ TestErrorMessages.test_handle_line_returns_generic_error ___________
+tests/test_gateway.py:270: in test_handle_line_returns_generic_error
+    assert response["error"]["code"] == INVALID_PARAMS
+E   assert 1001 == -32602
+----------------------------- Captured stderr call -----------------------------
+2026-10-20 02:12:25,832 [WARNING] MACHINA_GATEWAY_TOKEN not set — gateway accepts unauthenticated requests
+2026-10-20 02:12:25,839 [ERROR] Database connection failed (reference=08d314681f85): ValueError
+ValueError
+/Users/shadow/Machina-DevTools/machina/gateway/server.py:578 (_initialize)
+/Users/shadow/Machina-DevTools/machina/db/connection.py:196 (connect)
+2026-10-20 02:12:25,842 [WARNING] ← initialize error 1001 (id=1)
+2026-10-20 02:12:25,845 [WARNING] ← session.list error 1001 (id=2)
+------------------------------ Captured log call -------------------------------
+WARNING  machina.gateway.server:server.py:240 MACHINA_GATEWAY_TOKEN not set — gateway accepts unauthenticated requests
+DEBUG    machina.gateway.server:server.py:352 → initialize (id=1)
+INFO     machina.gateway.server:server.py:551 Gateway initialize: model=openrouter/free provider=openrouter
+ERROR    machina.gateway.server:server.py:581 Database connection failed (reference=08d314681f85): ValueError
+ValueError
+/Users/shadow/Machina-DevTools/machina/gateway/server.py:578 (_initialize)
+/Users/shadow/Machina-DevTools/machina/db/connection.py:196 (connect)
+WARNING  machina.instrumentation:instrumentation.py:409 gateway.rpc.error
+WARNING  machina.gateway.server:server.py:365 ← initialize error 1001 (id=1)
+DEBUG    machina.gateway.server:server.py:352 → session.list (id=2)
+WARNING  machina.instrumentation:instrumentation.py:409 gateway.rpc.error
+WARNING  machina.gateway.server:server.py:365 ← session.list error 1001 (id=2)
+________________ TestTurnTimeout.test_turn_timeout_configurable ________________
+tests/test_gateway.py:292: in test_turn_timeout_configurable
+    sid = (await h.call("session.create"))["result"]["session"]["id"]
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'result'
+----------------------------- Captured stderr call -----------------------------
+2026-10-20 02:12:25,856 [WARNING] MACHINA_GATEWAY_TOKEN not set — gateway accepts unauthenticated requests
+2026-10-20 02:12:25,863 [ERROR] Database connection failed (reference=010e4e21259c): ValueError
+ValueError
+/Users/shadow/Machina-DevTools/machina/gateway/server.py:578 (_initialize)
+/Users/shadow/Machina-DevTools/machina/db/connection.py:196 (connect)
+2026-10-20 02:12:25,865 [WARNING] ← initialize error 1001 (id=1)
+2026-10-20 02:12:25,869 [WARNING] ← session.create error 1001 (id=2)
+------------------------------ Captured log call -------------------------------
+WARNING  machina.gateway.server:server.py:240 MACHINA_GATEWAY_TOKEN not set — gateway accepts unauthenticated requests
+DEBUG    machina.gateway.server:server.py:352 → initialize (id=1)
+INFO     machina.gateway.server:server.py:551 Gateway initialize: model=openrouter/free provider=openrouter
+ERROR    machina.gateway.server:server.py:581 Database connection failed (reference=010e4e21259c): ValueError
+ValueError
+/Users/shadow/Machina-DevTools/machina/gateway/server.py:578 (_initialize)
+/Users/shadow/Machina-DevTools/machina/db/connection.py:196 (connect)
+WARNING  machina.instrumentation:instrumentation.py:409 gateway.rpc.error
+WARNING  machina.gateway.server:server.py:365 ← initialize error 1001 (id=1)
+DEBUG    machina.gateway.server:server.py:352 → session.create (id=2)
+WARNING  machina.instrumentation:instrumentation.py:409 gateway.rpc.error
+WARNING  machina.gateway.server:server.py:365 ← session.create error 1001 (id=2)
+_________ TestTurnTimeout.test_turns_dict_cleaned_up_after_completion __________
+tests/test_gateway.py:305: in test_turns_dict_cleaned_up_after_completion
+    sid = (await h.call("session.create"))["result"]["session"]["id"]
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'result'
+----------------------------- Captured stderr call -----------------------------
+2026-10-20 02:12:25,879 [WARNING] MACHINA_GATEWAY_TOKEN not set — gateway accepts unauthenticated requests
+2026-10-20 02:12:25,886 [ERROR] Database connection failed (reference=e929b8d0f2b2): ValueError
+ValueError
+/Users/shadow/Machina-DevTools/machina/gateway/server.py:578 (_initialize)
+/Users/shadow/Machina-DevTools/machina/db/connection.py:196 (connect)
+2026-10-20 02:12:25,888 [WARNING] ← initialize error 1001 (id=1)
+2026-10-20 02:12:25,892 [WARNING] ← session.create error 1001 (id=2)
+------------------------------ Captured log call -------------------------------
+WARNING  machina.gateway.server:server.py:240 MACHINA_GATEWAY_TOKEN not set — gateway accepts unauthenticated requests
+DEBUG    machina.gateway.server:server.py:352 → initialize (id=1)
+INFO     machina.gateway.server:server.py:551 Gateway initialize: model=openrouter/free provider=openrouter
+ERROR    machina.gateway.server:server.py:581 Database connection failed (reference=e929b8d0f2b2): ValueError
+ValueError
+/Users/shadow/Machina-DevTools/machina/gateway/server.py:578 (_initialize)
+/Users/shadow/Machina-DevTools/machina/db/connection.py:196 (connect)
+WARNING  machina.instrumentation:instrumentation.py:409 gateway.rpc.error
+WARNING  machina.gateway.server:server.py:365 ← initialize error 1001 (id=1)
+DEBUG    machina.gateway.server:server.py:352 → session.create (id=2)
+WARNING  machina.instrumentation:instrumentation.py:409 gateway.rpc.error
+WARNING  machina.gateway.server:server.py:365 ← session.create error 1001 (id=2)
+=========================== short test summary info ============================
+FAILED tests/test_gateway.py::TestAuthentication::test_correct_token_accepted
+FAILED tests/test_gateway.py::TestAuthentication::test_initialize_without_token_when_no_auth
+FAILED tests/test_gateway.py::TestErrorMessages::test_handle_line_returns_generic_error
+FAILED tests/test_gateway.py::TestTurnTimeout::test_turn_timeout_configurable
+FAILED tests/test_gateway.py::TestTurnTimeout::test_turns_dict_cleaned_up_after_completion
+5 failed, 66 passed in 41.06s
