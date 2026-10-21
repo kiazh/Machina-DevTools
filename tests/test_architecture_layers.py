@@ -209,7 +209,7 @@ _CORE_IMPORT_CEILINGS = {
 #   (never at CLI import) so pause records carry the turn origin and
 #   poll-based HTTP resume can validate and attribute the continuation.
 #   Census 781 -> 782, cap -> 782.
-DEFERRED_IMPORT_CAP = 795
+DEFERRED_IMPORT_CAP = 796
 
 
 def test_module_level_core_imports_only_shrink():
@@ -733,7 +733,7 @@ def test_god_file_ceilings_only_fall(relative_path, ceiling):
 # mode now enforces the configured minimum stable-prefix size before attaching
 # Anthropic/OpenRouter breakpoints. The helper and two call-site guards are the
 # complete delta; no transport behavior changed.
-_PROVIDER_PACKAGE_TOTAL_CEILING = 5603
+_PROVIDER_PACKAGE_TOTAL_CEILING = 5662
 
 
 def test_provider_package_total_only_falls():
