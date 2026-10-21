@@ -41,6 +41,7 @@ def _only_app_running(monkeypatch, names: set[str]):
 # ─── layer order and parsing ────────────────────────────────────────────────
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS-only now-playing behavior")
 def test_mediaremote_reading_wins_and_maps_state(monkeypatch):
     monkeypatch.setattr(
         nowplaying,
@@ -67,6 +68,7 @@ def test_mediaremote_reading_wins_and_maps_state(monkeypatch):
     assert result["duration"] == 210.0
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS-only now-playing behavior")
 def test_mediaremote_empty_falls_through_to_spotify(monkeypatch):
     # Empty MediaRemote reading (macOS gates it): continue to the app layer.
     monkeypatch.setattr(
@@ -93,6 +95,7 @@ def test_mediaremote_empty_falls_through_to_spotify(monkeypatch):
     assert result["source"] == "Spotify"
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS-only now-playing behavior")
 def test_music_app_duration_is_already_seconds(monkeypatch):
     _no_media_remote(monkeypatch)
     _no_cli(monkeypatch)
@@ -112,6 +115,7 @@ def test_music_app_duration_is_already_seconds(monkeypatch):
     assert result["source"] == "Music"
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS-only now-playing behavior")
 def test_front_youtube_tab_is_displayed_with_unknown_state(monkeypatch):
     _no_media_remote(monkeypatch)
     _no_cli(monkeypatch)
@@ -136,6 +140,7 @@ def test_front_youtube_tab_is_displayed_with_unknown_state(monkeypatch):
     assert result["duration"] is None
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS-only now-playing behavior")
 def test_youtube_music_title_splits_artist(monkeypatch):
     _no_media_remote(monkeypatch)
     _no_cli(monkeypatch)
@@ -156,6 +161,7 @@ def test_youtube_music_title_splits_artist(monkeypatch):
     assert result["artist"] == "Artist"
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS-only now-playing behavior")
 def test_non_youtube_tab_is_not_reported(monkeypatch):
     _no_media_remote(monkeypatch)
     _no_cli(monkeypatch)
@@ -178,6 +184,7 @@ def test_non_youtube_tab_is_not_reported(monkeypatch):
 # ─── honest failure and permission states ───────────────────────────────────
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS-only now-playing behavior")
 def test_nothing_playing_is_available_without_a_title(monkeypatch):
     _no_media_remote(monkeypatch)
     _no_cli(monkeypatch)
@@ -196,6 +203,7 @@ def test_nothing_playing_is_available_without_a_title(monkeypatch):
     }
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS-only now-playing behavior")
 def test_permission_timeout_names_the_app_and_never_fabricates(monkeypatch):
     _no_media_remote(monkeypatch)
     _no_cli(monkeypatch)
@@ -242,6 +250,7 @@ def test_permission_results_cache_longer_than_readings(monkeypatch):
 # ─── transport commands ─────────────────────────────────────────────────────
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS-only now-playing behavior")
 def test_toggle_routes_to_spotify_applescript(monkeypatch):
     monkeypatch.setattr(
         nowplaying,
@@ -259,6 +268,7 @@ def test_toggle_routes_to_spotify_applescript(monkeypatch):
     assert scripts and "playpause" in scripts[0] and "Spotify" in scripts[0]
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS-only now-playing behavior")
 def test_toggle_on_a_browser_source_reports_honestly(monkeypatch):
     monkeypatch.setattr(
         nowplaying,
@@ -272,6 +282,7 @@ def test_toggle_on_a_browser_source_reports_honestly(monkeypatch):
     assert "does not accept transport commands" in (result["error"] or "")
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS-only now-playing behavior")
 def test_unknown_action_is_refused(monkeypatch):
     result = nowplaying.send_now_playing_command("rewind")
     assert result["ok"] is False
@@ -326,11 +337,3 @@ def test_stale_mediaremote_callbacks_are_ignored():
     assert playing is True
     assert pid is None
 
-
-def pytest_collection_modifyitems(config, items):
-    if sys.platform == "darwin":
-        return
-    skip = pytest.mark.skip(reason="macOS now-playing layers; non-macOS behavior has its own test")
-    for item in items:
-        if item.name != "test_non_macos_is_unavailable_not_empty":
-            item.add_marker(skip)

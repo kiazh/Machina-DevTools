@@ -157,6 +157,7 @@ def _no_other_layers(monkeypatch):
     monkeypatch.setattr(nowplaying, "_cli_probe", lambda: None)
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS Automation event behavior")
 def test_automation_denial_maps_to_permission_state(monkeypatch):
     _no_other_layers(monkeypatch)
     monkeypatch.setattr(nowplaying, "_app_running", lambda name: name == "Spotify")
@@ -177,6 +178,7 @@ def test_automation_denial_maps_to_permission_state(monkeypatch):
     assert nowplaying._cache_ttl(result) > nowplaying._CACHE_TTL_S
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS Automation event behavior")
 def test_automation_timeout_still_maps_to_permission_state(monkeypatch):
     _no_other_layers(monkeypatch)
     monkeypatch.setattr(nowplaying, "_app_running", lambda name: name == "Spotify")
@@ -188,6 +190,7 @@ def test_automation_timeout_still_maps_to_permission_state(monkeypatch):
     assert "blocked automation for Spotify" in (result["error"] or "")
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS Automation event behavior")
 def test_unrelated_script_error_is_not_a_permission_denial(monkeypatch):
     _no_other_layers(monkeypatch)
     monkeypatch.setattr(nowplaying, "_app_running", lambda name: name == "Spotify")
@@ -199,6 +202,7 @@ def test_unrelated_script_error_is_not_a_permission_denial(monkeypatch):
     assert result["error"] is None
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS Automation event behavior")
 def test_browser_probe_denial_maps_to_permission_state(monkeypatch):
     monkeypatch.setattr(nowplaying, "_app_running", lambda name: name == "Google Chrome")
     monkeypatch.setattr(
@@ -404,17 +408,3 @@ def test_openai_hit_miss_without_prompt_total_keeps_verbatim_fields():
     assert miss_only["prompt_tokens"] == 200
     assert "cache_read_tokens" not in miss_only
 
-
-def pytest_collection_modifyitems(config, items):
-    if sys.platform == "darwin":
-        return
-    skip = pytest.mark.skip(reason="macOS Automation event behavior")
-    selected = {
-        "test_automation_denial_maps_to_permission_state",
-        "test_automation_timeout_still_maps_to_permission_state",
-        "test_unrelated_script_error_is_not_a_permission_denial",
-        "test_browser_probe_denial_maps_to_permission_state",
-    }
-    for item in items:
-        if item.name in selected:
-            item.add_marker(skip)
