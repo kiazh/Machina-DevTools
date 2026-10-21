@@ -168,6 +168,11 @@ def test_concurrent_toggle_read_file_never_leaks_outside_content(tmp_path, monke
             and not (base / "sub").exists()
         ):
             os.rename(parked, base / "sub")
+        # The toggler can stop between its two rename steps. Restore the
+        # in-root fixture deterministically before the final post-condition.
+        if not (base / "sub").is_dir():
+            (base / "sub").mkdir(parents=True, exist_ok=True)
+            (base / "sub" / "f.txt").write_text("INSIDE")
 
     assert cycles[0] > 0, "toggler never completed a swap cycle"
     assert attempts > 0
