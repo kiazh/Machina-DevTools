@@ -163,7 +163,8 @@ async def test_models_list_explicit_session_and_provider_win(sandbox):
         gw, {"sessionId": str(session.id), "provider": "openai"}
     )
     assert out["provider"] == "openai"
-    assert out["source"] == "none"
+    assert out["source"] == "models.dev"
+    assert out["models"]
 
 
 async def test_models_list_falls_back_when_the_opened_session_is_gone(
