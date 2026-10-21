@@ -7,7 +7,7 @@ def test_import():
     """Test that all modules import cleanly."""
     import machina
 
-    assert machina.__version__ == "1.1.0"
+    assert machina.__version__ == "1.1.1"
 
 
 def test_tool_registry():
