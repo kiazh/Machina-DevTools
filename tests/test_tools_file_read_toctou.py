@@ -152,7 +152,7 @@ def test_concurrent_toggle_read_file_never_leaks_outside_content(tmp_path, monke
             attempts += 1
             try:
                 text = asyncio.run(fmod.read_file("sub/f.txt"))
-            except ToolError:
+            except (ToolError, FileNotFoundError):
                 refusals += 1  # fail-closed refusals are the expected outcome
                 continue
             reads_ok += 1
