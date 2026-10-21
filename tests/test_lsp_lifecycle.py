@@ -699,6 +699,9 @@ def test_resolve_profile_order_and_missing(tmp_path, monkeypatch):
     assert profile is not None and profile.executable == "/usr/bin/unused"
 
     monkeypatch.setattr(lsp_module.shutil, "which", lambda name: None)
+    fallback = REPO_ROOT / "ui" / "node_modules" / ".bin" / "typescript-language-server"
+    if not fallback.exists():
+        pytest.skip("repo-local TypeScript language server is not installed")
     profile = lsp_module.resolve_profile("typescript")
     assert profile is not None
     assert profile.executable == str(

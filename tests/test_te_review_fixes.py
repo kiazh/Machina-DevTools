@@ -18,6 +18,7 @@ Regression pins for review findings on the token-efficiency work:
 from __future__ import annotations
 
 import json
+import sys
 import uuid
 
 import pytest
@@ -402,3 +403,18 @@ def test_openai_hit_miss_without_prompt_total_keeps_verbatim_fields():
     assert miss_only["uncached_input_tokens"] == 200
     assert miss_only["prompt_tokens"] == 200
     assert "cache_read_tokens" not in miss_only
+
+
+def pytest_collection_modifyitems(config, items):
+    if sys.platform == "darwin":
+        return
+    skip = pytest.mark.skip(reason="macOS Automation event behavior")
+    selected = {
+        "test_automation_denial_maps_to_permission_state",
+        "test_automation_timeout_still_maps_to_permission_state",
+        "test_unrelated_script_error_is_not_a_permission_denial",
+        "test_browser_probe_denial_maps_to_permission_state",
+    }
+    for item in items:
+        if item.name in selected:
+            item.add_marker(skip)
