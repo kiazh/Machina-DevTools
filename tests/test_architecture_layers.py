@@ -209,7 +209,7 @@ _CORE_IMPORT_CEILINGS = {
 #   (never at CLI import) so pause records carry the turn origin and
 #   poll-based HTTP resume can validate and attribute the continuation.
 #   Census 781 -> 782, cap -> 782.
-DEFERRED_IMPORT_CAP = 793
+DEFERRED_IMPORT_CAP = 795
 
 
 def test_module_level_core_imports_only_shrink():
@@ -457,6 +457,8 @@ def test_deferred_import_count_ratchet():
     #        ``_safe_error_url`` so the fetch leaf stays import-light.
     #     +1 ``api/routes/jobs.py``: override audit binds core.provider.audit_log
     #        only when a REST job changes the session's agent.
+    #   Grok OAuth/model-catalog wave (2026-10-21): 793 -> 795 (+2):
+    #     +2 grok_auth device/token imports are bound lazily by the provider.
     #   Procedure: this number may only move with a delta table like the above
     # in this comment; silent growth fails the suite by design.
     total = sum(_deferred_import_count(p) for p in ROOT.rglob("*.py"))
@@ -656,10 +658,10 @@ GOD_FILE_CEILINGS: tuple[tuple[str, int], ...] = (
     # assembler; the streaming compression seam remains in place.
     ("core/agent.py", 2303),
     ("core/compression.py", 999),
-    ("core/provider/__init__.py", 53),
+    ("core/provider/__init__.py", 54),
     ("core/provider/_log.py", 10),
     ("core/provider/reasoning.py", 61),
-    ("core/provider/specs.py", 188),
+    ("core/provider/specs.py", 189),
     ("core/provider/audit.py", 247),
     ("core/provider/rate_limit.py", 120),
     ("core/provider/caches.py", 97),
@@ -671,7 +673,7 @@ GOD_FILE_CEILINGS: tuple[tuple[str, int], ...] = (
     ("core/provider/direct.py", 348),
     ("core/provider/anthropic.py", 581),
     ("core/provider/chatgpt.py", 684),
-    ("core/provider/factory.py", 138),
+    ("core/provider/factory.py", 142),
     ("core/provider/catalog.py", 553),
     ("core/provider/copilot.py", 443),
 )
@@ -731,7 +733,7 @@ def test_god_file_ceilings_only_fall(relative_path, ceiling):
 # mode now enforces the configured minimum stable-prefix size before attaching
 # Anthropic/OpenRouter breakpoints. The helper and two call-site guards are the
 # complete delta; no transport behavior changed.
-_PROVIDER_PACKAGE_TOTAL_CEILING = 5569
+_PROVIDER_PACKAGE_TOTAL_CEILING = 5603
 
 
 def test_provider_package_total_only_falls():

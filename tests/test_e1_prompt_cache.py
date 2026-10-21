@@ -419,7 +419,7 @@ async def test_off_openrouter_other_model_wire_payload_frozen(make):
 async def test_off_direct_and_ollama_wire_payloads_frozen(make):
     direct_recorder = _Recorder(_openai_response("gpt-4o-mini"))
     direct = make.direct("openai", direct_recorder)
-    await direct.complete(MESSAGES, tools=TOOLS)
+    await direct.complete(MESSAGES, tools=TOOLS, model="gpt-4o-mini")
     assert direct_recorder.body == _wire(GOLDEN_DIRECT_COMPLETE)
 
     ollama_recorder = _Recorder(_ollama_response())
@@ -592,7 +592,7 @@ async def test_enabled_direct_provider_untouched(make):
     recorder = _Recorder(_openai_response("gpt-4o-mini"))
     provider = make.direct("openai", recorder)
 
-    await provider.complete(MESSAGES, tools=TOOLS)
+    await provider.complete(MESSAGES, tools=TOOLS, model="gpt-4o-mini")
 
     assert recorder.body == _wire(GOLDEN_DIRECT_COMPLETE)
 

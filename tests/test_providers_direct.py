@@ -83,6 +83,7 @@ def test_providers_tuple_lists_every_family():
         "kimi",
         "chatgpt",
         "copilot",
+        "grok",
         "custom",
         "ollama",
     }
@@ -100,20 +101,20 @@ def test_direct_specs_have_accurate_base_urls_and_keys():
 
     expected = {
         # name: (base_url, api key env var, default model)
-        "openai": ("https://api.openai.com/v1", "OPENAI_API_KEY", "gpt-4o-mini"),
-        "deepseek": ("https://api.deepseek.com", "DEEPSEEK_API_KEY", "deepseek-chat"),
-        "xai": ("https://api.x.ai/v1", "XAI_API_KEY", "grok-4"),
-        "groq": ("https://api.groq.com/openai/v1", "GROQ_API_KEY", "llama-3.3-70b-versatile"),
+        "openai": ("https://api.openai.com/v1", "OPENAI_API_KEY", "gpt-6.1-sol"),
+        "deepseek": ("https://api.deepseek.com", "DEEPSEEK_API_KEY", "deepseek-v4-flash"),
+        "xai": ("https://api.x.ai/v1", "XAI_API_KEY", "grok-4.7"),
+        "groq": ("https://api.groq.com/openai/v1", "GROQ_API_KEY", "qwen/qwen3.8-27b"),
         "together": (
             "https://api.together.xyz/v1",
             "TOGETHER_API_KEY",
             "meta-llama/Llama-3.3-70B-Instruct-Turbo",
         ),
-        "mistral": ("https://api.mistral.ai/v1", "MISTRAL_API_KEY", "mistral-small-latest"),
+        "mistral": ("https://api.mistral.ai/v1", "MISTRAL_API_KEY", "mistral-large-4"),
         "google": (
             "https://generativelanguage.googleapis.com/v1beta/openai/",
             "GOOGLE_API_KEY",
-            "gemini-2.0-flash",
+            "gemini-4-argon",
         ),
         "opencode": (
             # Probed live 2026-10-14; opencode.ai/zen/v1 serves an identical
@@ -262,7 +263,7 @@ async def test_direct_provider_omits_effort_when_unset():
     provider = _make_direct("deepseek")
     payload = await _complete_and_capture(provider)
     assert "reasoning_effort" not in payload
-    assert payload["model"] == "deepseek-chat"
+    assert payload["model"] == "deepseek-v4-flash"
 
 
 @pytest.mark.asyncio

@@ -21,9 +21,10 @@ def test_known_models_resolve_to_documented_windows():
     assert context_window_for("gemini-2.0-flash") == 1_048_576
     assert context_window_for("claude-3-5-sonnet-20241022") == 200_000
     assert context_window_for("grok-4") == 256_000
+    assert context_window_for("grok-4.7") == 500_000
     assert context_window_for("llama-3.3-70b-versatile") == 128_000
     assert context_window_for("meta-llama/Llama-3.3-70B-Instruct-Turbo") == 128_000
-    assert context_window_for("mistral-small-latest") == 128_000
+    assert context_window_for("mistral-small-latest") == 262_144
     # Kimi Code membership models (kimi.com/code/docs model table).
     assert context_window_for("k3") == 1_048_576
     assert context_window_for("k3-256k") == 262_144
@@ -42,7 +43,7 @@ def test_unknown_and_empty_models_keep_legacy_behavior():
 def test_longest_match_wins_for_ambiguous_ids():
     # Bare "mistral" is the local build; "mistral-small-…" is the API model.
     assert context_window_for("mistral") == 32_000
-    assert context_window_for("mistral-small-latest") == 128_000
+    assert context_window_for("mistral-small-latest") == 262_144
     # "k3" is a prefix of "k3-256k"; the longer key keeps its own window.
     assert context_window_for("k3-256k") == 262_144
     assert context_window_for("kimi-for-coding-highspeed") == 262_144
@@ -93,8 +94,8 @@ def test_chatgpt_catalog_windows_apply_only_to_chatgpt(monkeypatch, tmp_path):
     assert context_window_for("chatgpt/gpt-6.1-sol", "chatgpt") == 500_000
     # Not provider-scoped: a same-named model on another provider keeps the
     # curated/default behavior.
-    assert context_window_for("gpt-6.1-sol", "custom") == DEFAULT_CONTEXT_WINDOW
-    assert context_window_for("gpt-6.1-sol") == DEFAULT_CONTEXT_WINDOW
+    assert context_window_for("gpt-6.1-sol", "custom") == 1_050_000
+    assert context_window_for("gpt-6.1-sol") == 1_050_000
 
 
 def test_chatgpt_unknown_slug_keeps_default(monkeypatch, tmp_path):
