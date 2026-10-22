@@ -1097,9 +1097,23 @@ def test_launcher_propagates_mode_to_gateway(monkeypatch, tmp_path):
 
     seen = {}
 
-    def _fake_call(args, env=None):
-        seen["args"] = list(args)
-        return 0
+    class _FakeChild:
+        pid = 424242
+
+        def __init__(self, args, env=None):
+            seen["args"] = list(args)
+
+        def wait(self):
+            return 0
+
+        def poll(self):
+            return 0
+
+        def terminate(self):
+            pass
+
+        def kill(self):
+            pass
 
     import subprocess as _sp
 
@@ -1110,7 +1124,7 @@ def test_launcher_propagates_mode_to_gateway(monkeypatch, tmp_path):
     )
     monkeypatch.setattr(launcher, "sys", fake_sys)
     monkeypatch.setattr(launcher, "_node_version", lambda node: (24, 15))
-    monkeypatch.setattr(_sp, "call", _fake_call)
+    monkeypatch.setattr(_sp, "Popen", _FakeChild)
     import shutil
 
     monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/node")

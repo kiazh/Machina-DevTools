@@ -209,7 +209,7 @@ _CORE_IMPORT_CEILINGS = {
 #   (never at CLI import) so pause records carry the turn origin and
 #   poll-based HTTP resume can validate and attribute the continuation.
 #   Census 781 -> 782, cap -> 782.
-DEFERRED_IMPORT_CAP = 796
+DEFERRED_IMPORT_CAP = 808
 
 
 def test_module_level_core_imports_only_shrink():

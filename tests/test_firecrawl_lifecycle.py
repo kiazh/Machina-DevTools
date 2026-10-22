@@ -392,12 +392,31 @@ def test_launch_ui_stops_on_keyboard_interrupt(tmp_path, monkeypatch):
     launcher = _fake_ui_env(tmp_path, monkeypatch)
     events: list[str] = []
 
-    def _interrupt(args, env=None):
-        raise KeyboardInterrupt
+    class _InterruptingChild:
+        pid = 424242
+
+        def __init__(self, *args, **kwargs):
+            self.waits = 0
+
+        def poll(self):
+            return None
+
+        def wait(self, timeout=None):
+            self.waits += 1
+            if self.waits == 1:
+                raise KeyboardInterrupt
+            return 0
+
+        def terminate(self):
+            pass
+
+        def kill(self):
+            pass
 
     monkeypatch.setattr(launcher, "start_if_enabled", lambda: events.append("start"))
     monkeypatch.setattr(launcher, "stop_if_enabled", lambda: events.append("stop"))
-    monkeypatch.setattr(launcher.subprocess, "call", _interrupt)
+    monkeypatch.setattr(launcher, "_node_version", lambda node: (22, 19))
+    monkeypatch.setattr(launcher.subprocess, "Popen", _InterruptingChild)
 
     assert launcher.launch_ui() == 130
     assert events == ["start", "stop"]
