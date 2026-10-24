@@ -1100,7 +1100,7 @@ def test_launcher_propagates_mode_to_gateway(monkeypatch, tmp_path):
     class _FakeChild:
         pid = 424242
 
-        def __init__(self, args, env=None):
+        def __init__(self, args, env=None, **kwargs):
             seen["args"] = list(args)
 
         def wait(self):
@@ -1125,6 +1125,9 @@ def test_launcher_propagates_mode_to_gateway(monkeypatch, tmp_path):
     monkeypatch.setattr(launcher, "sys", fake_sys)
     monkeypatch.setattr(launcher, "_node_version", lambda node: (24, 15))
     monkeypatch.setattr(_sp, "Popen", _FakeChild)
+    from machina.db import lifecycle
+    monkeypatch.setattr(lifecycle, "acquire", lambda role="tui": None)
+    monkeypatch.setattr(lifecycle, "release", lambda lease: None)
     import shutil
 
     monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/node")

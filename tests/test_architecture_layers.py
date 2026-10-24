@@ -209,7 +209,12 @@ _CORE_IMPORT_CEILINGS = {
 #   (never at CLI import) so pause records carry the turn origin and
 #   poll-based HTTP resume can validate and attribute the continuation.
 #   Census 781 -> 782, cap -> 782.
-DEFERRED_IMPORT_CAP = 808
+#   Managed database lifecycle (2026-10-23): +5 in db/lifecycle.py and
+#   cli/__init__.py — Docker-daemon startup, container creation, schema
+#   initialization, and the `machina init` provisioning hook are imported
+#   lazily so ordinary CLI startup does not require Docker/config modules.
+#   Census 808 -> 814, cap -> 814 (doctor's DB probe also takes a lease).
+DEFERRED_IMPORT_CAP = 814
 
 
 def test_module_level_core_imports_only_shrink():

@@ -365,6 +365,10 @@ def _fake_ui_env(tmp_path, monkeypatch):
     monkeypatch.setenv("PATH", f"{node.parent}{os.pathsep}{os.environ['PATH']}")
     monkeypatch.setattr(launcher.sys, "stdin", SimpleNamespace(isatty=lambda: True))
     monkeypatch.setattr(launcher.sys, "stdout", SimpleNamespace(isatty=lambda: True))
+    # These tests exercise the Firecrawl lifecycle, not Docker/PostgreSQL.
+    from machina.db import lifecycle
+    monkeypatch.setattr(lifecycle, "acquire", lambda role="tui": None)
+    monkeypatch.setattr(lifecycle, "release", lambda lease: None)
     return launcher
 
 
