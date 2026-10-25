@@ -25,6 +25,7 @@ def test_auto_update_disabled_never_touches_git(monkeypatch):
 
 def test_auto_update_fast_forwards_clean_checkout(monkeypatch, tmp_path):
     monkeypatch.setenv("MACHINA_AUTO_UPDATE", "1")
+    monkeypatch.delenv("CI", raising=False)
     monkeypatch.setattr(update.sys.stdout, "isatty", lambda: True)
     monkeypatch.setattr(update, "_repo_root", lambda: tmp_path)
     calls: list[list[str]] = []
