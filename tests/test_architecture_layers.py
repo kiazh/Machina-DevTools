@@ -215,7 +215,14 @@ _CORE_IMPORT_CEILINGS = {
 #   lazily so ordinary CLI startup does not require Docker/config modules.
 #   Census 808 -> 816, cap -> 816 (doctor's DB probe also takes a lease;
 #   init lazily provisions a missing native database and its extensions).
-DEFERRED_IMPORT_CAP = 816
+#   Launch update/auth surface (2026-10-24): +2 — the CLI binds the checkout
+#   updater only for an interactive launch, and the updater binds the package
+#   version only after it has a newer remote version to report.
+#   Census 816 -> 818, cap -> 818.
+#   serve also binds the same updater before creating the app (+1), since a
+#   long-running API launch must not mutate beneath an already-imported tree.
+#   Census 818 -> 819, cap -> 819.
+DEFERRED_IMPORT_CAP = 819
 
 
 def test_module_level_core_imports_only_shrink():

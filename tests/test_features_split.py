@@ -118,6 +118,14 @@ def test_all_feature_methods_accessible_after_split():
         # for the TUI music bar.
         "nowplaying.get",
         "nowplaying.command",
+        # Unified /auth subscription providers (2026-10-24).
+        "auth.grok.status",
+        "auth.grok.login",
+        "auth.grok.logout",
+        "auth.copilot.status",
+        "auth.copilot.login",
+        "auth.copilot.importGh",
+        "auth.copilot.logout",
     }
     assert set(METHODS) == expected
 
