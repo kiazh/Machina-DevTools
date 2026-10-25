@@ -213,8 +213,9 @@ _CORE_IMPORT_CEILINGS = {
 #   cli/__init__.py — Docker-daemon startup, container creation, schema
 #   initialization, and the `machina init` provisioning hook are imported
 #   lazily so ordinary CLI startup does not require Docker/config modules.
-#   Census 808 -> 814, cap -> 814 (doctor's DB probe also takes a lease).
-DEFERRED_IMPORT_CAP = 814
+#   Census 808 -> 816, cap -> 816 (doctor's DB probe also takes a lease;
+#   init lazily provisions a missing native database and its extensions).
+DEFERRED_IMPORT_CAP = 816
 
 
 def test_module_level_core_imports_only_shrink():

@@ -52,9 +52,10 @@ def test_acquire_creates_container_and_persists_credentials(monkeypatch, tmp_pat
 
     env_file = tmp_path / ".env"
     monkeypatch.setenv("MACHINA_ENV_FILE", str(env_file))
-    monkeypatch.setenv("DATABASE_URL", "postgresql://postgres:x@127.0.0.1:5432/machina")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://postgres:x@127.0.0.1:5433/machina")
     monkeypatch.setenv("MACHINA_DB_MANAGE", "1")
     monkeypatch.setenv("MACHINA_DB_STATE_DIR", str(tmp_path / "leases"))
+    monkeypatch.setenv("MACHINA_DB_PORT", "5433")
     monkeypatch.setattr(lifecycle.shutil, "which", lambda name: "/usr/bin/docker")
     monkeypatch.setattr(lifecycle.subprocess, "run", fake_run)
     monkeypatch.setattr(lifecycle, "_initialize_schema", lambda url: True)
@@ -64,7 +65,71 @@ def test_acquire_creates_container_and_persists_credentials(monkeypatch, tmp_pat
     run_calls = [call for call in calls if call[:2] == ["docker", "run"]]
     assert run_calls
     assert "--restart" in run_calls[0] and "unless-stopped" in run_calls[0]
+    assert "127.0.0.1:5433:5432" in run_calls[0]
     assert "DATABASE_URL=postgresql://postgres:" in env_file.read_text(encoding="utf-8")
-    assert "127.0.0.1:5432/machina" in env_file.read_text(encoding="utf-8")
+    assert "127.0.0.1:5433/machina" in env_file.read_text(encoding="utf-8")
+    assert "MACHINA_DB_PORT=5433" in env_file.read_text(encoding="utf-8")
 
     lifecycle.release(lease)
+
+
+def test_provision_creates_missing_database_and_extensions(monkeypatch):
+    from machina.db import provision
+
+    executed: list[str] = []
+    connected: list[str] = []
+
+    class FakeConnection:
+        def __init__(self, dsn):
+            self.dsn = dsn
+
+        async def fetchval(self, query, *args):
+            return 0 if "pg_database" in query else None
+
+        async def execute(self, query):
+            executed.append(query)
+
+        async def close(self):
+            pass
+
+    async def fake_connect(dsn, **kwargs):
+        connected.append(dsn)
+        return FakeConnection(dsn)
+
+    monkeypatch.setattr(provision.asyncpg, "connect", fake_connect)
+
+    import asyncio
+
+    asyncio.run(provision.ensure_database("postgresql://u:p@127.0.0.1:5432/machina"))
+
+    assert connected[0].endswith("/postgres")
+    assert connected[-1].endswith("/machina")
+    assert any("CREATE DATABASE" in query for query in executed)
+    assert any("CREATE EXTENSION IF NOT EXISTS vector" in query for query in executed)
+
+
+def test_provision_reuses_existing_database(monkeypatch):
+    from machina.db import provision
+
+    executed: list[str] = []
+
+    class FakeConnection:
+        async def fetchval(self, query, *args):
+            return 1
+
+        async def execute(self, query):
+            executed.append(query)
+
+        async def close(self):
+            pass
+
+    async def fake_connect(dsn, **kwargs):
+        return FakeConnection()
+
+    monkeypatch.setattr(provision.asyncpg, "connect", fake_connect)
+
+    import asyncio
+
+    asyncio.run(provision.ensure_database("postgresql://u:p@127.0.0.1:5432/machina"))
+    assert not any("CREATE DATABASE" in query for query in executed)
+    assert any("vector" in query for query in executed)
