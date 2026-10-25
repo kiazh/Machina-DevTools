@@ -463,7 +463,7 @@ class TestSessionsAndTurns:
             # Error message should be generic, not leak internal details
             error_msg = h.events("error")[0]["message"]
             assert "model exploded" not in error_msg
-            assert error_msg == "agent turn failed"
+            assert error_msg.startswith("agent turn failed")
         finally:
             await h.gateway.close()
 

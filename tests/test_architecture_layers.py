@@ -222,7 +222,18 @@ _CORE_IMPORT_CEILINGS = {
 #   serve also binds the same updater before creating the app (+1), since a
 #   long-running API launch must not mutate beneath an already-imported tree.
 #   Census 818 -> 819, cap -> 819.
-DEFERRED_IMPORT_CAP = 819
+#   Windows media bridge (2026-10-24): +5 — both the read and transport paths
+#   bind the WinRT projections lazily on win32, and the macOS module binds the
+#   Windows bridge only when that platform is selected.
+#   Census 819 -> 824, cap -> 824.
+#   Turn-error detail (2026-10-24): +1 — the gateway binds the diagnostic
+#   redactor only on the failure path so successful turns stay import-light.
+#   Census 824 -> 825, cap -> 825.
+#   Typed turn-error detail (2026-10-24): +1 — the gateway binds the typed
+#   exception classes only on the failure path; arbitrary runtime errors stay
+#   generic.
+#   Census 825 -> 826, cap -> 826.
+DEFERRED_IMPORT_CAP = 826
 
 
 def test_module_level_core_imports_only_shrink():

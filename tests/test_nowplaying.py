@@ -337,3 +337,38 @@ def test_stale_mediaremote_callbacks_are_ignored():
     assert playing is True
     assert pid is None
 
+
+
+def test_windows_bridge_has_an_honest_unavailable_or_metadata_path(monkeypatch):
+    from machina.core import nowplaying, nowplaying_windows
+
+    monkeypatch.setattr(nowplaying.sys, "platform", "win32")
+    monkeypatch.setattr(
+        nowplaying_windows,
+        "detect_now_playing",
+        lambda: {
+            "available": True,
+            "state": "playing",
+            "title": "Track",
+            "artist": "Artist",
+            "album": None,
+            "source": "Spotify",
+            "elapsed": 1.0,
+            "duration": 10.0,
+            "error": None,
+        },
+    )
+    result = nowplaying.detect_now_playing(cache=False)
+    assert result["source"] == "Spotify" and result["state"] == "playing"
+
+
+def test_windows_bridge_display_and_seconds_helpers():
+    from machina.core import nowplaying_windows
+
+    assert nowplaying_windows._display_source("SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify") == (
+        "SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify"
+    )
+    assert nowplaying_windows._display_source("C:\\Program Files\\Spotify\\Spotify.exe") == "Spotify"
+    assert nowplaying_windows._display_source(None) is None
+    assert nowplaying_windows._seconds(None) is None
+    assert nowplaying_windows._seconds(3) is None
