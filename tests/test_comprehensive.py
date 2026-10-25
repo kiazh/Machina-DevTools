@@ -72,7 +72,7 @@ def sample_skill_dir(temp_dir):
         "triggers:\n"
         "  - test\n"
         "  - testing\n"
-        "version: 1.2.13\n"
+        "version: 1.2.14\n"
         "schema_version: 2\n"
         "skill_id: test-skill\n"
         "task_families: [testing]\n"
@@ -497,11 +497,11 @@ class TestSkillParser:
         """Test simple YAML parsing with basic key-value."""
         import yaml
 
-        yaml_text = "name: test\ndescription: A test\nversion: 1.2.13"
+        yaml_text = "name: test\ndescription: A test\nversion: 1.2.14"
         result = yaml.safe_load(yaml_text)
         assert result["name"] == "test"
         assert result["description"] == "A test"
-        assert result["version"] == "1.2.13"
+        assert result["version"] == "1.2.14"
 
     def test_parse_simple_yaml_list(self):
         """Test simple YAML parsing with list values."""
@@ -1085,7 +1085,7 @@ class TestCLI:
         runner = CliRunner()
         result = runner.invoke(app, ["version"])
         assert result.exit_code == 0
-        assert "1.2.13" in result.output
+        assert "1.2.14" in result.output
 
     def test_doctor_command(self):
         """Test doctor command."""
