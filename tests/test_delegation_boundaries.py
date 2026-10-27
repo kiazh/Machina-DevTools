@@ -62,6 +62,7 @@ async def test_child_uses_parent_mode_even_when_global_default_is_full(
     )
     assert result.status == "complete"
     assert created["parent_session_id"] == parent_id
+    assert orch._record_start.await_args.kwargs["child_session_id"] == result.session_id
 
 
 @pytest.mark.asyncio
@@ -298,6 +299,23 @@ async def test_estimated_provider_usage_keeps_reservation(monkeypatch):
     )
     assert execute.await_args.args[4] is None
     assert execute.await_args.args[5] is None
+
+
+@pytest.mark.db
+@pytest.mark.asyncio
+async def test_pending_delegation_history_identifies_child(db_pool, monkeypatch):
+    from machina.core import orchestrator as module
+    from machina.core.session import session_manager
+
+    monkeypatch.setattr("machina.core.session.db", db_pool)
+    monkeypatch.setattr(module, "db", db_pool)
+    parent = await session_manager.create(agent_id="harness")
+    child = await session_manager.create(agent_id="researcher", parent_session_id=parent.id)
+    orch = Orchestrator()
+    await orch._record_start(parent.id, "harness", "researcher", "research", child_session_id=child.id)
+    history = await orch.history(parent.id)
+    assert history[0]["status"] == "pending"
+    assert history[0]["childSessionId"] == str(child.id)
 
 
 @pytest.mark.db
