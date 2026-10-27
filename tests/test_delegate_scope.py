@@ -46,7 +46,7 @@ async def test_delegate_records_the_actual_parent_agent(monkeypatch):
 
     async def fake_delegate(*args, **kwargs):
         calls.append(kwargs)
-        return SimpleNamespace(status="complete", response="done")
+        return SimpleNamespace(status="complete", response="done", session_id=uuid4())
 
     monkeypatch.setattr("machina.tools.agents.db.fetchval", fake_owner)
     monkeypatch.setattr(module.orchestrator, "delegate", fake_delegate)
@@ -74,7 +74,8 @@ def test_system_prompt_teaches_parallel_fan_out():
     from machina.core.agent import SYSTEM_PROMPT
 
     assert "list_agents" in SYSTEM_PROMPT
-    assert "no more than three" in SYSTEM_PROMPT
+    assert "at most three" in SYSTEM_PROMPT
+    assert "Workers inherit your restrictions and cannot approve actions" in SYSTEM_PROMPT
     assert "never delegate to evade an approval" in SYSTEM_PROMPT
 
 
@@ -90,6 +91,7 @@ def test_delegate_description_advertises_parallel_fan_out():
 @pytest.mark.asyncio
 async def test_parallel_delegate_fan_out_runs_every_subagent(tmp_path, monkeypatch):
     """One assistant message with three delegate calls runs all three agents."""
+    import asyncio
     import copy
     import json
     import uuid
@@ -129,13 +131,17 @@ async def test_parallel_delegate_fan_out_runs_every_subagent(tmp_path, monkeypat
     from machina.tools import agents as agents_module
 
     ran = []
+    all_started = asyncio.Event()
 
     async def fake_owner(*args):
         return "harness"
 
     async def fake_delegate(agent, task, **kwargs):
         ran.append(agent)
-        return SimpleNamespace(status="complete", response=f"{agent} done")
+        if len(ran) == 3:
+            all_started.set()
+        await asyncio.wait_for(all_started.wait(), timeout=2)
+        return SimpleNamespace(status="complete", response=f"{agent} done", session_id=uuid.uuid4())
 
     monkeypatch.setattr(agents_module.db, "fetchval", fake_owner)
     monkeypatch.setattr(orchestrator_module.orchestrator, "delegate", fake_delegate)
@@ -143,7 +149,8 @@ async def test_parallel_delegate_fan_out_runs_every_subagent(tmp_path, monkeypat
     wanted = [("researcher", "gather facts"), ("coder", "fix the bug"), ("coder", "add tests")]
 
     class Provider:
-        calls = []
+        def __init__(self):
+            self.calls = []
 
         async def complete(self, **kwargs):
             self.calls.append(copy.deepcopy(kwargs))
@@ -170,7 +177,6 @@ async def test_parallel_delegate_fan_out_runs_every_subagent(tmp_path, monkeypat
             yield StreamEvent(type="done", response=await self.complete(**kwargs))
 
     provider = Provider()
-    provider.calls = []
     agent = ReActAgent(provider=provider, allowed_tools=["delegate"])
     try:
         response = await agent.run(session.id, "Research, fix, and test", verbose=False)

@@ -44,8 +44,10 @@ def test_agent_tool_allowlist_filters_definitions():
 
     unrestricted = ReActAgent.__new__(ReActAgent)
     unrestricted.allowed_tools = None
+    unrestricted.delegated = False
     restricted = ReActAgent.__new__(ReActAgent)
     restricted.allowed_tools = ["read_file", "web_search"]
+    restricted.delegated = False
 
     all_names = {d.name for d in unrestricted._tool_defs()}
     scoped = {d.name for d in restricted._tool_defs()}
