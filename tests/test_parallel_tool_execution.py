@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import time
 import uuid
 
 import pytest
@@ -209,6 +208,124 @@ async def test_parallelism_is_bounded(monkeypatch, slow_tool):
         f"peak concurrency {slow_tool['peak']} exceeded cap {_MAX_PARALLEL_TOOLS}"
     )
     assert len(slow_tool["started"]) == n
+
+
+@pytest.mark.parametrize("limit,count", [(2, 6), (6, 9), (10, 12)])
+async def test_delegates_follow_configured_concurrency(monkeypatch, slow_tool, limit, count):
+    """Chat queues excess delegates and can use more than the general tool cap."""
+    from machina.core.config import config
+    from machina.tools.base import Tool
+
+    probe = registry._tools["sleep_probe"]
+    monkeypatch.setitem(
+        registry._tools,
+        "delegate",
+        Tool(
+            name="delegate",
+            description="probe",
+            parameters=probe.parameters,
+            func=probe.func,
+            is_async=True,
+        ),
+    )
+    original_get = config.get
+    monkeypatch.setattr(
+        config,
+        "get",
+        lambda key, *args: limit if key == "max_delegate_concurrency" else original_get(key, *args),
+    )
+    response = LLMResponse(
+        content="",
+        model="test-model",
+        tool_calls=[_tool_call("delegate", {"delay": 0.2, "tag": str(i)}, i) for i in range(count)],
+    )
+
+    events, messages, _ = await _collect(_StubAgent(), response, uuid.uuid4())
+
+    assert slow_tool["peak"] == limit
+    assert len(slow_tool["started"]) == count
+    assert len([e for e in events if e.type == "tool_result"]) == count
+    assert len([m for m in messages if m.get("role") == "tool"]) == count
+
+
+async def test_queued_delegates_do_not_block_other_tools(monkeypatch, slow_tool):
+    from machina.core.config import config
+    from machina.tools.base import Tool
+
+    probe = registry._tools["sleep_probe"]
+    monkeypatch.setitem(
+        registry._tools,
+        "delegate",
+        Tool(
+            name="delegate",
+            description="probe",
+            parameters=probe.parameters,
+            func=probe.func,
+            is_async=True,
+        ),
+    )
+    original_get = config.get
+    monkeypatch.setattr(
+        config,
+        "get",
+        lambda key, *args: 1 if key == "max_delegate_concurrency" else original_get(key, *args),
+    )
+    calls = [_tool_call("delegate", {"delay": 0.1, "tag": str(i)}, i) for i in range(9)]
+    calls.append(_tool_call("sleep_probe", {"delay": 0.01, "tag": "other"}, 9))
+    events, _, _ = await _collect(
+        _StubAgent(), LLMResponse(content="", model="test-model", tool_calls=calls), uuid.uuid4()
+    )
+    results = [e.tool_result for e in events if e.type == "tool_result"]
+    assert results[0] == "done-other"
+
+
+async def test_cancelling_a_delegate_batch_cancels_active_and_queued_work(monkeypatch):
+    from machina.core.config import config
+    from machina.tools.base import Tool
+
+    started = []
+    active = set()
+    ready = asyncio.Event()
+
+    async def worker(tag: str):
+        started.append(tag)
+        active.add(tag)
+        if len(active) == 2:
+            ready.set()
+        try:
+            await asyncio.Event().wait()
+        finally:
+            active.remove(tag)
+
+    monkeypatch.setitem(
+        registry._tools,
+        "delegate",
+        Tool(
+            name="delegate",
+            description="probe",
+            parameters={"type": "object", "properties": {"tag": {"type": "string"}}},
+            func=worker,
+            is_async=True,
+        ),
+    )
+    original_get = config.get
+    monkeypatch.setattr(
+        config,
+        "get",
+        lambda key, *args: 2 if key == "max_delegate_concurrency" else original_get(key, *args),
+    )
+    response = LLMResponse(
+        content="",
+        model="test-model",
+        tool_calls=[_tool_call("delegate", {"tag": str(i)}, i) for i in range(5)],
+    )
+    task = asyncio.create_task(_collect(_StubAgent(), response, uuid.uuid4()))
+    await asyncio.wait_for(ready.wait(), timeout=5)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert len(started) == 2
+    assert not active
 
 
 async def test_invalid_args_do_not_break_the_batch(slow_tool):

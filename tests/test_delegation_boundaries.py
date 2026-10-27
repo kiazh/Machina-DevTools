@@ -192,7 +192,11 @@ async def test_child_pause_reaches_parent_without_another_provider_call(
         "delegate",
         AsyncMock(
             return_value=SimpleNamespace(
-                status="waiting_approval", response="waiting", tokens=7, needs_approval=[card]
+                status="waiting_approval",
+                response="waiting",
+                tokens=7,
+                needs_approval=[card],
+                session_id=uuid4(),
             )
         ),
     )
@@ -246,7 +250,7 @@ async def test_parent_accounts_child_spend_without_implicit_turn_cutoff(
         "delegate",
         AsyncMock(
             return_value=SimpleNamespace(
-                status="complete", response="done", tokens=7, needs_approval=[]
+                status="complete", response="done", tokens=7, needs_approval=[], session_id=uuid4()
             )
         ),
     )
@@ -396,6 +400,8 @@ async def test_rebuilt_child_retains_durable_delegation_restrictions(monkeypatch
     )
     session = SimpleNamespace(
         agent_id="coder",
+        parent_session_id=uuid4(),
+        is_fork=False,
         model="fake",
         provider="fake",
         delegation_authority={
@@ -657,7 +663,7 @@ async def test_delegate_parent_authority_failure_records_and_continues(monkeypat
 
     monkeypatch.setattr("machina.core.agent_factory.parent_authority_var", BoomAuthority())
 
-    result = SimpleNamespace(status="ok", response="child result", tokens=1)
+    result = SimpleNamespace(status="ok", response="child result", tokens=1, session_id=uuid4())
     monkeypatch.setattr(
         orchestrator_module.orchestrator, "delegate", AsyncMock(return_value=result)
     )

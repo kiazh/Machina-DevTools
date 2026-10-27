@@ -74,7 +74,7 @@ def test_system_prompt_teaches_parallel_fan_out():
     from machina.core.agent import SYSTEM_PROMPT
 
     assert "list_agents" in SYSTEM_PROMPT
-    assert "at most three" in SYSTEM_PROMPT
+    assert "configured concurrency limit queues excess work" in SYSTEM_PROMPT
     assert "Workers inherit your restrictions and cannot approve actions" in SYSTEM_PROMPT
     assert "never delegate to evade an approval" in SYSTEM_PROMPT
 
@@ -85,7 +85,7 @@ def test_delegate_description_advertises_parallel_fan_out():
 
     desc = next(d.description for d in registry.get_tool_definitions() if d.name == "delegate")
     assert "single block" in desc
-    assert "no more than three" in desc
+    assert "additional calls queue" in desc
 
 
 @pytest.mark.asyncio
