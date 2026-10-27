@@ -6,12 +6,12 @@ import os
 import uuid
 
 import pytest
+from tests.test_gateway import Harness
 
 from machina.core.agent import ReActAgent
 from machina.core.agent_def import BUILTIN_AGENTS, AgentDef, agent_registry
 from machina.core.models import AgentResponse
 from machina.gateway.server import INVALID_PARAMS, NOT_FOUND
-from tests.test_gateway import Harness
 
 TEST_DSN = os.environ.get("MACHINA_TEST_DATABASE_URL", "")
 needs_db = pytest.mark.skipif(not TEST_DSN, reason="MACHINA_TEST_DATABASE_URL not set")
@@ -71,6 +71,30 @@ class FakeAgent:
             tokens_used=11,
             iterations=1,
         )
+
+
+async def test_delegate_capacity_is_shared_across_callers(monkeypatch):
+    import asyncio
+
+    from machina.core import orchestrator as module
+
+    active = 0
+    peak = 0
+    capacity = module._DelegateCapacity()
+    monkeypatch.setattr(
+        module.config, "get", lambda key, *args: 2 if key == "max_delegate_concurrency" else 4
+    )
+
+    async def worker():
+        nonlocal active, peak
+        async with capacity.slot():
+            active += 1
+            peak = max(peak, active)
+            await asyncio.sleep(0.01)
+            active -= 1
+
+    await asyncio.gather(*(worker() for _ in range(7)))
+    assert peak == 2
 
 
 @needs_db
@@ -143,7 +167,7 @@ class TestOrchestrator:
         )
         await db.execute(
             "ALTER TABLE agent_messages ADD CONSTRAINT agent_messages_status_check "
-            "CHECK (status IN ('pending', 'complete', 'error', 'cancelled'))"
+            "CHECK (status IN ('queued', 'running', 'pending', 'complete', 'error', 'cancelled', 'waiting_approval', 'interrupted'))"
         )
         message_id = await orch._record_start(None, "orchestrator", "coder", "task")
         try:
@@ -209,6 +233,59 @@ class TestOrchestrator:
         )
         assert len(results) == 6
         assert peak == 2
+
+    async def test_delegate_limit_is_shared_across_parallel_batches(self, monkeypatch, orch):
+        import asyncio
+
+        from machina.core.config import config
+        from machina.core.orchestrator import Orchestrator
+
+        parent = await _parent_session()
+        monkeypatch.setattr(config, "max_delegate_concurrency", 2)
+        active = 0
+        peak = 0
+        both_running = asyncio.Event()
+        release = asyncio.Event()
+
+        class SlowAgent:
+            def __init__(self, definition):
+                self.definition = definition
+
+            async def run(self, session_id, user_message, verbose=True):
+                nonlocal active, peak
+                active += 1
+                peak = max(peak, active)
+                if active == 2:
+                    both_running.set()
+                try:
+                    await release.wait()
+                finally:
+                    active -= 1
+                return AgentResponse(content="done", tokens_used=1, iterations=1)
+
+        first = Orchestrator(agent_factory=SlowAgent)
+        second = Orchestrator(agent_factory=SlowAgent)
+        batches = asyncio.ensure_future(
+            asyncio.gather(
+                first.run_parallel(
+                    [("researcher", str(i)) for i in range(3)], parent_session_id=parent
+                ),
+                second.run_parallel(
+                    [("researcher", str(i)) for i in range(3)], parent_session_id=parent
+                ),
+            )
+        )
+        await asyncio.wait_for(both_running.wait(), timeout=5)
+        queued_history = await first.history(parent)
+        assert sum(entry["status"] == "running" for entry in queued_history) == 2
+        assert sum(entry["status"] == "queued" for entry in queued_history) >= 1
+        release.set()
+        results = await batches
+        assert all(result.status == "complete" for batch in results for result in batch)
+        assert peak == 2
+        history = await first.history(parent)
+        assert len(history) == 6
+        assert all(entry["childSessionId"] for entry in history)
 
 
 @needs_db

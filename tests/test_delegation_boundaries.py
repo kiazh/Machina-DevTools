@@ -312,9 +312,11 @@ async def test_pending_delegation_history_identifies_child(db_pool, monkeypatch)
     parent = await session_manager.create(agent_id="harness")
     child = await session_manager.create(agent_id="researcher", parent_session_id=parent.id)
     orch = Orchestrator()
-    await orch._record_start(parent.id, "harness", "researcher", "research", child_session_id=child.id)
+    await orch._record_start(
+        parent.id, "harness", "researcher", "research", child_session_id=child.id
+    )
     history = await orch.history(parent.id)
-    assert history[0]["status"] == "pending"
+    assert history[0]["status"] == "queued"
     assert history[0]["childSessionId"] == str(child.id)
 
 
