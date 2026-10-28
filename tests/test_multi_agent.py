@@ -312,6 +312,46 @@ class TestOrchestrator:
 @needs_db
 @pytest.mark.usefixtures("connected_db")
 class TestDelegateTool:
+    async def test_shutdown_marks_background_worker_interrupted_and_resumable(self, monkeypatch):
+        import asyncio
+        import re
+
+        from machina.core import orchestrator as orch_mod
+        from machina.core import runtime
+        from machina.core.cleanup import cancel_and_join
+        from machina.tools import agents
+
+        class Worker(FakeAgent):
+            async def run(self, session_id, user_message, verbose=True):
+                await asyncio.Event().wait()
+
+        owner = runtime.RuntimeServices()
+        monkeypatch.setattr(runtime, "runtime_services", owner)
+        monkeypatch.setattr(orch_mod.orchestrator, "_agent_factory", Worker)
+        parent = await _parent_session()
+        session_token = agents.current_session_id.set(parent)
+        agent_token = agents.current_agent_id.set("harness")
+        try:
+            receipt = await agents.delegate("researcher", "research", wait_seconds=1)
+            child = uuid.UUID(re.search(r"Child session: ([0-9a-f-]+)", receipt).group(1))
+            owner._shutting_down = True
+            assert await cancel_and_join(list(owner._background), 5, "test shutdown") == []
+            status = await agents.delegate_status(str(child))
+            assert "Worker interrupted" in status
+            assert "resume" in status.lower()
+            owner._shutting_down = False
+            monkeypatch.setattr(orch_mod.orchestrator, "_agent_factory", FakeAgent)
+            followup = await agents.delegate(
+                "researcher", "resume", session_id=str(child), wait_seconds=5
+            )
+            assert followup.delegation_status == "complete"
+        finally:
+            for task in list(owner._background):
+                task.cancel()
+            await asyncio.gather(*owner._background, return_exceptions=True)
+            agents.current_agent_id.reset(agent_token)
+            agents.current_session_id.reset(session_token)
+
     async def test_background_worker_status_and_followup_use_the_same_child(self, monkeypatch):
         import asyncio
         import re

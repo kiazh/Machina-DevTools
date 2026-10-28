@@ -146,6 +146,46 @@ async def test_long_delegate_returns_a_trackable_child_and_keeps_running(monkeyp
 
 
 @pytest.mark.asyncio
+async def test_background_delegate_is_cancelled_by_runtime_shutdown_tracking(monkeypatch):
+    import asyncio
+
+    from machina.core import orchestrator as module
+    from machina.core import runtime
+    from machina.core.cleanup import cancel_and_join
+    from machina.tools import agents
+
+    child_id = uuid4()
+    stopped = asyncio.Event()
+    owner = runtime.RuntimeServices()
+
+    async def fake_delegate(*args, **kwargs):
+        kwargs["on_started"](child_id)
+        try:
+            await asyncio.Event().wait()
+        finally:
+            stopped.set()
+
+    monkeypatch.setattr(agents.db, "fetchval", AsyncMock(return_value="harness"))
+    monkeypatch.setattr(module.orchestrator, "delegate", fake_delegate)
+    monkeypatch.setattr(module.orchestrator, "history", AsyncMock(return_value=[]))
+    monkeypatch.setattr(runtime, "runtime_services", owner)
+    session_token = agents.current_session_id.set(uuid4())
+    agent_token = agents.current_agent_id.set("harness")
+    try:
+        await agents.delegate("researcher", "long task", wait_seconds=1)
+        tasks = list(agents._background_delegations)
+        assert len(tasks) == 1 and tasks[0] in owner._background
+        assert await cancel_and_join(list(owner._background), 2, "test shutdown") == []
+        assert stopped.is_set()
+    finally:
+        for task in list(agents._background_delegations):
+            task.cancel()
+        await asyncio.gather(*agents._background_delegations, return_exceptions=True)
+        agents.current_agent_id.reset(agent_token)
+        agents.current_session_id.reset(session_token)
+
+
+@pytest.mark.asyncio
 async def test_delegate_status_only_reads_children_of_the_current_parent(monkeypatch):
     from machina.core import orchestrator as module
     from machina.core.exceptions import ToolError
