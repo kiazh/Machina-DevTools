@@ -360,6 +360,7 @@ class TestDelegateTool:
         from machina.tools import agents
 
         release = asyncio.Event()
+        release_followup = asyncio.Event()
         calls = []
 
         class Worker(FakeAgent):
@@ -367,6 +368,8 @@ class TestDelegateTool:
                 calls.append(session_id)
                 if len(calls) == 1:
                     await release.wait()
+                else:
+                    await release_followup.wait()
                 return AgentResponse(content="worker result", tokens_used=1, iterations=1)
 
         monkeypatch.setattr(orch_mod.orchestrator, "_agent_factory", Worker)
@@ -389,12 +392,17 @@ class TestDelegateTool:
 
             assert "worker result" in await asyncio.wait_for(completed(), timeout=5)
             followup = await agents.delegate(
-                "researcher", "follow up", session_id=str(child), wait_seconds=5
+                "researcher", "follow up", session_id=str(child), wait_seconds=1
             )
-            assert followup.delegation_status == "complete"
+            assert followup.delegation_status == "running"
+            assert "Worker running" in await agents.delegate_status(str(child))
+            release_followup.set()
+            assert "Worker complete" in await asyncio.wait_for(completed(), timeout=5)
             assert calls == [child, child]
         finally:
             release.set()
+            release_followup.set()
+            await asyncio.gather(*list(agents._background_delegations), return_exceptions=True)
             agents.current_agent_id.reset(agent_token)
             agents.current_session_id.reset(session_token)
 

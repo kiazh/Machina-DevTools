@@ -127,8 +127,8 @@ async def test_long_delegate_returns_a_trackable_child_and_keeps_running(monkeyp
     monkeypatch.setattr(module.orchestrator, "delegate", fake_delegate)
     monkeypatch.setattr(
         module.orchestrator,
-        "history",
-        AsyncMock(return_value=[{"childSessionId": str(child_id), "status": "running"}]),
+        "latest_child_delegation",
+        AsyncMock(return_value={"status": "running"}),
     )
     session_token = agents.current_session_id.set(session_id)
     agent_token = agents.current_agent_id.set("researcher")
@@ -167,7 +167,7 @@ async def test_background_delegate_is_cancelled_by_runtime_shutdown_tracking(mon
 
     monkeypatch.setattr(agents.db, "fetchval", AsyncMock(return_value="harness"))
     monkeypatch.setattr(module.orchestrator, "delegate", fake_delegate)
-    monkeypatch.setattr(module.orchestrator, "history", AsyncMock(return_value=[]))
+    monkeypatch.setattr(module.orchestrator, "latest_child_delegation", AsyncMock(return_value=None))
     monkeypatch.setattr(runtime, "runtime_services", owner)
     session_token = agents.current_session_id.set(uuid4())
     agent_token = agents.current_agent_id.set("harness")
@@ -195,7 +195,7 @@ async def test_delegate_status_only_reads_children_of_the_current_parent(monkeyp
         return "researcher"
 
     monkeypatch.setattr(agents.db, "fetchval", owner)
-    monkeypatch.setattr(module.orchestrator, "history", AsyncMock(return_value=[]))
+    monkeypatch.setattr(module.orchestrator, "latest_child_delegation", AsyncMock(return_value=None))
     session_token = agents.current_session_id.set(uuid4())
     agent_token = agents.current_agent_id.set("researcher")
     try:
@@ -213,7 +213,7 @@ async def test_delegate_status_marks_a_dead_expired_worker_interrupted(monkeypat
 
     child_id, entry_id = uuid4(), uuid4()
     fetches = iter(["researcher", False])
-    execute = AsyncMock()
+    execute = AsyncMock(return_value="UPDATE 1")
 
     async def fetchval(*args):
         return next(fetches)
@@ -222,16 +222,14 @@ async def test_delegate_status_marks_a_dead_expired_worker_interrupted(monkeypat
     monkeypatch.setattr(agents.db, "execute", execute)
     monkeypatch.setattr(
         module.orchestrator,
-        "history",
+        "latest_child_delegation",
         AsyncMock(
-            return_value=[
-                {
-                    "id": str(entry_id),
-                    "childSessionId": str(child_id),
-                    "status": "running",
-                    "response": None,
-                }
-            ]
+            return_value={
+                "id": str(entry_id),
+                "childSessionId": str(child_id),
+                "status": "running",
+                "response": None,
+            }
         ),
     )
     session_token = agents.current_session_id.set(uuid4())
@@ -246,6 +244,38 @@ async def test_delegate_status_marks_a_dead_expired_worker_interrupted(monkeypat
     assert result.delegation_status == "interrupted"
     assert result.is_error is True
     assert execute.await_args.args[1] == entry_id
+
+
+@pytest.mark.asyncio
+async def test_delegate_status_returns_completed_result_when_worker_finishes_during_check(
+    monkeypatch,
+):
+    from machina.core import orchestrator as module
+    from machina.tools import agents
+
+    child_id, entry_id = uuid4(), uuid4()
+    monkeypatch.setattr(agents.db, "fetchval", AsyncMock(side_effect=["researcher", False]))
+    monkeypatch.setattr(agents.db, "execute", AsyncMock(return_value="UPDATE 0"))
+    monkeypatch.setattr(
+        module.orchestrator,
+        "latest_child_delegation",
+        AsyncMock(
+            side_effect=[
+                {"id": str(entry_id), "status": "running", "response": None},
+                {"id": str(entry_id), "status": "complete", "response": "finished"},
+            ]
+        ),
+    )
+    session_token = agents.current_session_id.set(uuid4())
+    agent_token = agents.current_agent_id.set("researcher")
+    try:
+        result = await agents.delegate_status(str(child_id))
+    finally:
+        agents.current_agent_id.reset(agent_token)
+        agents.current_session_id.reset(session_token)
+
+    assert result.delegation_status == "complete"
+    assert "finished" in result
 
 
 @pytest.mark.asyncio
@@ -266,9 +296,9 @@ async def test_delegate_status_keeps_a_live_worker_running(monkeypatch):
     monkeypatch.setattr(agents.db, "fetchval", owner)
     monkeypatch.setattr(
         module.orchestrator,
-        "history",
+        "latest_child_delegation",
         AsyncMock(
-            return_value=[{"childSessionId": str(child_id), "status": "running", "response": None}]
+            return_value={"childSessionId": str(child_id), "status": "running", "response": None}
         ),
     )
     execute = AsyncMock()
