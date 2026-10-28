@@ -146,6 +146,50 @@ async def test_long_delegate_returns_a_trackable_child_and_keeps_running(monkeyp
 
 
 @pytest.mark.asyncio
+async def test_headless_delegate_waits_for_worker_before_process_can_exit(monkeypatch):
+    import asyncio
+
+    from machina.core import orchestrator as module
+    from machina.permissions import broker
+    from machina.tools import agents
+
+    child_id = uuid4()
+    started, release = asyncio.Event(), asyncio.Event()
+
+    async def fake_delegate(*args, **kwargs):
+        kwargs["on_started"](child_id)
+        started.set()
+        await release.wait()
+        return SimpleNamespace(
+            status="complete", response="done", session_id=child_id, tokens=1, needs_approval=[]
+        )
+
+    monkeypatch.setattr(agents.db, "fetchval", AsyncMock(return_value="harness"))
+    monkeypatch.setattr(module.orchestrator, "delegate", fake_delegate)
+    monkeypatch.setattr(
+        module.orchestrator, "latest_child_delegation", AsyncMock(return_value={"status": "running"})
+    )
+    session_token = agents.current_session_id.set(uuid4())
+    agent_token = agents.current_agent_id.set("harness")
+    principal_token = broker._principal.set("headless")
+    task = None
+    try:
+        task = asyncio.create_task(agents.delegate("researcher", "research", wait_seconds=1))
+        await asyncio.wait_for(started.wait(), timeout=2)
+        await asyncio.sleep(1.1)
+        assert not task.done()
+        release.set()
+        assert (await asyncio.wait_for(task, timeout=2)).delegation_status == "complete"
+    finally:
+        release.set()
+        if task is not None:
+            await asyncio.gather(task, return_exceptions=True)
+        broker._principal.reset(principal_token)
+        agents.current_agent_id.reset(agent_token)
+        agents.current_session_id.reset(session_token)
+
+
+@pytest.mark.asyncio
 async def test_background_delegate_is_cancelled_by_runtime_shutdown_tracking(monkeypatch):
     import asyncio
 
