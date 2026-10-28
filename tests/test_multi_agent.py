@@ -312,6 +312,74 @@ class TestOrchestrator:
 @needs_db
 @pytest.mark.usefixtures("connected_db")
 class TestDelegateTool:
+    async def test_remote_worker_survives_status_check_and_crash_becomes_interrupted(self):
+        import asyncio
+        import sys
+
+        from machina.core.exceptions import ToolError
+        from machina.db.connection import db
+        from machina.tools import agents
+
+        parent = await _parent_session()
+        child_script = '''
+import asyncio, logging, os, re, sys, uuid
+from machina.core import orchestrator as module
+from machina.db.connection import db
+from machina.tools import agents
+class Worker:
+    def __init__(self, definition): pass
+    async def run(self, session_id, user_message, verbose=True):
+        await asyncio.Event().wait()
+async def main():
+    db.dsn = os.environ["MACHINA_TEST_DATABASE_URL"]
+    await db.connect()
+    module.orchestrator._agent_factory = Worker
+    agents.current_session_id.set(uuid.UUID(sys.argv[1]))
+    agents.current_agent_id.set("harness")
+    receipt = await agents.delegate("researcher", "remote task", wait_seconds=1)
+    child = re.search(r"Child session: ([0-9a-f-]{36})", str(receipt)).group(1)
+    print("READY " + child, flush=True)
+    await asyncio.Event().wait()
+logging.disable(logging.CRITICAL)
+asyncio.run(main())
+'''
+        process = await asyncio.create_subprocess_exec(
+            sys.executable,
+            "-c",
+            child_script,
+            str(parent),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        session_token = agents.current_session_id.set(parent)
+        agent_token = agents.current_agent_id.set("harness")
+        try:
+            line = (await asyncio.wait_for(process.stdout.readline(), timeout=15)).decode().strip()
+            assert line.startswith("READY "), line
+            child_id = uuid.UUID(line.removeprefix("READY "))
+            assert "Worker running" in await agents.delegate_status(str(child_id))
+            with pytest.raises(ToolError, match="already running"):
+                await agents.delegate(
+                    "researcher", "overlapping task", session_id=str(child_id), wait_seconds=1
+                )
+            process.kill()
+            await asyncio.wait_for(process.wait(), timeout=5)
+            # The actual lease expires naturally; move it into the past in the
+            # isolated test DB to avoid a multi-minute sleep in this test.
+            await db.execute(
+                "UPDATE sessions SET claim_expires_at = now() - interval '1 second' WHERE id = $1",
+                child_id,
+            )
+            status = await agents.delegate_status(str(child_id))
+            assert status.delegation_status == "interrupted"
+            assert "resume" in status.lower()
+        finally:
+            if process.returncode is None:
+                process.kill()
+                await process.wait()
+            agents.current_agent_id.reset(agent_token)
+            agents.current_session_id.reset(session_token)
+
     async def test_cancellation_during_cleanup_releases_child_claim(self, monkeypatch):
         import asyncio
         import re
