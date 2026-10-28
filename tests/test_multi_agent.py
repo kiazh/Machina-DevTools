@@ -6,12 +6,12 @@ import os
 import uuid
 
 import pytest
-from tests.test_gateway import Harness
 
 from machina.core.agent import ReActAgent
 from machina.core.agent_def import BUILTIN_AGENTS, AgentDef, agent_registry
 from machina.core.models import AgentResponse
 from machina.gateway.server import INVALID_PARAMS, NOT_FOUND
+from tests.test_gateway import Harness
 
 TEST_DSN = os.environ.get("MACHINA_TEST_DATABASE_URL", "")
 needs_db = pytest.mark.skipif(not TEST_DSN, reason="MACHINA_TEST_DATABASE_URL not set")
@@ -312,6 +312,52 @@ class TestOrchestrator:
 @needs_db
 @pytest.mark.usefixtures("connected_db")
 class TestDelegateTool:
+    async def test_background_worker_status_and_followup_use_the_same_child(self, monkeypatch):
+        import asyncio
+        import re
+
+        from machina.core import orchestrator as orch_mod
+        from machina.tools import agents
+
+        release = asyncio.Event()
+        calls = []
+
+        class Worker(FakeAgent):
+            async def run(self, session_id, user_message, verbose=True):
+                calls.append(session_id)
+                if len(calls) == 1:
+                    await release.wait()
+                return AgentResponse(content="worker result", tokens_used=1, iterations=1)
+
+        monkeypatch.setattr(orch_mod.orchestrator, "_agent_factory", Worker)
+        parent = await _parent_session()
+        session_token = agents.current_session_id.set(parent)
+        agent_token = agents.current_agent_id.set("harness")
+        try:
+            receipt = await agents.delegate("researcher", "research", wait_seconds=1)
+            child = uuid.UUID(re.search(r"Child session: ([0-9a-f-]+)", receipt).group(1))
+            assert receipt.delegation_status == "running"
+            assert "Worker running" in await agents.delegate_status(str(child))
+            release.set()
+
+            async def completed():
+                while True:
+                    status = await agents.delegate_status(str(child))
+                    if "Worker complete" in status:
+                        return status
+                    await asyncio.sleep(0.01)
+
+            assert "worker result" in await asyncio.wait_for(completed(), timeout=5)
+            followup = await agents.delegate(
+                "researcher", "follow up", session_id=str(child), wait_seconds=5
+            )
+            assert followup.delegation_status == "complete"
+            assert calls == [child, child]
+        finally:
+            release.set()
+            agents.current_agent_id.reset(agent_token)
+            agents.current_session_id.reset(session_token)
+
     async def test_delegate_tool_uses_orchestrator(self, monkeypatch):
         import machina.tools  # noqa: F401
         from machina.core import orchestrator as orch_mod
