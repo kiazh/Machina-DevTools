@@ -149,6 +149,44 @@ class TestOrchestrator:
 
         return Orchestrator(agent_factory=FakeAgent)
 
+    @pytest.mark.parametrize("nested", [False, True])
+    @pytest.mark.parametrize("failure", ["database_error", "not_queued"])
+    async def test_worker_never_runs_without_durable_running_transition(
+        self, monkeypatch, nested, failure
+    ):
+        from machina.core import orchestrator as module
+        from machina.db.connection import db
+
+        ran = False
+
+        class Worker(FakeAgent):
+            async def run(self, session_id, user_message, verbose=True):
+                nonlocal ran
+                ran = True
+                return await super().run(session_id, user_message, verbose)
+
+        execute = db.execute
+
+        async def fail_transition(query, *args):
+            if "UPDATE agent_messages SET status = $2 WHERE id = $1 AND status = 'queued'" in query:
+                if failure == "database_error":
+                    raise RuntimeError("transition unavailable")
+                return "UPDATE 0"
+            return await execute(query, *args)
+
+        monkeypatch.setattr(db, "execute", fail_transition)
+        orch = module.Orchestrator(agent_factory=Worker)
+        depth_token = module.delegation_depth.set(1 if nested else 0)
+        try:
+            result = await orch.delegate(
+                "researcher", "research", parent_session_id=await _parent_session()
+            )
+        finally:
+            module.delegation_depth.reset(depth_token)
+
+        assert not ran
+        assert result.status == "error"
+
     async def test_delegate_records_message_and_child_session(self, orch):
         parent = await _parent_session()
         result = await orch.delegate(

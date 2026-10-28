@@ -55,6 +55,7 @@ async def test_child_uses_parent_mode_even_when_global_default_is_full(
     orch = Orchestrator(agent_factory=lambda _: Child())
     monkeypatch.setattr(orch, "_parent_context", AsyncMock(return_value=""))
     monkeypatch.setattr(orch, "_record_start", AsyncMock(return_value=uuid4()))
+    monkeypatch.setattr(orch, "_record_status", AsyncMock())
     monkeypatch.setattr(orch, "_record_end", AsyncMock())
     monkeypatch.setattr(module.context_manager, "add_chunk", AsyncMock())
     result = await orch.delegate(
@@ -90,6 +91,7 @@ async def test_orchestrator_returns_child_pause_and_stops_sequential_work(monkey
     )
     orch = Orchestrator(agent_factory=lambda _: Child())
     monkeypatch.setattr(orch, "_record_start", AsyncMock(return_value=uuid4()))
+    monkeypatch.setattr(orch, "_record_status", AsyncMock())
     monkeypatch.setattr(orch, "_record_end", AsyncMock())
     results = await orch.run_sequential([("coder", "write"), ("coder", "publish")])
     assert len(results) == 1
@@ -488,6 +490,7 @@ async def test_full_child_inherits_only_live_parent_full_grant(monkeypatch, acti
     orch = Orchestrator(agent_factory=lambda _: Child())
     monkeypatch.setattr(orch, "_parent_context", AsyncMock(return_value=""))
     monkeypatch.setattr(orch, "_record_start", AsyncMock(return_value=uuid4()))
+    monkeypatch.setattr(orch, "_record_status", AsyncMock())
     monkeypatch.setattr(orch, "_record_end", AsyncMock())
     result = await orch.delegate(
         "coder", "read", parent_session_id=parent.id, from_agent=parent.agent_id
@@ -585,6 +588,7 @@ async def test_child_full_authority_stops_when_parent_grant_is_revoked(monkeypat
     orch = Orchestrator(agent_factory=lambda _: Child())
     monkeypatch.setattr(orch, "_parent_context", AsyncMock(return_value=""))
     monkeypatch.setattr(orch, "_record_start", AsyncMock(return_value=uuid4()))
+    monkeypatch.setattr(orch, "_record_status", AsyncMock())
     monkeypatch.setattr(orch, "_record_end", AsyncMock())
     result = await orch.delegate(
         "coder", "read", parent_session_id=parent.id, from_agent=parent.agent_id
