@@ -18,6 +18,21 @@ def test_delegate_inline_wait_setting_is_registered_and_bounded():
         validate_value("delegate_inline_wait_seconds", 3601)
 
 
+@pytest.mark.parametrize(
+    ("status", "failed", "outcome"),
+    [
+        ("running", False, "running"),
+        ("interrupted", True, "interrupted"),
+        ("waiting_approval", False, "paused"),
+        ("error", True, "failed"),
+    ],
+)
+def test_worker_status_is_reflected_in_tool_outcome(status, failed, outcome):
+    from machina.core.agent import _tool_outcome
+
+    assert _tool_outcome({"_delegation_status": status, "_failed": failed}) == outcome
+
+
 @pytest.mark.asyncio
 async def test_delegate_refuses_a_parent_session_owned_by_another_agent(monkeypatch):
     from machina.core import orchestrator as module
@@ -188,6 +203,8 @@ async def test_delegate_status_marks_a_dead_expired_worker_interrupted(monkeypat
         agents.current_session_id.reset(session_token)
 
     assert "Worker interrupted" in result
+    assert result.delegation_status == "interrupted"
+    assert result.is_error is True
     assert execute.await_args.args[1] == entry_id
 
 
@@ -228,6 +245,8 @@ async def test_delegate_status_keeps_a_live_worker_running(monkeypatch):
         await asyncio.gather(worker, return_exceptions=True)
 
     assert "Worker running" in result
+    assert result.delegation_status == "running"
+    assert result.is_error is False
     execute.assert_not_awaited()
 
 
