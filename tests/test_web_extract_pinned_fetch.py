@@ -92,7 +92,28 @@ async def test_extract_preserves_plain_text(monkeypatch):
     _fake_pinned_transport(
         monkeypatch, {"example.com": (["93.184.216.34"], lambda: _ok(b"a < b and c > d"))}
     )
-    assert await builtins.web_extract("https://example.com/article") == "a < b and c > d"
+    result = await builtins.web_extract("https://example.com/article")
+    assert result.startswith("a < b and c > d")
+    assert "Possible incomplete static fetch" in result
+
+
+async def test_extract_flags_a_sparse_javascript_shell(monkeypatch):
+    _fake_pinned_transport(
+        monkeypatch,
+        {
+            "example.com": (
+                ["93.184.216.34"],
+                lambda: _ok(
+                    b"<html><body><h1>Quotes to Scrape</h1><nav>Login Next</nav>"
+                    b"<script>renderQuotes()</script></body></html>"
+                ),
+            )
+        },
+    )
+    result = await builtins.web_extract("https://example.com/js")
+    assert "Quotes to Scrape" in result
+    assert "JavaScript-rendered content may be missing" in result
+    assert "mcp_list" in result and "mcp_describe" in result and "mcp_call" in result
 
 
 async def test_extract_propagates_fetch_deadline_without_proxy(monkeypatch):

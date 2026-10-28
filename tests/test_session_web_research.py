@@ -41,6 +41,9 @@ async def test_web_research_fetches_and_indexes_with_session_and_source(monkeypa
     assert indexed["agent_id"] == "researcher"
     assert indexed["source"].source == "https://example.com/guide"
     assert indexed["source"].content == "Fetched reference text."
+    assert "Possible incomplete static fetch" in response
+    assert "mcp_list" in response
+    assert "Possible incomplete static fetch" not in indexed["source"].content
 
 
 async def test_web_research_does_not_duplicate_an_indexed_url(monkeypatch):

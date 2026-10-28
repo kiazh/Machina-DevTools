@@ -139,6 +139,27 @@ async def test_crawl_reports_failures_but_returns_saved_pages(monkeypatch, stubs
     assert "untrusted" in response
 
 
+async def test_crawl_flags_sparse_static_page_and_suggests_browser_fallback(
+    monkeypatch, stubs
+):
+    monkeypatch.setattr(
+        crawl_module,
+        "fetch_page_html",
+        AsyncMock(
+            return_value=(
+                "<html><body><h1>Quotes to Scrape</h1><nav>Login Next</nav>"
+                "<script>renderQuotes()</script></body></html>"
+            )
+        ),
+    )
+
+    response = await crawl_module.web_crawl("https://example.com/js", max_depth=0)
+
+    assert "Quotes to Scrape" in response
+    assert "Possible incomplete static fetch" in response
+    assert "mcp_list" in response
+
+
 async def test_crawl_excerpt_redacts_secrets_before_truncation(monkeypatch, stubs):
     """combined #26: returned excerpts must use the same redaction as storage."""
     secret = "ghp_" + "A" * 36
