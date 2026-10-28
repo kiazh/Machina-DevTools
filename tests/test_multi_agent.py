@@ -312,6 +312,142 @@ class TestOrchestrator:
 @needs_db
 @pytest.mark.usefixtures("connected_db")
 class TestDelegateTool:
+    async def test_cancellation_during_cleanup_releases_child_claim(self, monkeypatch):
+        import asyncio
+        import re
+
+        from machina.core import orchestrator as orch_mod
+        from machina.core import runtime, turns
+        from machina.tools import agents
+
+        cleanup_started = asyncio.Event()
+        release_started = asyncio.Event()
+        allow_release = asyncio.Event()
+        owner = runtime.RuntimeServices()
+        end_turn = turns.end_turn
+        cleanup_calls = 0
+
+        async def blocked_cleanup(agent):
+            nonlocal cleanup_calls
+            cleanup_calls += 1
+            cleanup_started.set()
+            if cleanup_calls == 1:
+                await asyncio.Event().wait()
+
+        async def slow_release(session_id, token):
+            release_started.set()
+            await allow_release.wait()
+            return await end_turn(session_id, token)
+
+        monkeypatch.setattr(runtime, "runtime_services", owner)
+        monkeypatch.setattr(turns, "end_turn", slow_release)
+        monkeypatch.setattr(orch_mod.orchestrator, "_agent_factory", FakeAgent)
+        monkeypatch.setattr(orch_mod, "join_agent_background_tasks", blocked_cleanup)
+        parent = await _parent_session()
+        session_token = agents.current_session_id.set(parent)
+        agent_token = agents.current_agent_id.set("harness")
+        worker = None
+        try:
+            receipt = await agents.delegate("researcher", "research", wait_seconds=1)
+            child = uuid.UUID(re.search(r"Child session: ([0-9a-f-]+)", receipt).group(1))
+            assert cleanup_started.is_set()
+            worker = orch_mod._live_delegations[child]
+            worker.cancel()
+            await asyncio.wait_for(release_started.wait(), timeout=5)
+            worker.cancel()
+            await asyncio.gather(worker, return_exceptions=True)
+            assert await turns.try_begin_turn(child) is None
+            allow_release.set()
+            await asyncio.wait_for(asyncio.gather(*list(owner._essential_background)), timeout=5)
+            token = await turns.try_begin_turn(child)
+            assert token is not None
+            assert await end_turn(child, token)
+        finally:
+            allow_release.set()
+            if worker is not None and not worker.done():
+                worker.cancel()
+                await asyncio.gather(worker, return_exceptions=True)
+            await asyncio.gather(*list(owner._essential_background), return_exceptions=True)
+            agents.current_agent_id.reset(agent_token)
+            agents.current_session_id.reset(session_token)
+
+    async def test_finished_worker_remains_running_until_session_claim_released(self, monkeypatch):
+        import asyncio
+        import re
+
+        from machina.core import orchestrator as orch_mod
+        from machina.core import turns
+        from machina.tools import agents
+
+        release_started = asyncio.Event()
+        allow_release = asyncio.Event()
+        end_turn = turns.end_turn
+
+        async def slow_release(session_id, token):
+            release_started.set()
+            await allow_release.wait()
+            return await end_turn(session_id, token)
+
+        monkeypatch.setattr(orch_mod.orchestrator, "_agent_factory", FakeAgent)
+        monkeypatch.setattr(turns, "end_turn", slow_release)
+        parent = await _parent_session()
+        session_token = agents.current_session_id.set(parent)
+        agent_token = agents.current_agent_id.set("harness")
+        try:
+            receipt = await agents.delegate("researcher", "research", wait_seconds=1)
+            child = uuid.UUID(re.search(r"Child session: ([0-9a-f-]+)", receipt).group(1))
+            assert release_started.is_set()
+            assert receipt.delegation_status == "running"
+            assert "Worker running" in await agents.delegate_status(str(child))
+            allow_release.set()
+            tasks = list(agents._background_delegations)
+            await asyncio.wait_for(asyncio.gather(*tasks), timeout=5)
+            assert "Worker complete" in await agents.delegate_status(str(child))
+        finally:
+            allow_release.set()
+            await asyncio.gather(*list(agents._background_delegations), return_exceptions=True)
+            agents.current_agent_id.reset(agent_token)
+            agents.current_session_id.reset(session_token)
+
+    async def test_lost_child_claim_interrupts_worker_without_cancelling_parent(self, monkeypatch):
+        import asyncio
+        from unittest.mock import AsyncMock
+
+        from machina.core import orchestrator as orch_mod
+        from machina.core import turns
+        from machina.tools import agents
+
+        stopped = asyncio.Event()
+
+        class Worker(FakeAgent):
+            async def run(self, session_id, user_message, verbose=True):
+                try:
+                    await asyncio.Event().wait()
+                finally:
+                    stopped.set()
+
+        original = turns.TurnOwnership.start_renewal
+
+        def start_fast(self, interval_s=60.0, ttl_s=turns.TURN_TTL_SECONDS, on_lost=None):
+            return original(self, interval_s=0.01, ttl_s=ttl_s, on_lost=on_lost)
+
+        monkeypatch.setattr(turns.TurnOwnership, "start_renewal", start_fast)
+        monkeypatch.setattr(turns, "renew_turn", AsyncMock(return_value=False))
+        monkeypatch.setattr(orch_mod.orchestrator, "_agent_factory", Worker)
+        parent = await _parent_session()
+        session_token = agents.current_session_id.set(parent)
+        agent_token = agents.current_agent_id.set("harness")
+        try:
+            result = await asyncio.wait_for(
+                agents.delegate("researcher", "research", wait_seconds=5), timeout=5
+            )
+            assert result.delegation_status == "interrupted"
+            assert result.is_error is True
+            assert stopped.is_set()
+        finally:
+            agents.current_agent_id.reset(agent_token)
+            agents.current_session_id.reset(session_token)
+
     async def test_shutdown_marks_background_worker_interrupted_and_resumable(self, monkeypatch):
         import asyncio
         import re
@@ -357,6 +493,7 @@ class TestDelegateTool:
         import re
 
         from machina.core import orchestrator as orch_mod
+        from machina.core.exceptions import ToolError
         from machina.tools import agents
 
         release = asyncio.Event()
@@ -381,6 +518,17 @@ class TestDelegateTool:
             child = uuid.UUID(re.search(r"Child session: ([0-9a-f-]+)", receipt).group(1))
             assert receipt.delegation_status == "running"
             assert "Worker running" in await agents.delegate_status(str(child))
+            # Simulate a status request served by another process, which has
+            # no access to this process's live-task registry.
+            live_task = orch_mod._live_delegations.pop(child)
+            try:
+                assert "Worker running" in await agents.delegate_status(str(child))
+                with pytest.raises(ToolError, match="already running"):
+                    await agents.delegate(
+                        "researcher", "overlapping follow-up", session_id=str(child), wait_seconds=1
+                    )
+            finally:
+                orch_mod._live_delegations[child] = live_task
             release.set()
 
             async def completed():
