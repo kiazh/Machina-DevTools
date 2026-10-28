@@ -247,14 +247,30 @@ async def test_tool_result_bound_is_configurable():
 
 
 @pytest.mark.parametrize(
-    "outcome,expected", [("failed", True), ("denied", True), ("paused", False), ("completed", False)]
+    "outcome,expected",
+    [
+        ("failed", True),
+        ("denied", True),
+        ("paused", False),
+        ("completed", False),
+        ("queued", False),
+        ("running", False),
+        ("interrupted", True),
+    ],
 )
 async def test_typed_worker_outcomes_set_failure_flag(outcome, expected):
-    agent = _scripted_agent([
-        StreamEvent(type="tool_call", tool_name="delegate", tool_call_id="child"),
-        StreamEvent(type="tool_result", tool_name="delegate", tool_call_id="child",
-                    tool_result="[researcher] worker report", tool_outcome=outcome),
-    ])
+    agent = _scripted_agent(
+        [
+            StreamEvent(type="tool_call", tool_name="delegate", tool_call_id="child"),
+            StreamEvent(
+                type="tool_result",
+                tool_name="delegate",
+                tool_call_id="child",
+                tool_result="[researcher] worker report",
+                tool_outcome=outcome,
+            ),
+        ]
+    )
     engine = TurnEngine(_spec(), boundary="test.turn_engine")
     engine.attach(agent)
     events = await _drain(engine)

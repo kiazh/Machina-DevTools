@@ -55,6 +55,19 @@ def test_agent_tool_allowlist_filters_definitions():
     assert scoped == {"read_file", "web_search"}
 
 
+def test_delegated_agents_cannot_delegate_or_inspect_parent_workers():
+    import machina.tools  # noqa: F401 — registers delegation tools
+
+    child = ReActAgent.__new__(ReActAgent)
+    child.agent_id = "researcher"
+    child.delegated = True
+    child.allowed_tools = None
+    names = {definition.name for definition in child._tool_defs()}
+    assert "delegate" not in names
+    assert "delegate_status" not in names
+    assert "list_agents" not in names
+
+
 # ─── registry / orchestrator / tools (real DB) ────────────────────────────────
 
 
@@ -276,7 +289,15 @@ class TestOrchestrator:
             )
         )
         await asyncio.wait_for(both_running.wait(), timeout=5)
-        queued_history = await first.history(parent)
+
+        async def queued_batch_visible():
+            while True:
+                history = await first.history(parent)
+                if len(history) >= 3:
+                    return history
+                await asyncio.sleep(0.01)
+
+        queued_history = await asyncio.wait_for(queued_batch_visible(), timeout=5)
         assert sum(entry["status"] == "running" for entry in queued_history) == 2
         assert sum(entry["status"] == "queued" for entry in queued_history) >= 1
         release.set()

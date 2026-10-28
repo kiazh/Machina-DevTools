@@ -1,9 +1,21 @@
 """Delegation through an agent tool must stay within its owned session."""
 
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
+
+
+def test_delegate_inline_wait_setting_is_registered_and_bounded():
+    from machina.core.config import DEFAULTS, Config, validate_value
+
+    assert DEFAULTS["delegate_inline_wait_seconds"] == 120
+    assert Config().delegate_inline_wait_seconds == 120
+    assert validate_value("delegate_inline_wait_seconds", 0) == 0
+    assert validate_value("delegate_inline_wait_seconds", 3600) == 3600
+    with pytest.raises(ValueError):
+        validate_value("delegate_inline_wait_seconds", 3601)
 
 
 @pytest.mark.asyncio
@@ -66,8 +78,157 @@ async def test_delegate_records_the_actual_parent_agent(monkeypatch):
             # LP-08: the executing parent's authority propagates (None when
             # unrestricted) so the child cannot exceed it.
             "authority": None,
+            "on_started": calls[0]["on_started"],
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_long_delegate_returns_a_trackable_child_and_keeps_running(monkeypatch):
+    import asyncio
+    from types import SimpleNamespace
+
+    from machina.core import orchestrator as module
+    from machina.tools import agents
+
+    session_id, child_id = uuid4(), uuid4()
+    release = asyncio.Event()
+
+    async def owner(*args):
+        return "researcher"
+
+    async def fake_delegate(*args, **kwargs):
+        kwargs["on_started"](child_id)
+        await release.wait()
+        return SimpleNamespace(
+            status="complete",
+            response="finished",
+            session_id=child_id,
+            tokens=4,
+            needs_approval=[],
+        )
+
+    monkeypatch.setattr(agents.db, "fetchval", owner)
+    monkeypatch.setattr(module.orchestrator, "delegate", fake_delegate)
+    monkeypatch.setattr(
+        module.orchestrator,
+        "history",
+        AsyncMock(return_value=[{"childSessionId": str(child_id), "status": "running"}]),
+    )
+    session_token = agents.current_session_id.set(session_id)
+    agent_token = agents.current_agent_id.set("researcher")
+    try:
+        result = await agents.delegate("coder", "long task", wait_seconds=1)
+    finally:
+        agents.current_agent_id.reset(agent_token)
+        agents.current_session_id.reset(session_token)
+
+    assert "[coder running]" in result
+    assert str(child_id) in result
+    task = next(task for task in agents._background_delegations if not task.done())
+    release.set()
+    await asyncio.wait_for(task, timeout=2)
+
+
+@pytest.mark.asyncio
+async def test_delegate_status_only_reads_children_of_the_current_parent(monkeypatch):
+    from machina.core import orchestrator as module
+    from machina.core.exceptions import ToolError
+    from machina.tools import agents
+
+    async def owner(*args):
+        return "researcher"
+
+    monkeypatch.setattr(agents.db, "fetchval", owner)
+    monkeypatch.setattr(module.orchestrator, "history", AsyncMock(return_value=[]))
+    session_token = agents.current_session_id.set(uuid4())
+    agent_token = agents.current_agent_id.set("researcher")
+    try:
+        with pytest.raises(ToolError, match="belongs to this session"):
+            await agents.delegate_status(str(uuid4()))
+    finally:
+        agents.current_agent_id.reset(agent_token)
+        agents.current_session_id.reset(session_token)
+
+
+@pytest.mark.asyncio
+async def test_delegate_status_marks_a_dead_expired_worker_interrupted(monkeypatch):
+    from machina.core import orchestrator as module
+    from machina.tools import agents
+
+    child_id, entry_id = uuid4(), uuid4()
+    fetches = iter(["researcher", False])
+    execute = AsyncMock()
+
+    async def fetchval(*args):
+        return next(fetches)
+
+    monkeypatch.setattr(agents.db, "fetchval", fetchval)
+    monkeypatch.setattr(agents.db, "execute", execute)
+    monkeypatch.setattr(
+        module.orchestrator,
+        "history",
+        AsyncMock(
+            return_value=[
+                {
+                    "id": str(entry_id),
+                    "childSessionId": str(child_id),
+                    "status": "running",
+                    "response": None,
+                }
+            ]
+        ),
+    )
+    session_token = agents.current_session_id.set(uuid4())
+    agent_token = agents.current_agent_id.set("researcher")
+    try:
+        result = await agents.delegate_status(str(child_id))
+    finally:
+        agents.current_agent_id.reset(agent_token)
+        agents.current_session_id.reset(session_token)
+
+    assert "Worker interrupted" in result
+    assert execute.await_args.args[1] == entry_id
+
+
+@pytest.mark.asyncio
+async def test_delegate_status_keeps_a_live_worker_running(monkeypatch):
+    import asyncio
+
+    from machina.core import orchestrator as module
+    from machina.tools import agents
+
+    child_id = uuid4()
+    hold = asyncio.Event()
+    worker = asyncio.create_task(hold.wait())
+    module._live_delegations[child_id] = worker
+
+    async def owner(*args):
+        return "researcher"
+
+    monkeypatch.setattr(agents.db, "fetchval", owner)
+    monkeypatch.setattr(
+        module.orchestrator,
+        "history",
+        AsyncMock(
+            return_value=[{"childSessionId": str(child_id), "status": "running", "response": None}]
+        ),
+    )
+    execute = AsyncMock()
+    monkeypatch.setattr(agents.db, "execute", execute)
+    session_token = agents.current_session_id.set(uuid4())
+    agent_token = agents.current_agent_id.set("researcher")
+    try:
+        result = await agents.delegate_status(str(child_id))
+    finally:
+        agents.current_agent_id.reset(agent_token)
+        agents.current_session_id.reset(session_token)
+        module._live_delegations.pop(child_id, None)
+        worker.cancel()
+        await asyncio.gather(worker, return_exceptions=True)
+
+    assert "Worker running" in result
+    execute.assert_not_awaited()
 
 
 def test_system_prompt_teaches_parallel_fan_out():
