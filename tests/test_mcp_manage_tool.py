@@ -226,6 +226,29 @@ def test_env_allowlist_accepts_names_never_values():
     assert "API_TOKEN" in spec["content"]
 
 
+def test_connect_spec_binds_header_references_without_secret_values():
+    spec = connect_spec(
+        {
+            "url": "https://api.githubcopilot.com/mcp/",
+            "header_refs": {"Authorization": "GITHUB_MCP_PAT"},
+        }
+    )
+    content = json.loads(spec["content"])
+    assert content["header_refs"] == {"Authorization": "GITHUB_MCP_PAT"}
+    assert "ghp_" not in spec["content"]
+
+
+def test_connect_spec_rejects_invalid_header_names():
+    for header in ("Bad Header", "Host", "Content-Length"):
+        with pytest.raises(ConfigError):
+            connect_spec(
+                {
+                    "url": "https://api.githubcopilot.com/mcp/",
+                    "header_refs": {header: "GITHUB_MCP_PAT"},
+                }
+            )
+
+
 def test_connect_spec_binds_destination_and_timeouts():
     http = connect_spec({"name": "docs", "url": "https://example.com/mcp"})
     assert http["operation"] == "tool.mcp_connect"
