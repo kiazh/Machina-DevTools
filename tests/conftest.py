@@ -105,6 +105,26 @@ def init_test_database():
 
 
 @pytest.fixture(autouse=True)
+async def retire_active_workspace():
+    """Close any workspace service a test leaves active.
+
+    The workspace registry is process-wide; an attached LSP manager schedules
+    a bounded stop task. Leaking that task across tests hangs the suite at
+    teardown, so every test retires the active service before the next one.
+    """
+    yield
+    try:
+        from machina.workspace.service import active_workspace_service
+
+        service = active_workspace_service()
+        if service is not None:
+            service.close()
+            await service.wait_stopped()
+    except Exception:
+        pass
+
+
+@pytest.fixture(autouse=True)
 def reset_singletons(monkeypatch):
     """Reset mutable global singleton state before each test.
 
@@ -112,8 +132,13 @@ def reset_singletons(monkeypatch):
     context_manager``), so rebinding the module global would not affect them.
     Instead, clear their state in place.
     """
+    from machina.core.shell_jobs import shell_jobs
     from machina.db.connection import db
 
+    # A shutdown-oriented test can leave the process-wide shell-job registry
+    # closed; later tests must not inherit that global state.
+    shell_jobs.closing = False
+    shell_jobs.admissions.clear()
     db._pool = None
     # Never let tests touch the developer database: use the isolated test DB,
     # or no DSN at all (DB-backed tests then skip).
