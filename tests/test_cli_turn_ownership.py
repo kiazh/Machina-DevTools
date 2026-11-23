@@ -29,6 +29,10 @@ import pytest
 from typer.testing import CliRunner
 
 import machina.cli as cli
+import importlib
+
+cli_chat = importlib.import_module("machina.cli.chat")
+cli_sessions = importlib.import_module("machina.cli.sessions")
 from machina.core import turns
 from machina.core.models import AgentResponse, StreamEvent
 
@@ -68,16 +72,16 @@ class _RecordingAgent:
 
 def _stub_cli(monkeypatch: pytest.MonkeyPatch, session, agent) -> None:
     """Wire the CLI's one-shot runtime around *session* and *agent*."""
-    monkeypatch.setattr(cli.db, "connect", AsyncMock())
-    monkeypatch.setattr(cli.db, "close", AsyncMock())
-    monkeypatch.setattr(cli.db, "initialize_runtime_schema", AsyncMock())
-    monkeypatch.setattr(cli.session_manager, "get", AsyncMock(return_value=session))
+    monkeypatch.setattr(cli_chat.db, "connect", AsyncMock())
+    monkeypatch.setattr(cli_chat.db, "close", AsyncMock())
+    monkeypatch.setattr(cli_chat.db, "initialize_runtime_schema", AsyncMock())
+    monkeypatch.setattr(cli_chat.session_manager, "get", AsyncMock(return_value=session))
     monkeypatch.setattr(
         "machina.core.agent_factory.build_agent_for_session",
         AsyncMock(return_value=agent),
     )
     monkeypatch.setattr("machina.core.agent_factory.close_agent_provider", AsyncMock())
-    monkeypatch.setattr(cli, "drain_background_tasks", AsyncMock())
+    monkeypatch.setattr(cli_chat, "drain_background_tasks", AsyncMock())
 
 
 def _foreign_owner_run(session_id: uuid.UUID, kind: str = "turn"):
@@ -115,7 +119,7 @@ def test_chat_refuses_session_owned_by_another_transport(monkeypatch):
     session = _session()
     agent = _RecordingAgent([StreamEvent(type="text", content="must not run")])
     _stub_cli(monkeypatch, session, agent)
-    monkeypatch.setattr(cli, "_run", _foreign_owner_run(session.id))
+    monkeypatch.setattr(cli_chat, "_run", _foreign_owner_run(session.id))
 
     result = runner.invoke(cli.app, ["chat", "hello", "--session", str(session.id), "--quiet"])
 
@@ -189,7 +193,7 @@ class _DelayedEffectAgent:
 def _lost_renewal_run(monkeypatch, session, agent) -> tuple:
     """Invoke ``chat`` with a renewal that loses ownership on every tick."""
     _stub_cli(monkeypatch, session, agent)
-    monkeypatch.setattr(cli, "CLI_TURN_RENEW_INTERVAL_SECONDS", 0.01)
+    monkeypatch.setattr(cli_chat, "CLI_TURN_RENEW_INTERVAL_SECONDS", 0.01)
     renew_calls: list[dict] = []
 
     async def failing_renew(session_id, token):
@@ -208,7 +212,7 @@ def _lost_renewal_run(monkeypatch, session, agent) -> tuple:
     async def recording_db_close():
         agent.timeline.append("db.close")
 
-    monkeypatch.setattr(cli.db, "close", recording_db_close)
+    monkeypatch.setattr(cli_chat.db, "close", recording_db_close)
 
     result = runner.invoke(cli.app, ["chat", "hello", "--session", str(session.id), "--quiet"])
     return result, renew_calls
@@ -263,8 +267,8 @@ def test_delete_refuses_session_with_live_turn(monkeypatch):
         return True
 
     _stub_cli(monkeypatch, session, _RecordingAgent())
-    monkeypatch.setattr(cli.session_manager, "delete", fake_delete)
-    monkeypatch.setattr(cli, "_run", _foreign_owner_run(session.id, kind="turn"))
+    monkeypatch.setattr(cli_sessions.session_manager, "delete", fake_delete)
+    monkeypatch.setattr(cli_sessions, "_run", _foreign_owner_run(session.id, kind="turn"))
 
     result = runner.invoke(cli.app, ["delete", str(session.id), "--force"])
 
@@ -282,8 +286,8 @@ def test_delete_refuses_session_with_foreign_mutation_claim(monkeypatch):
         return True
 
     _stub_cli(monkeypatch, session, _RecordingAgent())
-    monkeypatch.setattr(cli.session_manager, "delete", fake_delete)
-    monkeypatch.setattr(cli, "_run", _foreign_owner_run(session.id, kind="mutation"))
+    monkeypatch.setattr(cli_sessions.session_manager, "delete", fake_delete)
+    monkeypatch.setattr(cli_sessions, "_run", _foreign_owner_run(session.id, kind="mutation"))
 
     result = runner.invoke(cli.app, ["delete", str(session.id), "--force"])
 
@@ -301,7 +305,7 @@ def test_delete_claims_mutation_and_releases_it(monkeypatch):
         return True
 
     _stub_cli(monkeypatch, session, _RecordingAgent())
-    monkeypatch.setattr(cli.session_manager, "delete", fake_delete)
+    monkeypatch.setattr(cli_sessions.session_manager, "delete", fake_delete)
 
     result = runner.invoke(cli.app, ["delete", str(session.id), "--force"])
 

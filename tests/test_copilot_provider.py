@@ -56,7 +56,7 @@ def make(monkeypatch, tmp_path):
     monkeypatch.delenv("MACHINA_COPILOT_AUTH_FILE", raising=False)
     monkeypatch.delenv("MACHINA_COPILOT_BASE_URL", raising=False)
     monkeypatch.delenv("MACHINA_HOME", raising=False)
-    monkeypatch.setattr(copilot_auth, "_probe_gh_token", lambda: None)
+    monkeypatch.setattr(copilot_auth, "_probe_gh_token", lambda **_: None)
     from machina.core.config import config
 
     monkeypatch.setattr(config, "machina_home", "", raising=False)

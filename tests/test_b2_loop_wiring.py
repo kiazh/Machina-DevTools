@@ -605,14 +605,18 @@ async def test_seam_keeps_provider_native_blocks_protected(tmp_path, monkeypatch
 def test_both_loops_call_the_single_shared_projection_seam():
     import machina.core.agent as agent_mod
 
-    for loop in (agent_mod.ReActAgent.run, agent_mod.ReActAgent.run_stream):
-        source = inspect.getsource(loop)
-        assert "evaluate_request(" in source
-        # Neither loop carries its own projection policy or capacity math.
-        assert "project_request(" not in source
-        assert "shadow_report(" not in source
-        assert "_effective_turn_budget(" not in source
-        assert "_request_context_tokens(" not in source
+    # 2.0 collapsed both public loops into one shared generator, so the seam
+    # is asserted there and both entry points must delegate to it.
+    source = inspect.getsource(agent_mod._react_loop)
+    assert "evaluate_request(" in source
+    # Neither loop carries its own projection policy or capacity math.
+    assert "project_request(" not in source
+    assert "shadow_report(" not in source
+    assert "_effective_turn_budget(" not in source
+    assert "_request_context_tokens(" not in source
+
+    for entry in (agent_mod.ReActAgent.run, agent_mod.ReActAgent.run_stream):
+        assert "_react_loop(" in inspect.getsource(entry)
 
     agent_source = (REPO / "machina" / "core" / "agent.py").read_text(encoding="utf-8")
-    assert agent_source.count("evaluate_request(") == 2
+    assert agent_source.count("evaluate_request(") == 1

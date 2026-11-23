@@ -45,7 +45,7 @@ async def client():
             mock_gw = AsyncMock()
             mock_gw.call.return_value = {"result": "ok"}
             mock_gw.close = AsyncMock()
-            app.state._rpc_gateway = mock_gw
+            app.state.gateway = mock_gw
             transport = ASGITransport(app=app)
             async with AsyncClient(transport=transport, base_url="http://test") as c:
                 yield c

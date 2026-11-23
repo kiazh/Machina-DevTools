@@ -270,8 +270,11 @@ async def test_harness_status_keeps_notes_and_features_under_cap(monkeypatch):
     assert len(result) <= harness._MAX_STATUS_BYTES
     assert payload["learning"]["notes"] == {"style:tone": "Speak plainly"}
     assert "notes_omitted" not in payload["learning"]
-    assert payload["features"], "the capability map must not be dropped first"
-    assert "features_omitted" not in payload
+    # 2.0 drops the duplicated feature map before live learning notes: the
+    # always-on capability brief already carries FEATURES, and the omission
+    # is explicitly disclosed.
+    assert payload["features"] == {}
+    assert "features_omitted" in payload
 
 
 # ─── 5. provider reservation settlement ────────────────────────────────────

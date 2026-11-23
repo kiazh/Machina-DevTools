@@ -277,7 +277,7 @@ async def test_api_memory_create_reports_pending(db_pool, monkeypatch):
         patch("machina.api.app.db.close", new_callable=AsyncMock),
     ):
         app = create_app()
-        app.state._rpc_gateway = MagicMock()
+        app.state.gateway = MagicMock()
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(

@@ -1082,10 +1082,12 @@ class TestCLI:
 
     def test_version_command(self):
         """Test version command."""
+        from machina import __version__
+
         runner = CliRunner()
         result = runner.invoke(app, ["version"])
         assert result.exit_code == 0
-        assert "1.2.14" in result.output
+        assert __version__ in result.output
 
     def test_doctor_command(self):
         """Test doctor command."""
@@ -1104,7 +1106,7 @@ class TestCLI:
     def test_status_command_no_db(self):
         """Test status command fails gracefully when DB is not available."""
         runner = CliRunner()
-        with patch("machina.cli.db") as mock_db:
+        with patch("machina.cli.maintenance.db") as mock_db:
             mock_db.connect = AsyncMock(side_effect=Exception("Connection refused"))
             mock_db.pool = None
             result = runner.invoke(app, ["status"])

@@ -743,7 +743,9 @@ async def test_mid_session_route_change_recomputes_the_budget_at_the_seam(monkey
         goal=GOAL,
         state={"constraints": [CONSTRAINT]},
         model="b3-large",
-        context_window=6000,
+        # 2.0's capability brief raises the minimum request size; the test's
+        # subject is the mid-session recompute, not the initial fit.
+        context_window=32000,
         context_window_model="b3-large",
     )
     messages = [{"role": "user", "content": "go ahead"}]
@@ -757,7 +759,7 @@ async def test_mid_session_route_change_recomputes_the_budget_at_the_seam(monkey
         "user_message": "go ahead",
     }
     first = await evaluate_request(messages, session=session, **kwargs)
-    assert first.effective_budget == 6000
+    assert first.effective_budget == 32000
     assert first.failure is None
 
     # Mid-session route change: the same session object now resolves to a much

@@ -4,7 +4,7 @@ Exercises the concurrency-critical paths against the real PostgreSQL DB:
   - usage.reserve/finish with pg_advisory_xact_lock (fixed agent→session ordering)
   - context chunk writes/reads (no lost or duplicate chunks)
   - session creation/listing under concurrency
-  - _RpcGateway asyncio.Lock serialization
+  - typed Gateway.call concurrency (no cross-talk)
 
 Invariants asserted:
   1. No deadlocks (advisory-lock ordering is correct)
@@ -12,7 +12,7 @@ Invariants asserted:
   3. Usage totals equal the sum of completed calls
   4. Concurrent context writes/reads preserve chunk counts (no loss, no duplication)
   5. Session creation/listing returns consistent results
-  6. Gateway lock serializes without starving
+  6. Concurrent Gateway.call requests each receive their own result
 
 Run with: python -m pytest tests/test_load_concurrency.py -q
 Deselect from fast suite: python -m pytest tests/ -q -m "not load"
@@ -522,61 +522,33 @@ async def test_concurrent_usage_same_session_no_overspend(load_db, clean_load_da
 @pytest.mark.load
 @pytest.mark.asyncio
 async def test_rpc_gateway_concurrent_calls(load_db, monkeypatch):
-    """N concurrent calls through _RpcGateway must all get correct responses.
-    The asyncio.Lock in _RpcGateway.call() serializes request/response pairing.
+    """N concurrent typed ``Gateway.call`` requests each get their own result.
 
-    Each call must receive its own response — no cross-talk.
+    The 2.0 gateway dispatches in-process and returns the handler result, so
+    the old request-id/pending-response bridge is gone. This keeps the
+    no-cross-talk invariant at the new seam.
     """
-    from machina.api.app import _RpcGateway
+    from machina.gateway.server import Gateway
 
     N = _concurrency()
+    gw = Gateway(lambda _frame: None, owns_db=False, inherit_env_token=False)
 
-    # Create a mock gateway that echoes back the request
-    class MockGateway:
-        def __init__(self):
-            self._db_ready = True
+    async def echo(params: dict[str, Any]) -> dict[str, Any]:
+        await asyncio.sleep(0.001)
+        return {"echo": params, "task": params["task"]}
 
-        async def handle_message(self, frame: dict) -> None:
-            rid = frame.get("id")
-            # Simulate some async work
-            await asyncio.sleep(0.001)
-            # Echo back with the same id
-            self._writer(
-                {
-                    "jsonrpc": "2.0",
-                    "id": rid,
-                    "result": {"echo": frame.get("params", {}), "id": rid},
-                }
-            )
-
-        async def close(self) -> None:
-            pass
-
-    mock_gw = MockGateway()
-    gw = _RpcGateway.__new__(_RpcGateway)
-    gw._responses = {}
-    gw._next_id = 0
-    gw._lock = asyncio.Lock()
-    gw._gateway = mock_gw
-    mock_gw._writer = gw._capture
-
-    async def _call(task_idx: int) -> dict[str, Any]:
-        result = await gw.call("test.echo", {"task": task_idx})
-        return result
+    gw.add_method("test.echo", echo)
 
     results = await asyncio.gather(
-        *(_call(i) for i in range(N)),
+        *(gw.call("test.echo", {"task": index}) for index in range(N)),
         return_exceptions=True,
     )
 
-    errors = [r for r in results if isinstance(r, Exception)]
+    errors = [result for result in results if isinstance(result, Exception)]
     assert not errors, f"Gateway errors: {errors}"
-
-    # Each result must have the correct id — no cross-talk
-    for i, result in enumerate(results):
-        assert result["id"] == i + 1, f"Task {i}: expected response id {i + 1}, got {result['id']}"
-        assert result["echo"]["task"] == i, (
-            f"Task {i}: expected echo task={i}, got {result['echo']['task']}"
+    for index, result in enumerate(results):
+        assert result["task"] == index, (
+            f"Task {index}: expected echo task={index}, got {result['task']}"
         )
 
     await gw.close()

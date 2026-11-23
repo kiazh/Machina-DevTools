@@ -12,7 +12,6 @@ import pytest_asyncio
 
 from machina.core.compression import (
     CompressionConfig,
-    CompressionResult,
     ContextCompressor,
 )
 from machina.core.models import ContextChunk, LLMResponse
@@ -149,44 +148,49 @@ class TestCompressionConfig:
 class TestContextCompressor:
     """Tests for ContextCompressor."""
 
-    def test_compress_empty_chunks(self):
+    @pytest.mark.asyncio
+    async def test_compress_empty_chunks(self):
         """Test compressing empty chunk list."""
         compressor = ContextCompressor()
-        result = compressor.compress([], uuid.uuid4(), "harness")
+        result = await compressor.acompress([], uuid.uuid4(), "harness")
         assert result.original_count == 0
         assert result.compressed_tokens == 0
         assert result.method == "none"
 
-    def test_compress_few_chunks_no_compression(self, sample_chunks):
+    @pytest.mark.asyncio
+    async def test_compress_few_chunks_no_compression(self, sample_chunks):
         """Test that few chunks (≤ preserve_recent) are not compressed."""
         config = CompressionConfig(preserve_recent=10)
         compressor = ContextCompressor(config=config)
-        result = compressor.compress(sample_chunks[:3], uuid.uuid4(), "harness")
+        result = await compressor.acompress(sample_chunks[:3], uuid.uuid4(), "harness")
         assert result.original_count == 0
         assert result.compression_ratio == 1.0
         assert result.method == "none"
 
-    def test_compress_with_truncation(self, sample_chunks):
+    @pytest.mark.asyncio
+    async def test_compress_with_truncation(self, sample_chunks):
         """Test compression using truncation (no LLM)."""
         config = CompressionConfig(llm_summarize=False, preserve_recent=2)
         compressor = ContextCompressor(config=config)
-        result = compressor.compress(sample_chunks, uuid.uuid4(), "harness")
+        result = await compressor.acompress(sample_chunks, uuid.uuid4(), "harness")
         assert result.original_count > 0
         assert result.method == "truncate"
         assert len(result.compressed_chunks) > 0
 
-    def test_compress_with_llm(self, sample_chunks, mock_llm_provider):
+    @pytest.mark.asyncio
+    async def test_compress_with_llm(self, sample_chunks, mock_llm_provider):
         """Test compression using LLM summarization."""
         config = CompressionConfig(llm_summarize=True, preserve_recent=2)
         compressor = ContextCompressor(config=config)
-        result = compressor.compress(
+        result = await compressor.acompress(
             sample_chunks, uuid.uuid4(), "harness", llm_provider=mock_llm_provider
         )
         assert result.original_count > 0
         assert result.method == "llm_summarize"
         mock_llm_provider.complete.assert_called_once()
 
-    def test_compress_llm_fallback_to_truncation(self, sample_chunks):
+    @pytest.mark.asyncio
+    async def test_compress_llm_fallback_to_truncation(self, sample_chunks):
         """Test that LLM failure falls back to truncation."""
         config = CompressionConfig(llm_summarize=True, preserve_recent=2)
         compressor = ContextCompressor(config=config)
@@ -194,13 +198,14 @@ class TestContextCompressor:
         failing_provider = AsyncMock()
         failing_provider.complete = AsyncMock(side_effect=Exception("LLM error"))
 
-        result = compressor.compress(
+        result = await compressor.acompress(
             sample_chunks, uuid.uuid4(), "harness", llm_provider=failing_provider
         )
         assert result.method == "truncate"
         assert len(result.compressed_chunks) > 0
 
-    def test_compress_llm_fallback_records_diagnostic(self, sample_chunks):
+    @pytest.mark.asyncio
+    async def test_compress_llm_fallback_records_diagnostic(self, sample_chunks):
         """W7: an LLM-summarize failure is counted, not silently downgraded."""
         from machina.core.metrics import metrics
 
@@ -210,13 +215,14 @@ class TestContextCompressor:
         failing_provider.complete = AsyncMock(side_effect=Exception("LLM error"))
 
         before = metrics.get_counter("diagnostic.failures")
-        result = compressor.compress(
+        result = await compressor.acompress(
             sample_chunks, uuid.uuid4(), "harness", llm_provider=failing_provider
         )
         assert result.method == "truncate"
         assert metrics.get_counter("diagnostic.failures") == before + 1
 
-    def test_compress_records_double_fallback_diagnostics(self, sample_chunks, monkeypatch):
+    @pytest.mark.asyncio
+    async def test_compress_records_double_fallback_diagnostics(self, sample_chunks, monkeypatch):
         """W7: when LLM and truncation both fail, both boundaries are counted."""
         from machina.core.metrics import metrics
 
@@ -230,14 +236,15 @@ class TestContextCompressor:
 
         monkeypatch.setattr(compressor, "_truncate_compress", explode)
         before = metrics.get_counter("diagnostic.failures")
-        result = compressor.compress(
+        result = await compressor.acompress(
             sample_chunks, uuid.uuid4(), "harness", llm_provider=failing_provider
         )
         assert result.method == "none"
         assert {c.id for c in result.compressed_chunks} == {c.id for c in sample_chunks}
         assert metrics.get_counter("diagnostic.failures") == before + 2
 
-    def test_compress_truncate_failure_records_diagnostic(self, sample_chunks, monkeypatch):
+    @pytest.mark.asyncio
+    async def test_compress_truncate_failure_records_diagnostic(self, sample_chunks, monkeypatch):
         """W7: a truncation-only failure (no LLM) is counted."""
         from machina.core.metrics import metrics
 
@@ -249,7 +256,7 @@ class TestContextCompressor:
 
         monkeypatch.setattr(compressor, "_truncate_compress", explode)
         before = metrics.get_counter("diagnostic.failures")
-        result = compressor.compress(sample_chunks, uuid.uuid4(), "harness")
+        result = await compressor.acompress(sample_chunks, uuid.uuid4(), "harness")
         assert result.method == "none"
         assert {c.id for c in result.compressed_chunks} == {c.id for c in sample_chunks}
         assert metrics.get_counter("diagnostic.failures") == before + 1
@@ -281,11 +288,12 @@ class TestContextCompressor:
         assert result.method == "none"
         assert metrics.get_counter("diagnostic.failures") == before + 2
 
-    def test_compress_preserves_recent_chunks(self, sample_chunks):
+    @pytest.mark.asyncio
+    async def test_compress_preserves_recent_chunks(self, sample_chunks):
         """Test that recent chunks are preserved."""
         config = CompressionConfig(llm_summarize=False, preserve_recent=3)
         compressor = ContextCompressor(config=config)
-        result = compressor.compress(sample_chunks, uuid.uuid4(), "harness")
+        result = await compressor.acompress(sample_chunks, uuid.uuid4(), "harness")
         # The last 3 chunks should be preserved
         assert len(result.compressed_chunks) >= 3
 
@@ -375,18 +383,6 @@ class TestContextCompressor:
 
 class TestCompressionIntegration:
     """Integration tests for compression with other components."""
-
-    def test_compress_context_chunks_function(self, sample_chunks):
-        """Test the compress_context_chunks convenience function."""
-        from machina.core.assembler import compress_context_chunks
-
-        result = compress_context_chunks(
-            chunks=sample_chunks,
-            session_id=uuid.uuid4(),
-            agent_id="harness",
-        )
-        assert isinstance(result, CompressionResult)
-        assert result.original_count > 0
 
     def test_config_from_global_config(self):
         """Test building CompressionConfig from global config."""

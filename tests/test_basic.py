@@ -4,10 +4,16 @@ import pytest
 
 
 def test_import():
-    """Test that all modules import cleanly."""
+    """Test that the package version matches its installed metadata."""
+    import importlib.metadata
+
     import machina
 
-    assert machina.__version__ == "1.2.14"
+    try:
+        installed = importlib.metadata.version("machina")
+    except importlib.metadata.PackageNotFoundError:
+        installed = machina.__version__
+    assert machina.__version__ == installed
 
 
 def test_tool_registry():

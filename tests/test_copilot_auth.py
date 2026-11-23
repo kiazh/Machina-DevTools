@@ -28,7 +28,7 @@ def fake_home(monkeypatch, tmp_path):
     monkeypatch.delenv("MACHINA_COPILOT_AUTH_FILE", raising=False)
     monkeypatch.delenv("MACHINA_HOME", raising=False)
     monkeypatch.setattr(config, "machina_home", "", raising=False)
-    monkeypatch.setattr(copilot_auth, "_probe_gh_token", lambda: None)
+    monkeypatch.setattr(copilot_auth, "_probe_gh_token", lambda **_: None)
     return home
 
 
@@ -61,7 +61,7 @@ def test_validate_token_families():
 
 
 def test_import_from_gh_cli_stores_and_validates(fake_home, monkeypatch):
-    monkeypatch.setattr(copilot_auth, "_probe_gh_token", lambda: "gho_test")
+    monkeypatch.setattr(copilot_auth, "_probe_gh_token", lambda **_: "gho_test")
     tokens = copilot_auth.import_from_gh_cli()
     assert tokens is not None
     assert tokens["token"] == "gho_test"
@@ -69,7 +69,7 @@ def test_import_from_gh_cli_stores_and_validates(fake_home, monkeypatch):
 
 
 def test_import_from_gh_cli_rejects_classic_pat(fake_home, monkeypatch):
-    monkeypatch.setattr(copilot_auth, "_probe_gh_token", lambda: "ghp_classic")
+    monkeypatch.setattr(copilot_auth, "_probe_gh_token", lambda **_: "ghp_classic")
     with pytest.raises(CopilotAuthError) as excinfo:
         copilot_auth.import_from_gh_cli()
     assert excinfo.value.code == "copilot_token_unsupported"
@@ -79,7 +79,7 @@ def test_import_from_gh_cli_rejects_classic_pat(fake_home, monkeypatch):
 def test_import_refused_when_store_exists_unless_forced(fake_home, monkeypatch, tmp_path):
     store = tmp_path / "copilot.json"
     copilot_auth.save_tokens({"token": "gho_machina"}, store)
-    monkeypatch.setattr(copilot_auth, "_probe_gh_token", lambda: "gho_gh")
+    monkeypatch.setattr(copilot_auth, "_probe_gh_token", lambda **_: "gho_gh")
     assert copilot_auth.import_from_gh_cli(path=store) is None
     forced = copilot_auth.import_from_gh_cli(path=store, force=True)
     assert forced is not None
@@ -87,7 +87,7 @@ def test_import_refused_when_store_exists_unless_forced(fake_home, monkeypatch, 
 
 
 def test_import_fetch_login_best_effort(fake_home, monkeypatch):
-    monkeypatch.setattr(copilot_auth, "_probe_gh_token", lambda: "gho_test")
+    monkeypatch.setattr(copilot_auth, "_probe_gh_token", lambda **_: "gho_test")
     client = httpx.Client(
         transport=httpx.MockTransport(
             lambda request: httpx.Response(200, json={"login": "octocat"})
@@ -102,7 +102,7 @@ def test_status_probe_and_store_sources(fake_home, monkeypatch, tmp_path):
     store = tmp_path / "copilot.json"
     report = copilot_auth.status(path=store)
     assert report["signed_in"] is False
-    monkeypatch.setattr(copilot_auth, "_probe_gh_token", lambda: "gho_gh")
+    monkeypatch.setattr(copilot_auth, "_probe_gh_token", lambda **_: "gho_gh")
     report = copilot_auth.status(path=store)
     assert report["signed_in"] is True
     assert report["source"] == "gh"
@@ -199,7 +199,7 @@ def test_resolve_tokens_missing_is_typed_with_hint(fake_home, tmp_path):
 
 
 def test_resolve_tokens_imports_from_gh(fake_home, monkeypatch, tmp_path):
-    monkeypatch.setattr(copilot_auth, "_probe_gh_token", lambda: "gho_gh")
+    monkeypatch.setattr(copilot_auth, "_probe_gh_token", lambda **_: "gho_gh")
     store = tmp_path / "copilot.json"
     tokens = copilot_auth.resolve_tokens(path=store)
     assert tokens["token"] == "gho_gh"

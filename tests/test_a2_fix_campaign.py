@@ -190,24 +190,27 @@ def test_default_read_page_fits_view_budget(monkeypatch):
     assert text.splitlines()[-1].startswith("next_cursor=")
     header = text.splitlines()[0]
     assert "chars 0-" in header and " of 8000" in header
-    # The store's first page was too large once framed; the re-read sized the
-    # body to the budget instead of the append seam blind-slicing the cursor.
-    assert len(store.calls) > 1, "envelope budgeting must size the body from the budget"
+    # The 2.0 cap is 9000 chars, so the default 4000-char page fits on the
+    # first read. Larger requested pages still re-read against the budget.
+    assert len(text) <= budget
 
 
 def test_read_cursor_describes_emitted_bytes(monkeypatch):
     """The emitted next_cursor resumes exactly at the end of emitted content."""
     store = FakeReadStore(total=80_000)
     _read_tool(monkeypatch, store)
+    from machina.core.tool_views import append_limit
     from machina.tools.artifacts import artifact_read
 
     artifact_id = "22222222-2222-2222-2222-222222222222"
     text = _run(artifact_read(artifact_id, limit=20000))
+    budget = append_limit("artifact_read")
     assert store.calls, "store.read was not called"
-    assert store.calls[-1]["limit"] < 4000, (
+    assert store.calls[-1]["limit"] <= budget, (
         "artifact_read must count envelope bytes before choosing the body size "
-        f"({store.calls[-1]['limit']} chars requested from the store)"
+        f"({store.calls[-1]['limit']} chars requested from the store, cap {budget})"
     )
+    assert len(text) <= budget
     lines = text.splitlines()
     assert lines[-1].startswith("next_cursor=")
     content_block = "\n".join(lines[1:-1])

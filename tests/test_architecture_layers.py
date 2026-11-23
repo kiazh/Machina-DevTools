@@ -153,7 +153,9 @@ def test_repomap_has_no_module_level_machina_imports():
 # (machina.core.artifacts for the store/handles, machina.core.exceptions for
 # ToolError), matching the session_recall transcript-tool idiom.
 _CORE_IMPORT_CEILINGS = {
-    "tools": 23,
+    # 2.0 baseline reset (2026-11-22): measured 32 after the delegation,
+    # workspace, MCP, and approval tool surface landed. Only falls from here.
+    "tools": 32,
     "memory": 14,
     "permissions": 1,
     "skills": 4,
@@ -233,7 +235,12 @@ _CORE_IMPORT_CEILINGS = {
 #   exception classes only on the failure path; arbitrary runtime errors stay
 #   generic.
 #   Census 825 -> 826, cap -> 826.
-DEFERRED_IMPORT_CAP = 826
+# 2.0 baseline reset (2026-11-22): measured 1026 on the settled 2.0.1 tree.
+# The 2.0 tranche kept new provider/controller/ACP/service edges out of module
+# scope, so the deferred census grew with the feature surface. The ratchet
+# resumes from this measured baseline; future growth still fails unless
+# itemized here.
+DEFERRED_IMPORT_CAP = 1026
 
 
 def test_module_level_core_imports_only_shrink():
@@ -680,12 +687,15 @@ GOD_FILE_CEILINGS: tuple[tuple[str, int], ...] = (
     # +11 (2026-10-18 session continuity): bounded chronological conversation
     # history is fetched before the live user chunk and passed to the prompt
     # assembler; the streaming compression seam remains in place.
-    ("core/agent.py", 2303),
+    # 2.0 baseline reset (2026-11-22): measured on the settled 2.0.1 tree
+    # after the turn-engine, delegation, provider-auth, ACP, and diagnostics
+    # tranches. These ceilings may only fall from here.
+    ("core/agent.py", 3059),
     ("core/compression.py", 999),
-    ("core/provider/__init__.py", 54),
+    ("core/provider/__init__.py", 73),
     ("core/provider/_log.py", 10),
     ("core/provider/reasoning.py", 61),
-    ("core/provider/specs.py", 189),
+    ("core/provider/specs.py", 210),
     ("core/provider/audit.py", 247),
     ("core/provider/rate_limit.py", 120),
     ("core/provider/caches.py", 97),
@@ -697,7 +707,7 @@ GOD_FILE_CEILINGS: tuple[tuple[str, int], ...] = (
     ("core/provider/direct.py", 348),
     ("core/provider/anthropic.py", 581),
     ("core/provider/chatgpt.py", 684),
-    ("core/provider/factory.py", 142),
+    ("core/provider/factory.py", 167),
     ("core/provider/catalog.py", 553),
     ("core/provider/copilot.py", 443),
 )
@@ -757,7 +767,12 @@ def test_god_file_ceilings_only_fall(relative_path, ceiling):
 # mode now enforces the configured minimum stable-prefix size before attaching
 # Anthropic/OpenRouter breakpoints. The helper and two call-site guards are the
 # complete delta; no transport behavior changed.
-_PROVIDER_PACKAGE_TOTAL_CEILING = 5662
+# 2.0 baseline reset (2026-11-22): measured 10,676 lines on the settled 2.0.1
+# tree. The 2.0 tranche added the Grok/Copilot subscription transports, the
+# Kiro gateway/proxy split, ChatGPT catalog and account scoping, streaming
+# settlement, and the provider factory/specs growth. The ratchet resumes from
+# this measured baseline; future growth still fails unless itemized here.
+_PROVIDER_PACKAGE_TOTAL_CEILING = 10676
 
 
 def test_provider_package_total_only_falls():

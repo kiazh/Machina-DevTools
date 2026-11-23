@@ -307,11 +307,16 @@ def test_both_loops_call_the_shared_batch_tail_helpers():
 
     import machina.core.agent as agent_mod
 
-    for loop in (agent_mod.ReActAgent.run, agent_mod.ReActAgent.run_stream):
-        src = inspect.getsource(loop)
-        assert "collect_pauses(" in src
-        assert "stagnation_step(" in src
-        assert "stopped_response(" in src
+    # 2.0 collapsed the duplicated loops into one shared generator. The batch
+    # tail helpers must stay in that generator, and both public entry points
+    # must delegate to it.
+    src = inspect.getsource(agent_mod._react_loop)
+    assert "collect_pauses(" in src
+    assert "stagnation_step(" in src
+    assert "stopped_response(" in src
+
+    for entry in (agent_mod.ReActAgent.run, agent_mod.ReActAgent.run_stream):
+        assert "_react_loop(" in inspect.getsource(entry)
 
 
 def test_agent_py_shrank_below_its_pre_extraction_size():

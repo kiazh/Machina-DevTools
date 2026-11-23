@@ -259,7 +259,7 @@ def _install_lifespan_fakes(
     gateway = gateway or _FakeGateway(order)
     monkeypatch.setattr(runtime_mod, "runtime_services", runtime)
     monkeypatch.setattr(scheduler_mod, "JobRunner", lambda: runner)
-    monkeypatch.setattr(app_mod, "_RpcGateway", lambda: gateway)
+    monkeypatch.setattr(app_mod, "Gateway", lambda *_args, **_kwargs: gateway)
     monkeypatch.setattr(loader_mod, "load_plugins", lambda: None)
 
 

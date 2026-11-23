@@ -48,10 +48,11 @@ def _checkpoint():
     )
 
 
-def test_checkpoint_round_trip_preserves_constraints_and_counts():
+@pytest.mark.asyncio
+async def test_checkpoint_round_trip_preserves_constraints_and_counts():
     cp = _checkpoint()
     comp = ContextCompressor(config=CompressionConfig(llm_summarize=False, preserve_recent=2))
-    result = comp.compress(_chunks(), uuid.uuid4(), "harness", checkpoint=cp)
+    result = await comp.acompress(_chunks(), uuid.uuid4(), "harness", checkpoint=cp)
     summaries = [c for c in result.compressed_chunks if c.chunk_type == "compression_summary"]
     assert summaries
     recovered = extract_checkpoint(summaries[0].payload)
@@ -122,7 +123,8 @@ def test_latest_instruction_takes_priority():
     assert effective_instruction(None, None) is None
 
 
-def test_checkpoint_chunk_inherits_newest_replaced_timestamp():
+@pytest.mark.asyncio
+async def test_checkpoint_chunk_inherits_newest_replaced_timestamp():
     """F35: on the non-LLM path the checkpoint replaces old_chunks, so it must
     carry their newest timestamp rather than jumping to now() after the
     preserved recent turns."""
@@ -141,7 +143,7 @@ def test_checkpoint_chunk_inherits_newest_replaced_timestamp():
         for i in range(6)
     ]
     comp = ContextCompressor(config=CompressionConfig(llm_summarize=False, preserve_recent=2))
-    result = comp.compress(chunks, session_id, "harness", checkpoint=_checkpoint())
+    result = await comp.acompress(chunks, session_id, "harness", checkpoint=_checkpoint())
 
     summary = next(c for c in result.compressed_chunks if c.chunk_type == "compression_summary")
     recent = chunks[:2]

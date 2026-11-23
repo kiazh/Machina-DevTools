@@ -99,7 +99,9 @@ async def test_http_resolve_accepts_the_stored_binding(monkeypatch):
     monkeypatch.setattr(st, "resolve_decision", resolve_decision)
 
     result = await route.resolve_approval(
-        "req-1", ResolveApprovalRequest(verdict="approved", sessionId=session_id)
+        "req-1",
+        ResolveApprovalRequest(verdict="approved", sessionId=session_id),
+        principal="http",
     )
 
     assert result["approval"] == {"requestId": "req-1", "status": "approved"}

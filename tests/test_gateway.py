@@ -464,6 +464,7 @@ class TestSessionsAndTurns:
             error_msg = h.events("error")[0]["message"]
             assert "model exploded" not in error_msg
             assert error_msg.startswith("agent turn failed")
+            assert "machina debug logs" in error_msg
         finally:
             await h.gateway.close()
 

@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import asyncio
-import json
 import os
 import uuid
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi import HTTPException
@@ -16,7 +14,7 @@ from httpx import ASGITransport, AsyncClient
 # Set a test API key before importing the app
 os.environ["MACHINA_API_KEY"] = "test-key-123"
 
-from machina.api.app import _RpcGateway, create_app
+from machina.api.app import create_app
 from machina.core.models import Session
 
 TEST_API_KEY = "test-key-123"
@@ -49,134 +47,10 @@ async def client():
             mock_gw = AsyncMock()
             mock_gw.call.return_value = {"result": "ok"}
             mock_gw.close = AsyncMock()
-            app.state._rpc_gateway = mock_gw
+            app.state.gateway = mock_gw
             transport = ASGITransport(app=app)
             async with AsyncClient(transport=transport, base_url="http://test") as c:
                 yield c
-
-
-# ─── Bug 1: _RpcGateway thread safety ───────────────────────────────────────
-
-
-class TestRpcGatewayThreadSafety:
-    """_RpcGateway must be safe for concurrent use across requests."""
-
-    async def test_concurrent_calls_get_unique_ids(self):
-        """Concurrent calls to _RpcGateway.call() must each get a unique request ID."""
-        with patch("machina.api.app.Gateway") as mock_gateway_cls:
-            mock_gw_instance = MagicMock()
-            mock_gw_instance._db_ready = False
-            mock_gw_instance.close = AsyncMock()
-            mock_gateway_cls.return_value = mock_gw_instance
-
-            gw = _RpcGateway()
-
-            # Simulate the gateway processing requests with a delay
-            async def mock_handle(frame):
-                rid = frame.get("id")
-                # Small delay to increase chance of interleaving
-                await asyncio.sleep(0.001)
-                gw._capture(
-                    {
-                        "jsonrpc": "2.0",
-                        "id": rid,
-                        "result": {"ok": True},
-                    }
-                )
-
-            mock_gw_instance.handle_message = mock_handle
-
-            # Fire 10 concurrent calls
-            results = await asyncio.gather(*[gw.call("test.method", {"i": i}) for i in range(10)])
-
-            # All calls should succeed
-            assert all(r == {"ok": True} for r in results)
-
-            # All IDs should be unique (1 through 10)
-            assert gw._next_id == 10
-
-            await gw.close()
-
-    async def test_concurrent_calls_no_response_overwrite(self):
-        """Concurrent calls must not overwrite each other's responses."""
-        with patch("machina.api.app.Gateway") as mock_gateway_cls:
-            mock_gw_instance = MagicMock()
-            mock_gw_instance._db_ready = False
-            mock_gw_instance.close = AsyncMock()
-            mock_gateway_cls.return_value = mock_gw_instance
-
-            gw = _RpcGateway()
-
-            # Track which IDs were seen
-            seen_ids = []
-            lock = asyncio.Lock()
-
-            async def mock_handle(frame):
-                rid = frame.get("id")
-                async with lock:
-                    seen_ids.append(rid)
-                # Variable delay to increase interleaving
-                await asyncio.sleep(0.001 * (rid % 3))
-                gw._capture(
-                    {
-                        "jsonrpc": "2.0",
-                        "id": rid,
-                        "result": {"id": rid},
-                    }
-                )
-
-            mock_gw_instance.handle_message = mock_handle
-
-            # Fire 20 concurrent calls
-            results = await asyncio.gather(*[gw.call("test.method", {}) for _ in range(20)])
-
-            # Each result should have a unique ID matching its request
-            result_ids = [r["id"] for r in results]
-            assert len(set(result_ids)) == 20  # All unique
-            assert len(seen_ids) == 20  # All requests processed
-
-            await gw.close()
-
-    async def test_next_id_increment_is_atomic(self):
-        """_next_id increment must be atomic (no duplicate IDs under concurrency)."""
-        with patch("machina.api.app.Gateway") as mock_gateway_cls:
-            mock_gw_instance = MagicMock()
-            mock_gw_instance._db_ready = False
-            mock_gw_instance.close = AsyncMock()
-            mock_gateway_cls.return_value = mock_gw_instance
-
-            gw = _RpcGateway()
-
-            # Track all IDs that were assigned
-            assigned_ids = []
-            id_lock = asyncio.Lock()
-
-            async def mock_handle(frame):
-                rid = frame.get("id")
-                async with id_lock:
-                    assigned_ids.append(rid)
-                await asyncio.sleep(0.001)
-                gw._capture(
-                    {
-                        "jsonrpc": "2.0",
-                        "id": rid,
-                        "result": {"ok": True},
-                    }
-                )
-
-            mock_gw_instance.handle_message = mock_handle
-
-            # Fire 50 concurrent calls
-            await asyncio.gather(*[gw.call("test.method", {}) for _ in range(50)])
-
-            # All 50 IDs must be unique
-            assert len(assigned_ids) == 50
-            assert len(set(assigned_ids)) == 50
-
-            await gw.close()
-
-
-# ─── Bug 2: Session ownership on documents ──────────────────────────────────
 
 
 class TestDocumentOwnership:
@@ -186,7 +60,9 @@ class TestDocumentOwnership:
         """POST /api/v1/documents must reject when agent doesn't own the session."""
         session = make_session(agent_id="owner-agent")
 
-        with patch("machina.api.app.session_manager.get", new_callable=AsyncMock) as mock_get:
+        with patch(
+            "machina.api.app.session_manager.get", new_callable=AsyncMock
+        ) as mock_get:
             mock_get.return_value = session
             resp = await client.post(
                 "/api/v1/documents",
@@ -204,13 +80,17 @@ class TestDocumentOwnership:
         """POST /api/v1/documents must accept when agent owns the session."""
         session = make_session(agent_id="owner-agent")
 
-        with patch("machina.api.app.session_manager.get", new_callable=AsyncMock) as mock_get:
+        with patch(
+            "machina.api.app.session_manager.get", new_callable=AsyncMock
+        ) as mock_get:
             mock_get.return_value = session
             with patch(
                 "machina.tools.rag.acquire_rag_pipeline", new_callable=AsyncMock
             ) as mock_pipeline:
                 mock_pipeline.return_value = AsyncMock()
-                mock_pipeline.return_value.index_document = AsyncMock(return_value=[object()])
+                mock_pipeline.return_value.index_document = AsyncMock(
+                    return_value=[object()]
+                )
                 resp = await client.post(
                     "/api/v1/documents",
                     headers=auth_headers,
@@ -227,13 +107,17 @@ class TestDocumentOwnership:
         """POST /api/v1/documents must accept when no agent is specified (uses session's agent_id)."""
         session = make_session(agent_id="harness")
 
-        with patch("machina.api.app.session_manager.get", new_callable=AsyncMock) as mock_get:
+        with patch(
+            "machina.api.app.session_manager.get", new_callable=AsyncMock
+        ) as mock_get:
             mock_get.return_value = session
             with patch(
                 "machina.tools.rag.acquire_rag_pipeline", new_callable=AsyncMock
             ) as mock_pipeline:
                 mock_pipeline.return_value = AsyncMock()
-                mock_pipeline.return_value.index_document = AsyncMock(return_value=[object()])
+                mock_pipeline.return_value.index_document = AsyncMock(
+                    return_value=[object()]
+                )
                 resp = await client.post(
                     "/api/v1/documents",
                     headers=auth_headers,
@@ -249,7 +133,9 @@ class TestDocumentOwnership:
         """GET /api/v1/documents/search must reject when agent doesn't own the session."""
         session = make_session(agent_id="owner-agent")
 
-        with patch("machina.api.app.session_manager.get", new_callable=AsyncMock) as mock_get:
+        with patch(
+            "machina.api.app.session_manager.get", new_callable=AsyncMock
+        ) as mock_get:
             mock_get.return_value = session
             resp = await client.get(
                 f"/api/v1/documents/search?sessionId={session.id}&query=test&agent=intruder-agent",
@@ -261,7 +147,9 @@ class TestDocumentOwnership:
         """GET /api/v1/documents/search must accept when agent owns the session."""
         session = make_session(agent_id="owner-agent")
 
-        with patch("machina.api.app.session_manager.get", new_callable=AsyncMock) as mock_get:
+        with patch(
+            "machina.api.app.session_manager.get", new_callable=AsyncMock
+        ) as mock_get:
             mock_get.return_value = session
             with patch(
                 "machina.tools.rag.acquire_rag_pipeline", new_callable=AsyncMock
@@ -278,7 +166,9 @@ class TestDocumentOwnership:
         """GET /api/v1/documents/search must accept when no agent is specified."""
         session = make_session(agent_id="harness")
 
-        with patch("machina.api.app.session_manager.get", new_callable=AsyncMock) as mock_get:
+        with patch(
+            "machina.api.app.session_manager.get", new_callable=AsyncMock
+        ) as mock_get:
             mock_get.return_value = session
             with patch(
                 "machina.tools.rag.acquire_rag_pipeline", new_callable=AsyncMock
@@ -341,86 +231,3 @@ class TestAuthDisabledBypass:
             with pytest.raises(HTTPException) as exc_info:
                 await require_api_key(authorization="Bearer ", x_api_key="")
             assert exc_info.value.status_code == 503
-
-
-# ─── Bug 4: _RpcGateway._responses cannot grow ───────────────────────────────
-
-
-class TestRpcGatewayTTL:
-    """_RpcGateway._responses must not grow unboundedly — via the call site.
-
-    R4-096: the TTL sweep (``_RESPONSE_TTL_SECONDS`` /
-    ``_cleanup_old_responses``) was dead code — ``call()`` pops its own
-    response synchronously, so no entry can outlive its call. These tests
-    drive ``gw.call()`` and assert the pending dict is always empty
-    afterwards, with no TTL machinery left behind.
-    """
-
-    @staticmethod
-    def _build_gateway():
-        """Build a _RpcGateway whose backend Gateway is a scripted double."""
-        with patch("machina.api.app.Gateway") as gateway_cls:
-            fake = MagicMock()
-            fake._db_ready = False
-            fake.close = AsyncMock()
-            gateway_cls.return_value = fake
-            gw = _RpcGateway()
-        return gw, fake
-
-    async def test_no_ttl_machinery_remains(self):
-        """The dead TTL sweep is gone: no timestamps, no cleanup helper."""
-        gw, _ = self._build_gateway()
-        assert not hasattr(gw, "_RESPONSE_TTL_SECONDS")
-        assert not hasattr(gw, "_response_timestamps")
-        assert not hasattr(gw, "_cleanup_old_responses")
-        assert not hasattr(gw, "_id_lock")
-        await gw.close()
-
-    async def test_responses_dict_empty_after_call(self):
-        """A completed call leaves nothing pending — nothing to expire."""
-        gw, fake = self._build_gateway()
-
-        async def handle_message(frame):
-            gw._capture({"jsonrpc": "2.0", "id": frame["id"], "result": {"ok": True}})
-
-        fake.handle_message = handle_message
-
-        result = await gw.call("session.list", {})
-
-        assert result == {"ok": True}
-        assert gw._responses == {}
-        await gw.close()
-
-    async def test_responses_dict_does_not_grow_unboundedly(self):
-        """100 answered calls leave zero pending entries, not 100."""
-        gw, fake = self._build_gateway()
-
-        async def handle_message(frame):
-            rid = frame["id"]
-            gw._capture({"jsonrpc": "2.0", "id": rid, "result": {"id": rid}})
-
-        fake.handle_message = handle_message
-
-        for _ in range(100):
-            await gw.call("test.method", {})
-
-        assert gw._responses == {}
-        assert gw._next_id == 100
-        await gw.close()
-
-    async def test_unanswered_call_raises_and_leaves_nothing_pending(self):
-        """A backend that never responds raises RpcError with no residue."""
-        from machina.gateway.errors import RpcError
-
-        gw, fake = self._build_gateway()
-
-        async def handle_message(frame):
-            return None
-
-        fake.handle_message = handle_message
-
-        with pytest.raises(RpcError):
-            await gw.call("session.list", {})
-
-        assert gw._responses == {}
-        await gw.close()

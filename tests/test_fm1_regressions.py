@@ -316,37 +316,35 @@ async def test_session_resume_history_is_bounded(monkeypatch):
 # ─── W8: embedded HTTP gateway never inherits the stdio token ───────────────
 
 
-async def test_embedded_rpc_gateway_ignores_gateway_env_token(monkeypatch):
+async def test_embedded_gateway_ignores_gateway_env_token(monkeypatch):
     """W8: /api/v1/rpc already passed API-key auth; env token must not 401 it.
 
-    Pre-fix: ``_RpcGateway`` constructed ``Gateway`` which read
-    ``MACHINA_GATEWAY_TOKEN`` from the environment, so every RPC call
-    (initialize excepted) answered 401.
+    The HTTP lifespan constructs the embedded gateway with
+    ``inherit_env_token=False`` so a stdio-only ``MACHINA_GATEWAY_TOKEN``
+    cannot turn every RPC call (initialize excepted) into a 401.
     """
-    from machina.api.app import _RpcGateway
     from machina.gateway.errors import DATABASE_UNAVAILABLE
 
     monkeypatch.setenv("MACHINA_GATEWAY_TOKEN", "stdio-only-token")
-    rpc = _RpcGateway()
-    rpc._gateway._db_ready = False
+    gateway = Gateway(lambda _frame: None, owns_db=False, inherit_env_token=False)
+    gateway._db_ready = False
 
-    assert rpc._gateway._auth_token is None, "embedded gateway inherited the stdio token"
+    assert gateway._auth_token is None, "embedded gateway inherited the stdio token"
 
     with pytest.raises(RpcError) as excinfo:
-        await rpc.call("session.list", {})
+        await gateway.call("session.list", {})
     assert excinfo.value.code == DATABASE_UNAVAILABLE
     assert excinfo.value.code != UNAUTHORIZED
 
 
-async def test_embedded_rpc_gateway_initialize_does_not_re_enable_env_token(monkeypatch):
+async def test_embedded_gateway_initialize_does_not_re_enable_env_token(monkeypatch):
     """W8: even a late env token is not picked up by an embedded initialize."""
     import machina.db.connection as db_mod
-    from machina.api.app import _RpcGateway
     from machina.core.usage import usage_store
 
     monkeypatch.delenv("MACHINA_GATEWAY_TOKEN", raising=False)
-    rpc = _RpcGateway()
-    rpc._gateway._db_ready = False
+    gateway = Gateway(lambda _frame: None, owns_db=False, inherit_env_token=False)
+    gateway._db_ready = False
     # Token appears after construction (e.g. another component loads .env).
     monkeypatch.setenv("MACHINA_GATEWAY_TOKEN", "late-stdio-token")
     monkeypatch.setenv("MACHINA_GATEWAY_NO_SCHEDULER", "1")
@@ -354,10 +352,10 @@ async def test_embedded_rpc_gateway_initialize_does_not_re_enable_env_token(monk
     monkeypatch.setattr(db_mod.db, "initialize_runtime_schema", AsyncMock())
     monkeypatch.setattr(usage_store, "cleanup_orphaned_reservations", AsyncMock(return_value=0))
 
-    result = await rpc.call("initialize", {"protocolVersion": 2, "model": "embedded-model"})
+    result = await gateway.call("initialize", {"protocolVersion": 2, "model": "embedded-model"})
 
     assert result["model"] == "embedded-model"
-    assert rpc._gateway._auth_token is None
+    assert gateway._auth_token is None
 
 
 # ─── W7: startup reaps only stale reservations ──────────────────────────────

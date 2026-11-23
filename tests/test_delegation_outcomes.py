@@ -19,6 +19,7 @@ from machina.core.orchestrator import Orchestrator
 @pytest.fixture
 def delegation(monkeypatch):
     from machina.core import orchestrator as module
+    from machina.core import turns
     from machina.core.usage import usage_store
 
     child = Session(id=uuid4(), agent_id="coder")
@@ -40,10 +41,13 @@ def delegation(monkeypatch):
     )
     monkeypatch.setattr(module.context_manager, "add_chunk", AsyncMock())
     monkeypatch.setattr(usage_store, "summary", summary)
+    monkeypatch.setattr(turns, "try_begin_turn", AsyncMock(return_value="test-claim"))
+    monkeypatch.setattr(turns, "end_turn", AsyncMock(return_value=True))
 
     def build(agent):
         orch = Orchestrator(agent_factory=lambda _: agent)
         monkeypatch.setattr(orch, "_record_start", AsyncMock(return_value=uuid4()))
+        monkeypatch.setattr(orch, "_record_status", AsyncMock())
         monkeypatch.setattr(orch, "_record_end", record_end)
         monkeypatch.setattr(orch, "_parent_context", AsyncMock(return_value=""))
         return orch
@@ -118,53 +122,41 @@ async def test_failed_wrapper_label_never_responded(delegation, monkeypatch):
     assert receipt.tokens_used == 13
 
 
-async def test_effective_deadline_is_120_through_real_tool_path(monkeypatch):
-    import asyncio as _asyncio
+@pytest.mark.parametrize("wait_override", [None, 1])
+async def test_inline_wait_returns_live_worker_for_default_and_override(monkeypatch, wait_override):
+    import asyncio
 
     from machina.core import orchestrator as module
-    from machina.core.agent_def import agent_registry
-    from machina.tools.agents import delegate
+    from machina.tools import agents
 
-    captured = {}
+    child_id = uuid4()
+    release = asyncio.Event()
 
-    async def fake_delegate(*_args, **kwargs):
-        captured["deadline_in"] = module.delegation_deadline.get()
-        captured["now"] = _asyncio.get_running_loop().time()
-        return SimpleNamespace(status="complete", response="ok", tokens=0, needs_approval=[])
+    async def worker(*_args, **kwargs):
+        kwargs["on_started"](child_id)
+        await release.wait()
+        return SimpleNamespace(
+            status="complete", response="ok", session_id=child_id, tokens=0, needs_approval=[]
+        )
 
-    monkeypatch.setattr(module.orchestrator, "delegate", fake_delegate)
-    monkeypatch.setattr(agent_registry, "list", AsyncMock(return_value=[AgentDef(name="coder")]))
-    assert module.delegation_deadline.get() is None
-    await delegate("coder", "work")
-    delta = captured["deadline_in"] - captured["now"]
-    assert 115 <= delta <= 125, f"expected ~120, got {delta}"
-    assert module.delegation_deadline.get() is None
-
-
-async def test_inherited_shorter_deadline_clips_through_real_tool_path(monkeypatch):
-    import asyncio as _asyncio
-
-    from machina.core import orchestrator as module
-    from machina.core.agent_def import agent_registry
-    from machina.tools.agents import delegate
-
-    captured = {}
-
-    async def fake_delegate(*_args, **kwargs):
-        captured["deadline_in"] = module.delegation_deadline.get()
-        return SimpleNamespace(status="complete", response="ok", tokens=0, needs_approval=[])
-
-    monkeypatch.setattr(module.orchestrator, "delegate", fake_delegate)
-    monkeypatch.setattr(agent_registry, "list", AsyncMock(return_value=[AgentDef(name="coder")]))
-    loop = _asyncio.get_running_loop()
-    inherited = loop.time() + 10
-    token = module.delegation_deadline.set(inherited)
+    monkeypatch.setattr(module.orchestrator, "delegate", worker)
+    monkeypatch.setattr(module.orchestrator, "latest_child_delegation", AsyncMock(return_value=None))
+    monkeypatch.setattr(agents.config, "delegate_inline_wait_seconds", 1 if wait_override is None else 0)
+    monkeypatch.setattr(agents.db, "fetchval", AsyncMock(return_value="harness"))
+    session_token = agents.current_session_id.set(uuid4())
+    agent_token = agents.current_agent_id.set("harness")
     try:
-        await delegate("coder", "work")
+        result = await agents.delegate("coder", "work", wait_seconds=wait_override)
+        assert result.delegation_status == "running"
+        assert str(child_id) in result
+        pending = [task for task in agents._background_delegations if not task.done()]
+        assert len(pending) == 1
+        release.set()
+        await asyncio.wait_for(pending[0], timeout=2)
     finally:
-        module.delegation_deadline.reset(token)
-    assert abs(captured["deadline_in"] - inherited) < 1.0
-    assert module.delegation_deadline.get() is None
+        release.set()
+        agents.current_agent_id.reset(agent_token)
+        agents.current_session_id.reset(session_token)
 
 
 async def test_unknown_delegate_name_raises_with_suggestions_zero_child_cost(monkeypatch):

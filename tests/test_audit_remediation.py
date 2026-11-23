@@ -394,7 +394,15 @@ def test_012_export_redacts_title_goal_and_content(monkeypatch):
             goal="deploy with AKIAIOSFODNN7EXAMPLE credential",
             created_at=__import__("datetime").datetime.now(),
             last_activity=__import__("datetime").datetime.now(),
+            parent_session_id=None,
+            is_fork=False,
         )
+        from machina.core.session import session_manager
+
+        async def _family(_session_id):
+            return [session]
+
+        monkeypatch.setattr(session_manager, "list_tree", _family)
         out = await svc.export_markdown(session)
         assert secret not in out
         assert "AKIAIOSFODNN7EXAMPLE" not in out

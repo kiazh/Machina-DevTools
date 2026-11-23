@@ -143,16 +143,16 @@ async def test_rag_cache_respects_result_count_and_dense_mode(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_http_rpc_uses_app_database_without_closing_it(monkeypatch):
-    from machina.api.app import _RpcGateway
     from machina.core.session import session_manager
     from machina.db.connection import db
+    from machina.gateway.server import Gateway
 
     monkeypatch.setattr(db, "_pool", object())
     close = AsyncMock()
     monkeypatch.setattr(db, "close", close)
     listing = AsyncMock(return_value=[])
     monkeypatch.setattr(session_manager, "list_sessions", listing)
-    gateway = _RpcGateway()
+    gateway = Gateway(lambda _frame: None, owns_db=False, inherit_env_token=False)
     assert await gateway.call("session.list", {"limit": 5}) == {"sessions": []}
     await gateway.close()
     close.assert_not_awaited()

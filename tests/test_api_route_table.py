@@ -17,6 +17,13 @@ from machina.api.app import create_app
 # (path, sorted-methods tuples; HEAD/OPTIONS excluded).
 EXPECTED_ROUTES = frozenset(
     {
+        # 2.0 additions: A2A agent card/bridge and the documented OpenAPI
+        # surface (protected docs, schema, and the well-known card).
+        ("/a2a", ("POST",)),
+        ("/.well-known/agent-card.json", ("GET",)),
+        ("/docs", ("GET",)),
+        ("/openapi.json", ("GET",)),
+        ("/redoc", ("GET",)),
         ("/agents", ("GET",)),
         ("/api/v1/approvals", ("GET",)),
         ("/api/v1/approvals/{request_id}/resolve", ("POST",)),
@@ -90,15 +97,28 @@ class TestApiRouteTable:
         assert LEGACY_ALIASES <= _route_table(create_app())
 
     def test_auth_dependencies_preserved(self):
-        """Every route except /health and /ready keeps its auth dependency."""
+        """Every route except /health and /ready keeps its auth dependency.
+
+        Auth can be declared on the decorator (``dependencies=[...]``) or as a
+        parameter dependency (``principal=Depends(require_principal)``). The
+        resolve route uses the latter, so checking only ``route.dependencies``
+        would report a false missing-auth failure.
+        """
         app = create_app()
+        public = {"/health", "/ready", "/.well-known/agent-card.json"}
         for route in app.routes:
             if not isinstance(route, APIRoute):
                 continue
-            if route.path in ("/health", "/ready"):
+            if route.path in public:
                 assert not route.dependencies, route.path
-            else:
-                assert route.dependencies, f"{route.path} lost its auth dependency"
+                continue
+            names = {
+                getattr(dependency.call, "__name__", "")
+                for dependency in route.dependant.dependencies
+            }
+            assert route.dependencies or names & {"require_api_key", "require_principal"}, (
+                f"{route.path} lost its auth dependency"
+            )
 
     def test_rate_limit_middleware_still_applied(self):
         from machina.api.rate_limit import RateLimitMiddleware

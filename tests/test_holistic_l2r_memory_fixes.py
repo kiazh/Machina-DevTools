@@ -397,7 +397,7 @@ async def test_h05_api_http_reports_mode_and_uses_embedding(monkeypatch) -> None
         patch.object(MemoryRetriever, "retrieve", fake_retrieve),
     ):
         app = create_app()
-        app.state._rpc_gateway = MagicMock()
+        app.state.gateway = MagicMock()
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.get(
@@ -429,7 +429,7 @@ async def test_h06_api_http_surfaces_total_failure_as_503(monkeypatch) -> None:
         patch.object(MemoryRetriever, "_keyword_search", failing),
     ):
         app = create_app()
-        app.state._rpc_gateway = MagicMock()
+        app.state.gateway = MagicMock()
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.get(
