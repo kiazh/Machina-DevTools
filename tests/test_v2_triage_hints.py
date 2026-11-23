@@ -180,6 +180,7 @@ def _setup_agent(monkeypatch):
     # This file pins advisory workflow hints, not the separate unverified-repair
     # nudge (covered by the repair-controller suite).
     agent._maybe_continue_unverified_repair = None
+    agent._maybe_continue_unchanged_repair = None
     return agent, provider, session
 
 

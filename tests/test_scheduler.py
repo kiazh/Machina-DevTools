@@ -500,7 +500,11 @@ class TestGatewayJobs:
         harness = Harness()
         assert "result" in await harness.call("initialize")
         yield harness
-        await harness.gateway.close()
+        try:
+            await harness.gateway.close()
+        except RuntimeError as error:
+            if "Event loop is closed" not in str(error):
+                raise
 
     async def test_create_list_toggle_delete(self, h):
         sid = (await h.call("session.create", {"title": "jobs"}))["result"]["session"]["id"]

@@ -139,6 +139,13 @@ def reset_singletons(monkeypatch):
     # closed; later tests must not inherit that global state.
     shell_jobs.closing = False
     shell_jobs.admissions.clear()
+    from machina.core import turns
+
+    # Lock objects bind to the loop that created them; a test using its own
+    # loop must not leave those locks for the next test.
+    turns._local_reset_for_tests()
+    turns._locks.clear()
+    turns._mutation_locks.clear()
     db._pool = None
     # Never let tests touch the developer database: use the isolated test DB,
     # or no DSN at all (DB-backed tests then skip).

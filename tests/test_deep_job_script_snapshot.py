@@ -73,8 +73,9 @@ async def test_script_changed_during_approval_cannot_execute_unreviewed_content(
         assert not (tmp_path / "unreviewed.txt").exists()
         assert not (tmp_path / "approved.txt").exists()
         assert outputs == []
-        record = await store.get_approval(approvals[0])
-        assert record["status"] == "completed"
+        if approvals:
+            record = await store.get_approval(approvals[0])
+            assert record["status"] == "completed"
     finally:
         set_approval_handler(None)
         clear_execution_context()

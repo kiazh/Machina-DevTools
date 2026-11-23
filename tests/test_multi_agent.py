@@ -697,7 +697,11 @@ class TestGatewayAgents:
         harness = Harness()
         assert "result" in await harness.call("initialize")
         yield harness
-        await harness.gateway.close()
+        try:
+            await harness.gateway.close()
+        except RuntimeError as error:
+            if "Event loop is closed" not in str(error):
+                raise
 
     async def test_list_save_delete(self, h):
         name = f"gw-agent-{uuid.uuid4().hex[:8]}"

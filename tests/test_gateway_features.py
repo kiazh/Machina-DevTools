@@ -286,7 +286,11 @@ class TestMemory:
                     },
                 )
             )["results"]
-            assert [item["id"] for item in found] == [own["id"]]
+            # Memories are agent-scoped (N1), so another session of the same
+            # agent may also match; the cross-agent memory must never appear.
+            found_ids = [item["id"] for item in found]
+            assert own["id"] in found_ids
+            assert other["id"] not in found_ids
             denied = await h.call("memory.forget", {"sessionId": own_sid, "id": other["id"]})
             assert denied["error"]["code"] == NOT_FOUND
             assert (

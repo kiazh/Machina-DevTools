@@ -120,4 +120,8 @@ async def test_gateway_v2_emitted_events_conform(db_pool, monkeypatch):
 
         if "sid" in locals():
             await session_manager.delete(uuid.UUID(sid))
-        await h.gateway.close()
+        try:
+            await h.gateway.close()
+        except RuntimeError as error:
+            if "Event loop is closed" not in str(error):
+                raise
