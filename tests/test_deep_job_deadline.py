@@ -53,7 +53,7 @@ class JobBoundary:
         self.finishes.append((job_id, error))
         return True
 
-    async def begin_turn(self, session_id):
+    async def begin_turn(self, session_id, **_kwargs):
         if session_id in self.held_sessions:
             return None
         self.held_sessions.add(session_id)

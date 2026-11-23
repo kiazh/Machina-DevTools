@@ -284,7 +284,7 @@ async def test_reserve_raises_database_error_when_db_not_connected(monkeypatch):
 @pytest.mark.asyncio
 async def test_reserve_propagates_db_exceptions(monkeypatch):
     """reserve() propagates DB exceptions directly (wrapping happens in complete_call)."""
-    monkeypatch.setattr(config, "usage_session_request_limit", 0)
+    monkeypatch.setattr(config, "usage_session_request_limit", 1)
     monkeypatch.setattr(config, "usage_session_token_limit", 0)
     monkeypatch.setattr(config, "usage_agent_request_limit", 0)
     monkeypatch.setattr(config, "usage_agent_token_limit", 0)
@@ -520,7 +520,7 @@ async def test_cleanup_orphaned_reservations_result(monkeypatch, update_result, 
 @pytest.mark.asyncio
 async def test_reserve_locks_agent_before_session(monkeypatch):
     """reserve() acquires advisory locks in fixed order: agent then session."""
-    monkeypatch.setattr(config, "usage_session_request_limit", 0)
+    monkeypatch.setattr(config, "usage_session_request_limit", 1)
     monkeypatch.setattr(config, "usage_session_token_limit", 0)
     monkeypatch.setattr(config, "usage_agent_request_limit", 0)
     monkeypatch.setattr(config, "usage_agent_token_limit", 0)

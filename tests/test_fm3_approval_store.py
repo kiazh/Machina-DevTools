@@ -456,6 +456,7 @@ async def test_resolve_route_and_gateway_store_reviewed_capabilities(tmp_path):
             ResolveApprovalRequest(
                 verdict="approved", sessionId=uuid.UUID(session_id), grant="session"
             ),
+            principal="http",
         )
         grants = await st.list_grants(session_id)
         capabilities = {cap for g in grants for cap in str(g["capability"]).split(",")}

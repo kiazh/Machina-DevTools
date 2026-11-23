@@ -79,6 +79,10 @@ async def test_turn_produces_tool_delegation_and_approval_spans(tmp_path):
     async def delegate(agent: str = "", task: str = "") -> str:
         return "delegated ok"
 
+    @reg.register(description="stub terminal")
+    async def terminal(command: str = "") -> str:
+        return "ran"
+
     provider = AsyncMock()
     provider.complete = AsyncMock(
         side_effect=[

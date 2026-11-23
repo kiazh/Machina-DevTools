@@ -154,6 +154,13 @@ async def test_execution_context_resolves_once_per_turn(clean_turn, monkeypatch)
     sid = str(uuid.uuid4())
     stub = ModeStubDb("sandbox")
     monkeypatch.setattr("machina.db.connection.db", stub)
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    monkeypatch.setattr(
+        "machina.core.session.session_manager.get_fresh",
+        AsyncMock(return_value=SimpleNamespace(state={})),
+    )
     with session_mode.turn_scope():
         for _ in range(4):
             ctx = await ec.resolve_execution_context(sid, "terminal")

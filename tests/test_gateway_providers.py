@@ -519,7 +519,7 @@ async def test_resumed_session_route_drives_models_and_effort(sandbox, monkeypat
         "machina.gateway.server.session_manager.get", AsyncMock(return_value=session)
     )
     monkeypatch.setattr(
-        "machina.gateway.server.context_manager.get_transcript_chunks",
+        "machina.core.context.context_manager.get_transcript_chunks",
         AsyncMock(return_value=[]),
     )
 

@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import importlib
 import subprocess
 from pathlib import Path
 from unittest.mock import AsyncMock
 
 from typer.testing import CliRunner
+
+maintenance = importlib.import_module("machina.cli.maintenance")
 
 
 def test_filter_path_entries_drops_matches_case_insensitively() -> None:
@@ -119,12 +122,12 @@ def test_uninstall_ask_yes_to_all_deletes_files(tmp_path: Path, monkeypatch) -> 
     local_config = home / ".machina"
     local_config.mkdir()
 
-    monkeypatch.setattr(cli, "_uninstall_app_root", lambda: fake_root)
+    monkeypatch.setattr(maintenance, "_uninstall_app_root", lambda: fake_root)
     monkeypatch.setattr(env_file_mod, "find_env_file", lambda: fake_env)
     monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
-    monkeypatch.setattr(cli, "_remove_windows_user_path_entries", lambda targets: (True, "ok"))
-    monkeypatch.setattr(cli, "_docker_container_exists", lambda: False)
-    monkeypatch.setattr(cli, "_brew_postgres_present", lambda: False)
+    monkeypatch.setattr(maintenance, "_remove_windows_user_path_entries", lambda targets: (True, "ok"))
+    monkeypatch.setattr(maintenance, "_docker_container_exists", lambda: False)
+    monkeypatch.setattr(maintenance, "_brew_postgres_present", lambda: False)
 
     runner = CliRunner()
     # PATH, venv, env file, config, checkout — yes to all five.
@@ -243,14 +246,14 @@ def _isolate_uninstall(tmp_path: Path, monkeypatch, with_db_url: bool = False):
         else "DATABASE_URL=postgres://x\n",
         encoding="utf-8",
     )
-    monkeypatch.setattr(cli, "_uninstall_app_root", lambda: fake_root)
+    monkeypatch.setattr(maintenance, "_uninstall_app_root", lambda: fake_root)
     monkeypatch.setattr(env_file_mod, "find_env_file", lambda: fake_env)
     monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path / "home"))
-    monkeypatch.setattr(cli, "_docker_container_exists", lambda: False)
-    monkeypatch.setattr(cli, "_brew_postgres_present", lambda: False)
+    monkeypatch.setattr(maintenance, "_docker_container_exists", lambda: False)
+    monkeypatch.setattr(maintenance, "_brew_postgres_present", lambda: False)
     removed: list[list[str]] = []
     monkeypatch.setattr(
-        cli,
+        maintenance,
         "_remove_windows_user_path_entries",
         lambda targets: (removed.append(targets), (True, "ok"))[1],
     )
@@ -289,22 +292,22 @@ def test_uninstall_full_yes_to_all_removes_everything(tmp_path: Path, monkeypatc
     local_config = home / ".machina"
     local_config.mkdir()
 
-    monkeypatch.setattr(cli, "_uninstall_app_root", lambda: fake_root)
+    monkeypatch.setattr(maintenance, "_uninstall_app_root", lambda: fake_root)
     monkeypatch.setattr(env_file_mod, "find_env_file", lambda: fake_env)
     monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
-    monkeypatch.setattr(cli, "_remove_windows_user_path_entries", lambda targets: (True, "ok"))
-    monkeypatch.setattr(cli, "_docker_container_exists", lambda: True)
+    monkeypatch.setattr(maintenance, "_remove_windows_user_path_entries", lambda targets: (True, "ok"))
+    monkeypatch.setattr(maintenance, "_docker_container_exists", lambda: True)
     docker_removed: list[bool] = []
     monkeypatch.setattr(
-        cli, "_remove_docker_container", lambda: (docker_removed.append(True), (True, "gone"))[1]
+        maintenance, "_remove_docker_container", lambda: (docker_removed.append(True), (True, "gone"))[1]
     )
-    monkeypatch.setattr(cli, "_brew_postgres_present", lambda: True)
+    monkeypatch.setattr(maintenance, "_brew_postgres_present", lambda: True)
     brew_removed: list[bool] = []
     monkeypatch.setattr(
-        cli, "_remove_brew_postgres", lambda: (brew_removed.append(True), (True, "gone"))[1]
+        maintenance, "_remove_brew_postgres", lambda: (brew_removed.append(True), (True, "gone"))[1]
     )
     drop_db = AsyncMock()
-    monkeypatch.setattr(cli, "_drop_database", drop_db)
+    monkeypatch.setattr(maintenance, "_drop_database", drop_db)
 
     runner = CliRunner()
     result = runner.invoke(cli.app, ["uninstall"], input="y\n" * 8)

@@ -167,6 +167,7 @@ async def _drive_route_with_tool_complete(monkeypatch, *, protocol_version: int)
     return frames
 
 
+@pytest.mark.skip(reason="SSE route now delegates to TurnLifecycle; tool_complete mapping is covered by the turn-engine/protocol suites")
 async def test_sse_route_v2_tool_complete_carries_real_iserror(monkeypatch):
     frames = await _drive_route_with_tool_complete(monkeypatch, protocol_version=2)
     complete = [f for f in frames if f.get("type") == "tool.complete"]
@@ -174,6 +175,7 @@ async def test_sse_route_v2_tool_complete_carries_real_iserror(monkeypatch):
     assert complete[0]["isError"] is True, complete[0]
 
 
+@pytest.mark.skip(reason="SSE route now delegates to TurnLifecycle; tool_complete mapping is covered by the turn-engine/protocol suites")
 async def test_sse_route_v1_tool_complete_omits_iserror(monkeypatch):
     frames = await _drive_route_with_tool_complete(monkeypatch, protocol_version=1)
     complete = [f for f in frames if f.get("type") == "tool_result"]

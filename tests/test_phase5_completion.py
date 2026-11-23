@@ -91,7 +91,12 @@ async def test_delegation_passes_parent_context_and_records_result(monkeypatch):
     monkeypatch.setattr(module.context_manager, "add_chunk", add_chunk)
     orch = Orchestrator(agent_factory=lambda _definition: Agent())
     monkeypatch.setattr(orch, "_record_start", AsyncMock(return_value=uuid.uuid4()))
+    monkeypatch.setattr(orch, "_record_status", AsyncMock())
     monkeypatch.setattr(orch, "_record_end", AsyncMock())
+    from machina.core import turns
+
+    monkeypatch.setattr(turns, "try_begin_turn", AsyncMock(return_value="claim"))
+    monkeypatch.setattr(turns, "end_turn", AsyncMock(return_value=True))
 
     result = await orch.delegate("reviewer", "Review code", parent_session_id=parent_id)
     assert result.status == "complete"
@@ -112,7 +117,14 @@ async def test_delegate_tool_uses_isolated_session_context(monkeypatch):
     seen = []
 
     async def fake_delegate(
-        agent, task, *, from_agent, parent_session_id, _hop_count, authority=None
+        agent,
+        task,
+        *,
+        from_agent,
+        parent_session_id,
+        _hop_count,
+        authority=None,
+        **kwargs,
     ):
         await asyncio.sleep(0)
         seen.append(parent_session_id)

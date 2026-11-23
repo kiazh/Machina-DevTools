@@ -351,7 +351,7 @@ def test_stop_tolerates_failing_down_and_missing_limactl(stack, monkeypatch):
 
 def _fake_ui_env(tmp_path, monkeypatch):
     """Point ``launch_ui`` at a stub node + empty UI so preconditions pass."""
-    from machina.cli import launcher
+    from machina import ui_launcher as launcher
 
     ui = tmp_path / "ui"
     (ui / "src").mkdir(parents=True)
@@ -363,8 +363,8 @@ def _fake_ui_env(tmp_path, monkeypatch):
     node.chmod(0o755)
     monkeypatch.setenv("MACHINA_UI_DIR", str(ui))
     monkeypatch.setenv("PATH", f"{node.parent}{os.pathsep}{os.environ['PATH']}")
-    monkeypatch.setattr(launcher.sys, "stdin", SimpleNamespace(isatty=lambda: True))
-    monkeypatch.setattr(launcher.sys, "stdout", SimpleNamespace(isatty=lambda: True))
+    monkeypatch.setattr("sys.stdin", SimpleNamespace(isatty=lambda: True))
+    monkeypatch.setattr("sys.stdout", SimpleNamespace(isatty=lambda: True))
     # These tests exercise the Firecrawl lifecycle, not Docker/PostgreSQL.
     from machina.db import lifecycle
     monkeypatch.setattr(lifecycle, "acquire", lambda role="tui": None)
@@ -383,8 +383,8 @@ def test_launch_ui_starts_then_stops_and_registers_atexit(tmp_path, monkeypatch)
     def _stop() -> None:
         events.append("stop")
 
-    monkeypatch.setattr(launcher, "start_if_enabled", _start)
-    monkeypatch.setattr(launcher, "stop_if_enabled", _stop)
+    monkeypatch.setattr(fl, "start_if_enabled", _start)
+    monkeypatch.setattr(fl, "stop_if_enabled", _stop)
     monkeypatch.setattr(launcher.atexit, "register", lambda fn: stops.append(fn))
 
     assert launcher.launch_ui() == 0
@@ -417,8 +417,8 @@ def test_launch_ui_stops_on_keyboard_interrupt(tmp_path, monkeypatch):
         def kill(self):
             pass
 
-    monkeypatch.setattr(launcher, "start_if_enabled", lambda: events.append("start"))
-    monkeypatch.setattr(launcher, "stop_if_enabled", lambda: events.append("stop"))
+    monkeypatch.setattr(fl, "start_if_enabled", lambda: events.append("start"))
+    monkeypatch.setattr(fl, "stop_if_enabled", lambda: events.append("stop"))
     monkeypatch.setattr(launcher, "_node_version", lambda node: (22, 19))
     monkeypatch.setattr(launcher.subprocess, "Popen", _InterruptingChild)
 

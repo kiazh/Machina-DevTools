@@ -326,7 +326,7 @@ async def test_followup_image_context_respects_budget_without_duplicating_text(i
     # legitimately grows as skills are added (bounded injection), so a window
     # tuned to an older skill catalog would spuriously trip the guard. The
     # test's real assertions (budget respected, no text duplication) are below.
-    provider.window = 19000
+    provider.window = 32000
     original = "chart " * 3330
     response = await harness.call(
         "prompt.submit", {"sessionId": sid, "text": original, "images": [png()]}
@@ -592,6 +592,9 @@ async def test_runtime_schema_migration_restores_image_context(image_gateway, db
     harness, sid, _provider = image_gateway
     session_id = uuid.UUID(sid)
     await db_pool.execute("DROP TABLE IF EXISTS session_image_context")
+    await db_pool.execute(
+        "UPDATE schema_meta SET value = '0' WHERE key = 'runtime_schema_version'"
+    )
     try:
         assert await context_manager.get_latest_images(session_id, "harness") == []
         await db.initialize_runtime_schema()
@@ -657,6 +660,9 @@ async def test_runtime_schema_updates_existing_image_size_constraint(image_gatew
         ALTER TABLE session_image_context ADD CONSTRAINT session_image_context_images_msgpack_check
             CHECK (octet_length(images_msgpack) <= 20975616)
     """)
+    await db_pool.execute(
+        "UPDATE schema_meta SET value = '0' WHERE key = 'runtime_schema_version'"
+    )
     await db.initialize_runtime_schema()
     await db.initialize_runtime_schema()
     constraint = await db_pool.fetchval("""

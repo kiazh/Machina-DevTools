@@ -177,6 +177,9 @@ def _setup_agent(monkeypatch):
 
     provider = Provider()
     agent = ReActAgent(provider=provider, agent_id=session.agent_id)
+    # This file pins advisory workflow hints, not the separate unverified-repair
+    # nudge (covered by the repair-controller suite).
+    agent._maybe_continue_unverified_repair = None
     return agent, provider, session
 
 

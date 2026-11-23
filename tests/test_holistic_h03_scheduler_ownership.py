@@ -115,9 +115,9 @@ async def test_e2e_overridden_job_runs_and_restores_session_owner(scheduler_db, 
     assert finished is not None
     assert finished.run_count == 1
     assert finished.status == "idle" and finished.last_error is None, finished.last_error
-    assert provider.calls == 2, (
-        "one routing-expansion call (v2 skill vocabulary) plus the actual specialist execution"
-    )
+    # 2.0 disables the per-turn skill query-expansion model call by default,
+    # so the scheduler run makes exactly one specialist execution call.
+    assert provider.calls == 1
 
     owner = await scheduler_db.fetchval("SELECT agent_id FROM sessions WHERE id = $1", session.id)
     assert owner == "harness", "the run-scoped job override must be restored after execution"

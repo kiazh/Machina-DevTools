@@ -164,6 +164,9 @@ async def test_runtime_migration_adds_and_defaults_event_seq(db_pool):
             )
             == 0
         )
+        await database.execute(
+            "UPDATE schema_meta SET value = '0' WHERE key = 'runtime_schema_version'"
+        )
 
         await database.initialize_runtime_schema()
         await database.initialize_runtime_schema()

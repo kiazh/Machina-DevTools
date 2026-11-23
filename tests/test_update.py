@@ -11,10 +11,12 @@ def _run_result(returncode: int = 0, stdout: str = "") -> SimpleNamespace:
     return SimpleNamespace(returncode=returncode, stdout=stdout, stderr="")
 
 
-def test_version_tuple_compares_numeric_parts():
-    assert update._version_tuple("1.2.8") < update._version_tuple("1.2.9")
-    assert update._version_tuple("1.2.9") == update._version_tuple("1.2.9-dev")
-    assert update._version_tuple("2.0") > update._version_tuple("1.99.99")
+def test_version_regex_reads_pyproject_version():
+    # 2.0 compares commit history for updates and no longer orders version
+    # strings; the remaining version parser is the pyproject reader.
+    match = update._VERSION_RE.search('[project]\nversion = "2.0.1"\n')
+    assert match is not None
+    assert match.group(1) == "2.0.1"
 
 
 def test_auto_update_disabled_never_touches_git(monkeypatch):
@@ -35,6 +37,10 @@ def test_auto_update_fast_forwards_clean_checkout(monkeypatch, tmp_path):
         calls.append(args)
         if args[:2] == ["git", "fetch"]:
             return _run_result()
+        if args[:2] == ["git", "rev-parse"]:
+            return _run_result(stdout="false\n")
+        if args[:2] == ["git", "rev-list"]:
+            return _run_result(stdout="0\t2\n")
         if args[:2] == ["git", "show"]:
             return _run_result(stdout='[project]\nversion = "9.9.9"\n')
         if args[:2] == ["git", "status"]:
@@ -67,6 +73,10 @@ def test_auto_update_skips_dirty_checkout(monkeypatch, tmp_path):
         calls.append(args)
         if args[:2] == ["git", "fetch"]:
             return _run_result()
+        if args[:2] == ["git", "rev-parse"]:
+            return _run_result(stdout="false\n")
+        if args[:2] == ["git", "rev-list"]:
+            return _run_result(stdout="0\t2\n")
         if args[:2] == ["git", "show"]:
             return _run_result(stdout='[project]\nversion = "9.9.9"\n')
         if args[:2] == ["git", "status"]:

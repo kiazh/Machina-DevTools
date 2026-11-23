@@ -173,16 +173,15 @@ class TestLoopBoundsUntouched:
     """The agent loop stays UNBOUNDED — no caps introduced by the extraction."""
 
     def test_loops_are_while_true(self):
-        run_src = inspect.getsource(agent_mod.ReActAgent.run)
-        stream_src = inspect.getsource(agent_mod.ReActAgent.run_stream)
-        assert "while True:" in run_src
-        assert "while True:" in stream_src
+        # 2.0 collapsed both public loops into one shared generator.
+        loop_src = inspect.getsource(agent_mod._react_loop)
+        assert "while True:" in loop_src
+        for entry in (agent_mod.ReActAgent.run, agent_mod.ReActAgent.run_stream):
+            assert "_react_loop(" in inspect.getsource(entry)
 
     def test_no_max_iterations_gate_in_loops(self):
-        run_src = inspect.getsource(agent_mod.ReActAgent.run)
-        stream_src = inspect.getsource(agent_mod.ReActAgent.run_stream)
-        assert "max_iterations" not in run_src
-        assert "max_iterations" not in stream_src
+        loop_src = inspect.getsource(agent_mod._react_loop)
+        assert "max_iterations" not in loop_src
 
     def test_shared_executor_seam_intact(self):
         base_src = inspect.getsource(BaseReActAgent)

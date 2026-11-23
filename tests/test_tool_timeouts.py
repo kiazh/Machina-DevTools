@@ -33,9 +33,9 @@ def test_terminal_allows_its_full_internal_budget():
     assert _TOOL_TIMEOUTS.get("terminal", _TOOL_TIMEOUT_DEFAULT) >= 60.0
 
 
-def test_delegation_allows_a_sub_agent_to_finish():
-    """delegate wraps a nested agent run (its tool allows 60s)."""
-    assert _TOOL_TIMEOUTS["delegate"] >= 60.0
+def test_delegation_uses_background_wait_not_a_fixed_tool_timeout():
+    """2.0 returns long delegates as trackable work; no fixed tool cap applies."""
+    assert "delegate" not in _TOOL_TIMEOUTS
 
 
 @pytest.mark.parametrize(

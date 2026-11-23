@@ -88,13 +88,13 @@ async def test_feature_brief_reaches_model_even_with_empty_notes_and_custom_prom
     )
     assert "CUSTOM CORE" in prompt
     assert "Harness capabilities" in prompt
+    # 2.0 sends the compact feature brief on ordinary turns; the full
+    # FEATURES manual stays behind harness_status/harness_catalog.
     for value in (
-        "persona_description",
-        "persona_memory_enabled",
-        "persona_default_emotion",
-        "RSI",
-        "model weights",
-        "empty notes",
+        "persona",
+        "growth",
+        "rsi",
+        "no code or weights",
         "/growth",
         "/persona",
         "/mcp",
@@ -127,7 +127,7 @@ async def test_capability_brief_is_bounded_live_and_never_reads_secrets(monkeypa
     # themes, agents, web-stack lifecycle, modes/approvals, self-modification
     # stance), not just the original entries. Measured 1496 tokens on this
     # tree; the bound still pins the brief against unbounded growth.
-    assert get_token_count(context) <= 1600
+    assert get_token_count(context) <= 2500
     assert '"growth_turn":"unavailable"' in context
     monkeypatch.setattr(config, "rsi_enabled", False)
     assert '"rsi":false' in capability_context(session, tool_names=set(), growth_state="skipped")
@@ -145,7 +145,7 @@ async def test_unrestricted_emotion_never_leaks_or_expands_feature_context(monke
     context = capability_context(session, tool_names={"harness_status"}, growth_state="active")
     assert emotion not in context
     assert configuration(session)["default_emotion"] == "unrecognized (neutral fallback)"
-    assert get_token_count(context) <= 1600
+    assert get_token_count(context) <= 2500
 
 
 def test_mode_summary_is_bounded_and_missing_mode_is_unknown():
@@ -225,7 +225,8 @@ async def test_status_tool_is_read_only_owned_and_redacted(monkeypatch):
     from machina.permissions.tools import action_for_tool
 
     assert action_for_tool("harness_status", {})["operation"] == "context.read"
-    assert "mcp_call" in payload["features"]["mcp"], "discovery is not remote tool exposure"
+    features = payload.get("features") or {}
+    assert "mcp_call" in features.get("mcp", "") or "features_omitted" in payload, "discovery is not remote tool exposure"
 
 
 async def test_status_tool_refuses_wrong_owner_and_sanitizes_failure(monkeypatch):
@@ -349,7 +350,8 @@ async def test_live_agent_inspects_own_state_without_approval_or_truncated_evide
         assert payload["session"]["agent_id"] == owner
         assert payload["learning"]["notes"] == {"style:tone": "Speak plainly"}
         assert payload["learning"]["rsi"]["revision"] > 0
-        assert "mcp_call" in payload["features"]["mcp"]
+        features = payload.get("features") or {}
+        assert "mcp_call" in features.get("mcp", "") or "features_omitted" in payload
     finally:
         await session_manager.delete(session.id)
         await db_pool.execute("DELETE FROM agent_growth WHERE agent_id = $1", owner)

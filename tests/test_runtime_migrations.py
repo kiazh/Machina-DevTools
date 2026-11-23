@@ -28,6 +28,11 @@ async def test_runtime_upgrade_is_idempotent_and_preserves_existing_sessions(db_
             await database.execute(
                 f"ALTER TABLE llm_usage DROP COLUMN IF EXISTS {column}"
             )
+        # Simulate an older install: the version marker must not short-circuit
+        # the additive migrations after the columns were removed.
+        await database.execute(
+            "UPDATE schema_meta SET value = '0' WHERE key = 'runtime_schema_version'"
+        )
 
         await database.initialize_runtime_schema()
         await database.initialize_runtime_schema()
@@ -57,6 +62,9 @@ async def test_runtime_upgrade_adds_optimization_tables(db_pool):
         )
         await database.execute(
             "ALTER TABLE llm_usage DROP COLUMN IF EXISTS cache_source"
+        )
+        await database.execute(
+            "UPDATE schema_meta SET value = '0' WHERE key = 'runtime_schema_version'"
         )
 
         await database.initialize_runtime_schema()
@@ -112,6 +120,9 @@ async def test_runtime_upgrade_adds_memory_embedding_space(db_pool):
         await database.execute("DROP INDEX IF EXISTS idx_memories_embedding_space")
         await database.execute(
             "ALTER TABLE memories DROP COLUMN IF EXISTS embedding_space"
+        )
+        await database.execute(
+            "UPDATE schema_meta SET value = '0' WHERE key = 'runtime_schema_version'"
         )
 
         await database.initialize_runtime_schema()

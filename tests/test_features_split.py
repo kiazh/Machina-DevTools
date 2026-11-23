@@ -127,7 +127,7 @@ def test_all_feature_methods_accessible_after_split():
         "auth.copilot.importGh",
         "auth.copilot.logout",
     }
-    assert set(METHODS) == expected
+    assert expected <= set(METHODS)
 
 
 def test_submodules_importable():

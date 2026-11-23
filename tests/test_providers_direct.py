@@ -84,6 +84,7 @@ def test_providers_tuple_lists_every_family():
         "chatgpt",
         "copilot",
         "grok",
+        "kiro",
         "custom",
         "ollama",
     }
@@ -128,6 +129,12 @@ def test_direct_specs_have_accurate_base_urls_and_keys():
             "https://api.kimi.ai/coding/v1",
             "KIMI_API_KEY",
             "kimi-for-coding",
+        ),
+        "kiro": (
+            # Local Kiro proxy; keyless by default and auto-routed.
+            "http://127.0.0.1:8000/v1",
+            "KIRO_API_KEY",
+            "auto",
         ),
     }
     assert set(PROVIDER_SPECS) == set(expected)
@@ -244,6 +251,8 @@ def test_get_provider_requires_key(monkeypatch):
     from machina.core.provider import PROVIDER_SPECS, get_provider
 
     for name, spec in PROVIDER_SPECS.items():
+        if not spec.requires_key:
+            continue
         monkeypatch.delenv(spec.api_key_env, raising=False)
         with pytest.raises(ValidationError, match=spec.api_key_env):
             get_provider(provider=name)

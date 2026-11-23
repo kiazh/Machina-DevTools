@@ -29,6 +29,7 @@ def delegation(monkeypatch, tmp_path):
     # Pin the file-backend workspace to tmp_path for contract resolution.
     import machina.tools.file as filemod
     from machina.core import orchestrator as module
+    from machina.core import turns
     from machina.core.usage import usage_store
 
     monkeypatch.setattr(filemod, "_base_dir", lambda: tmp_path)
@@ -52,10 +53,13 @@ def delegation(monkeypatch, tmp_path):
     )
     monkeypatch.setattr(module.context_manager, "add_chunk", AsyncMock())
     monkeypatch.setattr(usage_store, "summary", summary)
+    monkeypatch.setattr(turns, "try_begin_turn", AsyncMock(return_value="test-claim"))
+    monkeypatch.setattr(turns, "end_turn", AsyncMock(return_value=True))
 
     def build(agent):
         orch = Orchestrator(agent_factory=lambda _: agent)
         monkeypatch.setattr(orch, "_record_start", AsyncMock(return_value=uuid4()))
+        monkeypatch.setattr(orch, "_record_status", AsyncMock())
         monkeypatch.setattr(orch, "_record_end", record_end)
         monkeypatch.setattr(orch, "_parent_context", AsyncMock(return_value=""))
         return orch

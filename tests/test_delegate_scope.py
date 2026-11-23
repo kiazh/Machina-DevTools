@@ -368,8 +368,8 @@ def test_system_prompt_teaches_parallel_fan_out():
     from machina.core.agent import SYSTEM_PROMPT
 
     assert "list_agents" in SYSTEM_PROMPT
-    assert "configured concurrency limit queues excess work" in SYSTEM_PROMPT
-    assert "Workers inherit your restrictions and cannot approve actions" in SYSTEM_PROMPT
+    assert "Independent calls run concurrently up to the configured limit" in SYSTEM_PROMPT
+    assert "Workers inherit restrictions and cannot approve actions" in SYSTEM_PROMPT
     assert "never delegate to evade an approval" in SYSTEM_PROMPT
 
 

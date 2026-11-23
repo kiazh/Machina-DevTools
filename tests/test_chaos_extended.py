@@ -494,6 +494,9 @@ class TestEmbedderOutage:
 class TestOrchestratorTimeout:
     """Delegation exceeds timeout — cancelled cleanly, no leaked task."""
 
+    @pytest.mark.skip(
+        reason="2.0 removed implicit delegation deadlines; cancellation is covered by test_review_delegation"
+    )
     async def test_delegate_timeout_returns_error_result(self):
         """When agent.run() exceeds timeout, delegate should return error result."""
         orchestrator = Orchestrator(agent_factory=MagicMock())
@@ -572,6 +575,8 @@ class TestOrchestratorTimeout:
             patch("machina.core.orchestrator.session_manager") as mock_session_mgr,
             patch("machina.core.orchestrator.context_manager") as mock_ctx_mgr,
             patch("machina.core.orchestrator.db") as mock_db,
+            patch("machina.core.turns.try_begin_turn", AsyncMock(return_value="claim")),
+            patch("machina.core.turns.end_turn", AsyncMock(return_value=True)),
         ):
             mock_registry.get = AsyncMock(return_value=mock_agent_def)
             mock_session = MagicMock()
@@ -593,12 +598,13 @@ class TestOrchestratorTimeout:
                     "test-agent", "do something", parent_session_id=uuid.uuid4()
                 )
 
-            # Verify _record_end was called with status='cancelled'
+            # 2.0 records a "running" status before the child starts, so the
+            # terminal update is the last UPDATE, not the only one.
             update_calls = [
                 c for c in mock_db.execute.call_args_list if "UPDATE agent_messages" in str(c)
             ]
-            assert len(update_calls) == 1
-            assert "cancelled" in str(update_calls[0])
+            assert update_calls
+            assert "cancelled" in str(update_calls[-1])
 
 
 # ===========================================================================

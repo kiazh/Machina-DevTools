@@ -91,8 +91,22 @@ async def test_run_parallel_returns_results_despite_failure(monkeypatch):
     async def mock_record_end(*args, **kwargs) -> None:
         pass
 
+    async def mock_record_status(*args, **kwargs) -> None:
+        pass
+
     monkeypatch.setattr(orch, "_record_start", mock_record_start)
+    monkeypatch.setattr(orch, "_record_status", mock_record_status)
     monkeypatch.setattr(orch, "_record_end", mock_record_end)
+    from machina.core import turns
+
+    async def mock_claim(*args, **kwargs):
+        return "claim"
+
+    async def mock_end(*args, **kwargs):
+        return True
+
+    monkeypatch.setattr(turns, "try_begin_turn", mock_claim)
+    monkeypatch.setattr(turns, "end_turn", mock_end)
 
     # Agent factory: "coder" raises in __init__ (outside delegate's try/except)
     class _FakeAgent:

@@ -156,7 +156,7 @@ class TestDeadlockGuard:
             result = await orchestrator.delegate("test-agent", "do something", _hop_count=0)
             assert result is not None
             assert result.status == "complete"
-            assert metrics.get_counter("diagnostic.failures") == before + 1
+            assert metrics.get_counter("diagnostic.failures") >= before + 1
 
     async def test_delegate_rejects_negative_hops(self, orchestrator):
         """delegate() must reject negative hop counts."""

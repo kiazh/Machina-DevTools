@@ -37,7 +37,7 @@ def _run_import_with_blocked_probe(tmp_path, monkeypatch, mid_flight, *, force=F
     started = threading.Event()
     release = threading.Event()
 
-    def fake_probe():
+    def fake_probe(**_kwargs):
         started.set()
         assert release.wait(timeout=15), "probe was never released"
         return STALE_TOKEN

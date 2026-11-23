@@ -236,6 +236,9 @@ async def test_runtime_soul_migration_keeps_legacy_agent(db_pool):
         await database.execute(
             "INSERT INTO agents(name, system_prompt) VALUES ('legacy-soul', 'Keep my identity')"
         )
+        await database.execute(
+            "UPDATE schema_meta SET value = '0' WHERE key = 'runtime_schema_version'"
+        )
         await database.initialize_runtime_schema()
         await database.initialize_runtime_schema()
         row = await database.fetchrow(

@@ -34,7 +34,7 @@ def fake_home(monkeypatch, tmp_path):
     ):
         monkeypatch.delenv(env, raising=False)
     monkeypatch.setattr(config, "machina_home", "", raising=False)
-    monkeypatch.setattr(copilot_auth, "_probe_gh_token", lambda: None)
+    monkeypatch.setattr(copilot_auth, "_probe_gh_token", lambda **_: None)
     return home
 
 
@@ -50,7 +50,7 @@ def test_copilot_status_signed_out_exits_1(fake_home):
 
 
 def test_copilot_import_status_logout_roundtrip(fake_home, monkeypatch):
-    monkeypatch.setattr(copilot_auth, "_probe_gh_token", lambda: "gho_from_gh")
+    monkeypatch.setattr(copilot_auth, "_probe_gh_token", lambda **_: "gho_from_gh")
     monkeypatch.setattr(copilot_auth, "fetch_account", lambda token, **kwargs: "octocat")
     imported = runner.invoke(auth_cli.app, ["copilot", "login", "--import-gh"])
     assert imported.exit_code == 0, imported.output
@@ -176,7 +176,7 @@ def test_runtime_readiness_notes_reference_cli_sources(fake_home, monkeypatch):
     from machina.core import runtime
 
     # The gh CLI credential shows up as a "via gh CLI login" note.
-    monkeypatch.setattr(copilot_auth, "_probe_gh_token", lambda: "gho_gh")
+    monkeypatch.setattr(copilot_auth, "_probe_gh_token", lambda **_: "gho_gh")
     monkeypatch.setattr(config, "provider", "copilot", raising=False)
     report = runtime._detect_providers()
     assert report["chat_provider"] == "ready"

@@ -38,7 +38,7 @@ def local_turns(monkeypatch):
 
     held = set()
 
-    async def begin(session_id):
+    async def begin(session_id, **_kwargs):
         held.add(session_id)
         return "turn-token"
 

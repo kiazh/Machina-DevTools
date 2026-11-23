@@ -8,6 +8,7 @@ double-quoted values, so ``\\`` and ``"`` survive a write/read/write cycle.
 
 from __future__ import annotations
 
+import importlib
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -18,6 +19,7 @@ import pytest
 from typer.testing import CliRunner
 
 runner = CliRunner()
+chat_mod = importlib.import_module("machina.cli.chat")
 
 MODULE = "machina.cli"
 
@@ -67,8 +69,12 @@ def test_config_set_escapes_user_values_for_rich(monkeypatch: pytest.MonkeyPatch
 
 
 def _isolate_uninstall(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    import importlib
+
     import machina.cli as cli
     import machina.security.env_file as env_file_mod
+
+    maintenance = importlib.import_module("machina.cli.maintenance")
 
     app_root = tmp_path / "site-packages-shadow"
     (app_root / ".venv").mkdir(parents=True)
@@ -76,13 +82,13 @@ def _isolate_uninstall(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     fake_env.write_text("DATABASE_URL=postgres://x\n", encoding="utf-8")
     home = tmp_path / "home"
     home.mkdir()
-    monkeypatch.setattr(cli, "_uninstall_app_root", lambda: app_root)
+    monkeypatch.setattr(maintenance, "_uninstall_app_root", lambda: app_root)
     monkeypatch.setattr(env_file_mod, "find_env_file", lambda: fake_env)
     monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
-    monkeypatch.setattr(cli, "_docker_container_exists", lambda: False)
-    monkeypatch.setattr(cli, "_brew_postgres_present", lambda: False)
+    monkeypatch.setattr(maintenance, "_docker_container_exists", lambda: False)
+    monkeypatch.setattr(maintenance, "_brew_postgres_present", lambda: False)
     monkeypatch.setattr(
-        cli, "_remove_windows_user_path_entries", lambda targets: (False, "skipped")
+        maintenance, "_remove_windows_user_path_entries", lambda targets: (False, "skipped")
     )
     return app_root
 
@@ -124,7 +130,7 @@ def test_uninstall_keeps_checkout_prompt_for_real_checkouts(
 def _stub_db(monkeypatch: pytest.MonkeyPatch) -> None:
     import machina.cli as cli
 
-    monkeypatch.setattr(cli.db, "connect", AsyncMock())
+    monkeypatch.setattr(chat_mod.db, "connect", AsyncMock())
     monkeypatch.setattr(cli.db, "close", AsyncMock())
 
 
@@ -156,8 +162,11 @@ def test_memory_search_query_markup_renders_literally(monkeypatch: pytest.Monkey
 def test_chat_drains_background_tasks_before_db_close(monkeypatch: pytest.MonkeyPatch) -> None:
     """The CLI chat finally-block drains consolidation/review tasks before
     db.close(); the shutdown race died with asyncpg InterfaceError."""
+    import importlib
+
     import machina.cli as cli
 
+    chat_mod = importlib.import_module("machina.cli.chat")
     calls: list[str] = []
 
     class _FakeAgent:
@@ -169,14 +178,14 @@ def test_chat_drains_background_tasks_before_db_close(monkeypatch: pytest.Monkey
 
     fake_session = SimpleNamespace(id=uuid.uuid4(), provider="deepseek")
 
-    monkeypatch.setattr(cli.db, "connect", AsyncMock())
-    monkeypatch.setattr(cli.db, "initialize_runtime_schema", AsyncMock())
+    monkeypatch.setattr(chat_mod.db, "connect", AsyncMock())
+    monkeypatch.setattr(chat_mod.db, "initialize_runtime_schema", AsyncMock())
 
     async def fake_close():
         calls.append("db.close")
 
-    monkeypatch.setattr(cli.db, "close", fake_close)
-    monkeypatch.setattr(cli.session_manager, "create", AsyncMock(return_value=fake_session))
+    monkeypatch.setattr(chat_mod.db, "close", fake_close)
+    monkeypatch.setattr(chat_mod.session_manager, "create", AsyncMock(return_value=fake_session))
     monkeypatch.setattr(
         "machina.core.agent_factory.build_agent_for_session",
         AsyncMock(return_value=_FakeAgent()),
@@ -191,14 +200,17 @@ def test_chat_drains_background_tasks_before_db_close(monkeypatch: pytest.Monkey
         calls.append("drain")
         return 0
 
-    monkeypatch.setattr(cli, "drain_background_tasks", fake_drain)
+    monkeypatch.setattr(chat_mod, "drain_background_tasks", fake_drain)
 
     result = runner.invoke(cli.app, ["chat", "hello"])
 
     assert result.exit_code == 0, result.output
     # Drain first: consolidation needs the live provider AND the live pool.
-    assert calls == ["drain", "provider.close", "db.close"], (
-        "drain must complete before the provider and the pool close"
+    # 2.0's turn lifecycle owns provider close (joining optional work first),
+    # so the CLI-level contract is that drain still precedes the pool close.
+    assert "drain" in calls and "db.close" in calls
+    assert calls.index("drain") < calls.index("db.close"), (
+        "background drain must complete before the database pool closes"
     )
 
 
@@ -224,10 +236,10 @@ def test_chat_headless_passes_provider_model_overrides_to_factory(
 
     fake_session = SimpleNamespace(id=uuid.uuid4(), provider=None, model=None, agent_id="harness")
 
-    monkeypatch.setattr(cli.db, "connect", AsyncMock())
-    monkeypatch.setattr(cli.db, "initialize_runtime_schema", AsyncMock())
+    monkeypatch.setattr(chat_mod.db, "connect", AsyncMock())
+    monkeypatch.setattr(chat_mod.db, "initialize_runtime_schema", AsyncMock())
     monkeypatch.setattr(cli.db, "close", AsyncMock())
-    monkeypatch.setattr(cli.session_manager, "create", AsyncMock(return_value=fake_session))
+    monkeypatch.setattr(chat_mod.session_manager, "create", AsyncMock(return_value=fake_session))
     monkeypatch.setattr("machina.core.agent_factory.build_agent_for_session", fake_build)
     monkeypatch.setattr("machina.core.agent_factory.close_agent_provider", AsyncMock())
     monkeypatch.setattr(cli, "drain_background_tasks", AsyncMock(return_value=0))
@@ -501,7 +513,7 @@ def test_doctor_interop_section_is_read_only(monkeypatch: pytest.MonkeyPatch) ->
 
     monkeypatch.setattr(interop, "enable", _forbidden)
     monkeypatch.setattr(interop, "enable_detected", _forbidden)
-    monkeypatch.setattr(cli.db, "connect", AsyncMock())
+    monkeypatch.setattr(chat_mod.db, "connect", AsyncMock())
     monkeypatch.setattr(cli.db, "fetchval", AsyncMock(return_value="PostgreSQL 16.15"))
     monkeypatch.setattr(cli.db, "close", AsyncMock())
 

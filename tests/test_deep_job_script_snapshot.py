@@ -66,10 +66,13 @@ async def test_script_changed_during_approval_cannot_execute_unreviewed_content(
     )
     set_approval_handler(approve, principal="tui")
     try:
-        await JobRunner()._execute(job)
+        # The script changed after review, so 2.0 refuses dispatch and pauses
+        # for a fresh approval instead of running unreviewed content.
+        with pytest.raises(PermissionError, match="needs_approval"):
+            await JobRunner()._execute(job)
         assert not (tmp_path / "unreviewed.txt").exists()
-        assert (tmp_path / "approved.txt").read_text() == "reviewed"
-        assert outputs == ["approved output"]
+        assert not (tmp_path / "approved.txt").exists()
+        assert outputs == []
         record = await store.get_approval(approvals[0])
         assert record["status"] == "completed"
     finally:

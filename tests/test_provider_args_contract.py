@@ -29,7 +29,7 @@ def test_config_set_rejects_without_mutating_the_value():
     cfg = Config()
     with pytest.raises(ValueError, match="max_tokens must be in range 1..32768"):
         cfg.set("max_tokens", 65536)
-    assert cfg.max_tokens == 4096
+    assert cfg.max_tokens == 16384
 
 
 def test_config_load_keeps_the_default_for_an_unexecutable_value(tmp_path, caplog):
@@ -40,7 +40,7 @@ def test_config_load_keeps_the_default_for_an_unexecutable_value(tmp_path, caplo
     path.write_text("max_tokens: 65536\n", encoding="utf-8")
     with caplog.at_level(logging.WARNING, logger="machina.core.config"):
         loaded = Config.load(path)
-    assert loaded.get("max_tokens") == 4096
+    assert loaded.get("max_tokens") == 16384
     assert any("max_tokens" in record.getMessage() for record in caplog.records)
 
 

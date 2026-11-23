@@ -561,7 +561,7 @@ def test_loopback_and_reuse():
 def test_no_docker_needed_for_host():
     from tests.support.repo_paths import repo_path
 
-    with open(repo_path("FEATURE_LEDGER.md"), encoding="utf-8") as f:
+    with open(repo_path("internal/FEATURE_LEDGER.md"), encoding="utf-8") as f:
         src = f.read()
     assert "No Docker needed" in src
 
@@ -1093,7 +1093,7 @@ def test_launcher_propagates_mode_to_gateway(monkeypatch, tmp_path):
     """LP-13: CLI --mode reaches the Node child (previously dropped)."""
     import types
 
-    from machina.cli import launcher
+    from machina import ui_launcher as launcher
 
     seen = {}
 
@@ -1122,7 +1122,9 @@ def test_launcher_propagates_mode_to_gateway(monkeypatch, tmp_path):
         stdout=types.SimpleNamespace(isatty=lambda: True),
         executable="C:\\py\\python.exe",
     )
-    monkeypatch.setattr(launcher, "sys", fake_sys)
+    monkeypatch.setattr("sys.stdin", fake_sys.stdin)
+    monkeypatch.setattr("sys.stdout", fake_sys.stdout)
+    monkeypatch.setattr("sys.executable", fake_sys.executable)
     monkeypatch.setattr(launcher, "_node_version", lambda node: (24, 15))
     monkeypatch.setattr(_sp, "Popen", _FakeChild)
     from machina.db import lifecycle

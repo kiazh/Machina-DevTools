@@ -35,6 +35,8 @@ TUI_ALLOWLIST = {
     "clear": "terminal housekeeping: clears the screen and starts a new chat",
     "exit": "terminal housekeeping: quits the UI",
     "output": "read-only viewer for tool output already retained in the transcript",
+    "activity": "Status-tab activity view for live agents/jobs/tools; discoverable in /help",
+    "host": "remote-host setup and lifecycle; documented in docs/REMOTE_HOST.md",
 }
 
 _SNAKE = re.compile(r"\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b")

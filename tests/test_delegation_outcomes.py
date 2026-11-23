@@ -37,6 +37,11 @@ def delegation(monkeypatch):
     )
     monkeypatch.setattr(module.session_manager, "create", AsyncMock(return_value=child))
     monkeypatch.setattr(
+        module.session_manager,
+        "get_fresh",
+        AsyncMock(return_value=Session(id=uuid4())),
+    )
+    monkeypatch.setattr(
         "machina.core.session_mode.resolve_effective_mode", AsyncMock(return_value="ask")
     )
     monkeypatch.setattr(module.context_manager, "add_chunk", AsyncMock())

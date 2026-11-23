@@ -17,6 +17,14 @@ from machina.core.models import AgentResponse, LLMResponse, Session, StreamEvent
 from machina.core.orchestrator import Orchestrator
 
 
+def _stub_claims(monkeypatch) -> None:
+    """2.0 children acquire a durable turn claim; tests do not need a DB."""
+    from machina.core import turns
+
+    monkeypatch.setattr(turns, "try_begin_turn", AsyncMock(return_value="test-claim"))
+    monkeypatch.setattr(turns, "end_turn", AsyncMock(return_value=True))
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("mode", ["ask", "sandbox"])
 @pytest.mark.parametrize("terminal_sandbox", ["disabled", "docker"])
@@ -50,8 +58,14 @@ async def test_child_uses_parent_mode_even_when_global_default_is_full(
     )
     monkeypatch.setattr(module.session_manager, "create", create)
     monkeypatch.setattr(
+        module.session_manager,
+        "get_fresh",
+        AsyncMock(return_value=Session(id=parent_id, execution_mode=mode)),
+    )
+    monkeypatch.setattr(
         "machina.core.session_mode.resolve_effective_mode", AsyncMock(return_value=mode)
     )
+    _stub_claims(monkeypatch)
     orch = Orchestrator(agent_factory=lambda _: Child())
     monkeypatch.setattr(orch, "_parent_context", AsyncMock(return_value=""))
     monkeypatch.setattr(orch, "_record_start", AsyncMock(return_value=uuid4()))
@@ -89,6 +103,7 @@ async def test_orchestrator_returns_child_pause_and_stops_sequential_work(monkey
     monkeypatch.setattr(
         module.session_manager, "create", AsyncMock(return_value=Session(id=uuid4()))
     )
+    _stub_claims(monkeypatch)
     orch = Orchestrator(agent_factory=lambda _: Child())
     monkeypatch.setattr(orch, "_record_start", AsyncMock(return_value=uuid4()))
     monkeypatch.setattr(orch, "_record_status", AsyncMock())
@@ -615,6 +630,11 @@ async def test_runtime_migration_backfills_historical_delegation_charges(db_pool
     await db_pool.execute(
         "UPDATE sessions SET ancestor_session_ids = '{}', ancestor_agent_ids = '{}' WHERE id = $1",
         child.id,
+    )
+    # Simulate an upgrade from a pre-backfill schema; initialize_runtime_schema
+    # is intentionally a no-op once the current version marker is present.
+    await db_pool.execute(
+        "UPDATE schema_meta SET value = '0' WHERE key = 'runtime_schema_version'"
     )
     await db_pool.initialize_runtime_schema()
     summary = await UsageStore().summary(root.id, root.agent_id)

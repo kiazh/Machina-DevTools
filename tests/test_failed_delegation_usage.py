@@ -19,6 +19,7 @@ from machina.core.orchestrator import Orchestrator
 @pytest.fixture
 def delegation(monkeypatch):
     from machina.core import orchestrator as module
+    from machina.core import turns
     from machina.core.usage import usage_store
 
     child = Session(id=uuid4(), agent_id="coder")
@@ -46,10 +47,13 @@ def delegation(monkeypatch):
     )
     monkeypatch.setattr(module.context_manager, "add_chunk", AsyncMock())
     monkeypatch.setattr(usage_store, "summary", summary)
+    monkeypatch.setattr(turns, "try_begin_turn", AsyncMock(return_value="test-claim"))
+    monkeypatch.setattr(turns, "end_turn", AsyncMock(return_value=True))
 
     def build(agent):
         orch = Orchestrator(agent_factory=lambda _: agent)
         monkeypatch.setattr(orch, "_record_start", AsyncMock(return_value=uuid4()))
+        monkeypatch.setattr(orch, "_record_status", AsyncMock())
         monkeypatch.setattr(orch, "_record_end", record_end)
         monkeypatch.setattr(orch, "_parent_context", AsyncMock(return_value=""))
         return orch
@@ -70,10 +74,10 @@ def spending_child(delegation, outcome):
     return Child()
 
 
-@pytest.mark.parametrize("outcome", ["raise", "timeout"])
-async def test_failed_child_returns_its_charged_usage(delegation, monkeypatch, outcome):
-    orch = delegation.build(spending_child(delegation, outcome))
-    monkeypatch.setattr(orch, "DELEGATION_TIMEOUT_SECONDS", 0.01)
+async def test_failed_child_returns_its_charged_usage(delegation):
+    # 2.0 removed the implicit delegation deadline; cancellation coverage is
+    # in test_review_delegation. A raising child still settles its spend.
+    orch = delegation.build(spending_child(delegation, "raise"))
 
     result = await orch.delegate("coder", "work")
 
@@ -148,6 +152,9 @@ async def test_unavailable_production_accounting_never_reports_zero(
     assert "accounting unavailable" in row["response"]
 
 
+@pytest.mark.skip(
+    reason="2.0 returns a running receipt for long delegates instead of a timed-out accounting receipt"
+)
 async def test_tool_timeout_returns_accounting_receipt(delegation, monkeypatch):
     from machina.core import orchestrator as module
     from machina.tools.agents import DelegationToolResult, delegate
@@ -162,11 +169,7 @@ async def test_tool_timeout_returns_accounting_receipt(delegation, monkeypatch):
         return await original_wait_for(awaitable, 0.001 if timeout == 60 else timeout)
 
     monkeypatch.setattr(asyncio, "wait_for", accelerated_outer_timeout)
-    token = module.delegation_deadline.set(asyncio.get_running_loop().time() + 0.02)
-    try:
-        receipt = await delegate("coder", "work")
-    finally:
-        module.delegation_deadline.reset(token)
+    receipt = await delegate("coder", "work")
 
     assert isinstance(receipt, DelegationToolResult)
     assert receipt.tokens_used == 13
@@ -203,7 +206,7 @@ async def test_parent_cancellation_drains_child_and_records_spend(delegation):
 
 
 @pytest.mark.parametrize("streaming", [False, True])
-@pytest.mark.parametrize("outcome", ["raise", "timeout", "ledger_unavailable"])
+@pytest.mark.parametrize("outcome", ["raise", "ledger_unavailable"])
 async def test_failed_child_spend_is_accounted_without_implicit_turn_cutoff(
     delegation, monkeypatch, streaming, outcome
 ):
@@ -215,8 +218,8 @@ async def test_failed_child_spend_is_accounted_without_implicit_turn_cutoff(
     parent = Session(id=uuid4())
     agent = ReActAgent(provider=SimpleNamespace(model="fake"), allowed_tools=["delegate"])
     orch = delegation.build(spending_child(delegation, outcome))
-    monkeypatch.setattr(orch, "DELEGATION_TIMEOUT_SECONDS", 0.01)
     monkeypatch.setattr(module, "orchestrator", orch)
+    monkeypatch.setattr(module.session_manager, "get_fresh", AsyncMock(return_value=parent))
     monkeypatch.setattr("machina.tools.agents.db.fetchval", AsyncMock(return_value="harness"))
     monkeypatch.setattr(agent, "_prepare_context", AsyncMock(return_value=(parent, [])))
     monkeypatch.setattr(agent, "_flush_pending_chunks", AsyncMock())
@@ -269,32 +272,22 @@ async def test_failed_child_spend_is_accounted_without_implicit_turn_cutoff(
 
     monkeypatch.setattr(agent, "_call_llm_with_retry", complete)
     monkeypatch.setattr(agent, "_stream_llm_with_retry", stream)
-    # Only the timeout outcome needs a compressed deadline; a raising or
-    # ledger-failing child settles without the clock. A 20 ms window can expire
-    # before the child's first step under load (pre-existing flake: the fixture
-    # charge is never set, so the recorded spend is 0); 0.25 s keeps the timeout
-    # path fast with a wide margin for child startup.
-    deadline_after = 0.25 if outcome == "timeout" else 120.0
-    token = module.delegation_deadline.set(asyncio.get_running_loop().time() + deadline_after)
-    try:
-        expectation = (
-            pytest.raises(DatabaseError, match="delegation usage accounting unavailable")
-            if outcome == "ledger_unavailable"
-            else nullcontext()
-        )
-        with expectation:
-            if streaming:
-                events = [
-                    event
-                    async for event in ReActAgent.run_stream.__wrapped__(
-                        agent, parent.id, "work", False
-                    )
-                ]
-                response = events[-1].response
-            else:
-                response = await ReActAgent.run.__wrapped__(agent, parent.id, "work", False)
-    finally:
-        module.delegation_deadline.reset(token)
+    expectation = (
+        pytest.raises(DatabaseError, match="delegation usage accounting unavailable")
+        if outcome == "ledger_unavailable"
+        else nullcontext()
+    )
+    with expectation:
+        if streaming:
+            events = [
+                event
+                async for event in ReActAgent.run_stream.__wrapped__(
+                    agent, parent.id, "work", False
+                )
+            ]
+            response = events[-1].response
+        else:
+            response = await ReActAgent.run.__wrapped__(agent, parent.id, "work", False)
 
     if outcome == "ledger_unavailable":
         assert len(calls) == 1
@@ -356,11 +349,11 @@ async def test_ledger_failure_closes_real_row_with_unknown_tokens(monkeypatch, d
     monkeypatch.setattr(
         module.agent_registry, "get", AsyncMock(return_value=AgentDef(name="coder"))
     )
-    monkeypatch.setattr(
-        module.session_manager,
-        "create",
-        AsyncMock(return_value=Session(id=uuid4(), agent_id="coder")),
-    )
+    monkeypatch.setattr("machina.core.session.db", db_pool)
+    child = await module.session_manager.create(agent_id="coder")
+    monkeypatch.setattr(module.session_manager, "create", AsyncMock(return_value=child))
+    monkeypatch.setattr("machina.core.turns.try_begin_turn", AsyncMock(return_value="claim"))
+    monkeypatch.setattr("machina.core.turns.end_turn", AsyncMock(return_value=True))
     monkeypatch.setattr(
         "machina.core.session_mode.resolve_effective_mode", AsyncMock(return_value="ask")
     )

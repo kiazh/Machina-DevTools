@@ -45,6 +45,7 @@ class _FailedOutcomeAgent(_ExplodingAgent):
 @pytest.fixture
 def _delegate_env(monkeypatch):
     from machina.core import orchestrator as module
+    from machina.core import turns
 
     child = Session(id=uuid.uuid4(), agent_id="coder")
     parent = SimpleNamespace(id=uuid.uuid4(), agent_id="coder")
@@ -58,6 +59,8 @@ def _delegate_env(monkeypatch):
         "machina.core.session_mode.resolve_effective_mode", AsyncMock(return_value="ask")
     )
     monkeypatch.setattr(module.context_manager, "add_chunk", AsyncMock())
+    monkeypatch.setattr(turns, "try_begin_turn", AsyncMock(return_value="test-claim"))
+    monkeypatch.setattr(turns, "end_turn", AsyncMock(return_value=True))
     return module, child, parent
 
 
@@ -73,6 +76,7 @@ async def test_delegate_error_redacts_persisted_and_returned(monkeypatch, _deleg
 
     monkeypatch.setattr(orch, "_default_agent", AsyncMock(return_value=_ExplodingAgent()))
     monkeypatch.setattr(orch, "_record_start", AsyncMock(return_value=uuid.uuid4()))
+    monkeypatch.setattr(orch, "_record_status", AsyncMock())
     monkeypatch.setattr(orch, "_record_end", fake_record_end)
     monkeypatch.setattr(orch, "_charged_child_tokens", AsyncMock(return_value=0))
     monkeypatch.setattr(orch, "_parent_context", AsyncMock(return_value=""))
@@ -107,6 +111,7 @@ async def test_typed_child_failure_redacts_parent_chunk_and_result(monkeypatch, 
 
     monkeypatch.setattr(orch, "_default_agent", AsyncMock(return_value=_FailedOutcomeAgent()))
     monkeypatch.setattr(orch, "_record_start", AsyncMock(return_value=uuid.uuid4()))
+    monkeypatch.setattr(orch, "_record_status", AsyncMock())
     monkeypatch.setattr(orch, "_record_end", fake_record_end)
     monkeypatch.setattr(orch, "_charged_child_tokens", AsyncMock(return_value=0))
     monkeypatch.setattr(orch, "_parent_context", AsyncMock(return_value=""))
@@ -141,6 +146,7 @@ async def test_history_redacts_legacy_rows(monkeypatch, _delegate_env):
                     "tokens_used": 0,
                     "created_at": None,
                     "completed_at": None,
+                    "child_session_id": None,
                 }
             ]
 

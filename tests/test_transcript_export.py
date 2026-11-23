@@ -43,6 +43,9 @@ async def test_export_preserves_saved_tool_result_and_marks_legacy_preview(monke
     monkeypatch.setattr(
         context_manager, "get_transcript_chunks", AsyncMock(return_value=chunks), raising=False
     )
+    from machina.core.session import session_manager
+
+    monkeypatch.setattr(session_manager, "list_tree", AsyncMock(return_value=[session]))
     markdown = await services.export_markdown(session)
     assert "last verdict" in markdown
     assert secret not in markdown
@@ -77,6 +80,7 @@ async def test_export_and_resume_include_archived_originals_after_restart(db_poo
     import machina.core.context as context_module
 
     monkeypatch.setattr(context_module, "db", db_pool)
+    monkeypatch.setattr("machina.core.session.db", db_pool)
     context = ContextManager()
     session_id = await db_pool.fetchval(
         "INSERT INTO sessions(agent_id, title) VALUES('harness', 'Transcript') RETURNING id"
@@ -125,7 +129,7 @@ async def test_export_and_resume_include_archived_originals_after_restart(db_poo
             assert markdown.index("original before compaction") < markdown.index(
                 "reply after resume"
             )
-            monkeypatch.setattr("machina.gateway.server.context_manager", ContextManager())
+            monkeypatch.setattr("machina.core.context.context_manager", ContextManager())
             gw = Gateway(lambda frame: None)
             gw._db_ready = True
             monkeypatch.setattr(gw, "get_session", AsyncMock(return_value=session))
