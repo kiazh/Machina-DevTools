@@ -208,3 +208,54 @@ async def test_rest_retire_execution_failure_is_recorded(monkeypatch):
         release.set()
         task.cancel()
         await asyncio.gather(task, return_exceptions=True)
+
+
+@pytest.mark.parametrize("deadline, should_timeout", [(0, False), (0.01, True)])
+async def test_three_parallel_workers_follow_configured_parent_deadline(
+    monkeypatch, deadline, should_timeout
+):
+    """Unlimited turns wait for every worker; explicit limits cancel the group."""
+    from machina.core.config import config
+
+    frames, started, completed, cancelled = [], [], [], []
+    all_started, release = asyncio.Event(), asyncio.Event()
+    monkeypatch.setattr(config, "turn_timeout", deadline)
+    gateway = server.Gateway(frames.append, owns_db=False, inherit_env_token=False)
+
+    async def worker(index):
+        started.append(index)
+        if len(started) == 3:
+            all_started.set()
+        try:
+            await release.wait()
+            completed.append(index)
+        except asyncio.CancelledError:
+            cancelled.append(index)
+            raise
+
+    async def fake_turn(*args, **kwargs):
+        await asyncio.gather(*(worker(index) for index in range(3)))
+
+    monkeypatch.setattr(gateway, "_run_turn", fake_turn)
+    task = asyncio.create_task(
+        gateway._run_turn_with_timeout(uuid.uuid4(), "research", "go")
+    )
+    try:
+        await asyncio.wait_for(all_started.wait(), timeout=1)
+        await asyncio.sleep(0.3)  # exceeds the explicit test deadline
+        if should_timeout:
+            await asyncio.wait_for(task, timeout=1)
+            assert sorted(cancelled) == [0, 1, 2]
+            assert any(
+                f.get("params", {}).get("message") == "turn timed out" for f in frames
+            )
+        else:
+            assert not task.done()
+            assert not frames
+            release.set()
+            await asyncio.wait_for(task, timeout=1)
+            assert sorted(completed) == [0, 1, 2]
+            assert not cancelled
+    finally:
+        release.set()
+        await asyncio.gather(task, return_exceptions=True)

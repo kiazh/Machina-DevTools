@@ -246,6 +246,39 @@ async def test_tool_result_bound_is_configurable():
     assert complete.payload["truncated"] is True
 
 
+@pytest.mark.parametrize(
+    "outcome,expected",
+    [
+        ("failed", True),
+        ("denied", True),
+        ("paused", False),
+        ("completed", False),
+        ("queued", False),
+        ("running", False),
+        ("interrupted", True),
+    ],
+)
+async def test_typed_worker_outcomes_set_failure_flag(outcome, expected):
+    agent = _scripted_agent(
+        [
+            StreamEvent(type="tool_call", tool_name="delegate", tool_call_id="child"),
+            StreamEvent(
+                type="tool_result",
+                tool_name="delegate",
+                tool_call_id="child",
+                tool_result="[researcher] worker report",
+                tool_outcome=outcome,
+            ),
+        ]
+    )
+    engine = TurnEngine(_spec(), boundary="test.turn_engine")
+    engine.attach(agent)
+    events = await _drain(engine)
+    result = next(event.payload for event in events if event.kind == "tool_complete")
+    assert result["outcome"] == outcome
+    assert result["isError"] is expected
+
+
 # ─── relay: token accounting and pauses ─────────────────────────────────────
 
 

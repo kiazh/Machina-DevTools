@@ -55,6 +55,7 @@ async def test_child_uses_parent_mode_even_when_global_default_is_full(
     orch = Orchestrator(agent_factory=lambda _: Child())
     monkeypatch.setattr(orch, "_parent_context", AsyncMock(return_value=""))
     monkeypatch.setattr(orch, "_record_start", AsyncMock(return_value=uuid4()))
+    monkeypatch.setattr(orch, "_record_status", AsyncMock())
     monkeypatch.setattr(orch, "_record_end", AsyncMock())
     monkeypatch.setattr(module.context_manager, "add_chunk", AsyncMock())
     result = await orch.delegate(
@@ -62,6 +63,7 @@ async def test_child_uses_parent_mode_even_when_global_default_is_full(
     )
     assert result.status == "complete"
     assert created["parent_session_id"] == parent_id
+    assert orch._record_start.await_args.kwargs["child_session_id"] == result.session_id
 
 
 @pytest.mark.asyncio
@@ -89,6 +91,7 @@ async def test_orchestrator_returns_child_pause_and_stops_sequential_work(monkey
     )
     orch = Orchestrator(agent_factory=lambda _: Child())
     monkeypatch.setattr(orch, "_record_start", AsyncMock(return_value=uuid4()))
+    monkeypatch.setattr(orch, "_record_status", AsyncMock())
     monkeypatch.setattr(orch, "_record_end", AsyncMock())
     results = await orch.run_sequential([("coder", "write"), ("coder", "publish")])
     assert len(results) == 1
@@ -192,7 +195,11 @@ async def test_child_pause_reaches_parent_without_another_provider_call(
         "delegate",
         AsyncMock(
             return_value=SimpleNamespace(
-                status="waiting_approval", response="waiting", tokens=7, needs_approval=[card]
+                status="waiting_approval",
+                response="waiting",
+                tokens=7,
+                needs_approval=[card],
+                session_id=uuid4(),
             )
         ),
     )
@@ -246,7 +253,7 @@ async def test_parent_accounts_child_spend_without_implicit_turn_cutoff(
         "delegate",
         AsyncMock(
             return_value=SimpleNamespace(
-                status="complete", response="done", tokens=7, needs_approval=[]
+                status="complete", response="done", tokens=7, needs_approval=[], session_id=uuid4()
             )
         ),
     )
@@ -294,6 +301,25 @@ async def test_estimated_provider_usage_keeps_reservation(monkeypatch):
     )
     assert execute.await_args.args[4] is None
     assert execute.await_args.args[5] is None
+
+
+@pytest.mark.db
+@pytest.mark.asyncio
+async def test_pending_delegation_history_identifies_child(db_pool, monkeypatch):
+    from machina.core import orchestrator as module
+    from machina.core.session import session_manager
+
+    monkeypatch.setattr("machina.core.session.db", db_pool)
+    monkeypatch.setattr(module, "db", db_pool)
+    parent = await session_manager.create(agent_id="harness")
+    child = await session_manager.create(agent_id="researcher", parent_session_id=parent.id)
+    orch = Orchestrator()
+    await orch._record_start(
+        parent.id, "harness", "researcher", "research", child_session_id=child.id
+    )
+    history = await orch.history(parent.id)
+    assert history[0]["status"] == "queued"
+    assert history[0]["childSessionId"] == str(child.id)
 
 
 @pytest.mark.db
@@ -396,6 +422,8 @@ async def test_rebuilt_child_retains_durable_delegation_restrictions(monkeypatch
     )
     session = SimpleNamespace(
         agent_id="coder",
+        parent_session_id=uuid4(),
+        is_fork=False,
         model="fake",
         provider="fake",
         delegation_authority={
@@ -462,6 +490,7 @@ async def test_full_child_inherits_only_live_parent_full_grant(monkeypatch, acti
     orch = Orchestrator(agent_factory=lambda _: Child())
     monkeypatch.setattr(orch, "_parent_context", AsyncMock(return_value=""))
     monkeypatch.setattr(orch, "_record_start", AsyncMock(return_value=uuid4()))
+    monkeypatch.setattr(orch, "_record_status", AsyncMock())
     monkeypatch.setattr(orch, "_record_end", AsyncMock())
     result = await orch.delegate(
         "coder", "read", parent_session_id=parent.id, from_agent=parent.agent_id
@@ -559,6 +588,7 @@ async def test_child_full_authority_stops_when_parent_grant_is_revoked(monkeypat
     orch = Orchestrator(agent_factory=lambda _: Child())
     monkeypatch.setattr(orch, "_parent_context", AsyncMock(return_value=""))
     monkeypatch.setattr(orch, "_record_start", AsyncMock(return_value=uuid4()))
+    monkeypatch.setattr(orch, "_record_status", AsyncMock())
     monkeypatch.setattr(orch, "_record_end", AsyncMock())
     result = await orch.delegate(
         "coder", "read", parent_session_id=parent.id, from_agent=parent.agent_id
@@ -657,7 +687,7 @@ async def test_delegate_parent_authority_failure_records_and_continues(monkeypat
 
     monkeypatch.setattr("machina.core.agent_factory.parent_authority_var", BoomAuthority())
 
-    result = SimpleNamespace(status="ok", response="child result", tokens=1)
+    result = SimpleNamespace(status="ok", response="child result", tokens=1, session_id=uuid4())
     monkeypatch.setattr(
         orchestrator_module.orchestrator, "delegate", AsyncMock(return_value=result)
     )

@@ -64,6 +64,30 @@ async def test_orchestrator_delegate_does_not_double_count(monkeypatch):
 @needs_db
 @pytest.mark.usefixtures("connected_db")
 @pytest.mark.asyncio
+async def test_delegate_accounts_for_usage_after_background_cleanup(monkeypatch):
+    from machina.core import orchestrator as module
+
+    cleaned = False
+
+    async def cleanup(agent):
+        nonlocal cleaned
+        cleaned = True
+
+    async def charged(session_id, agent_name, known_tokens=0):
+        assert cleaned
+        return 99
+
+    monkeypatch.setattr(module, "join_agent_background_tasks", cleanup)
+    orch = module.Orchestrator(agent_factory=FakeAgent)
+    monkeypatch.setattr(orch, "_charged_child_tokens", charged)
+    result = await orch.delegate("researcher", "research", parent_session_id=await _parent_session())
+
+    assert result.tokens == 99
+
+
+@needs_db
+@pytest.mark.usefixtures("connected_db")
+@pytest.mark.asyncio
 async def test_orchestrator_error_does_not_make_phantom_reservation(monkeypatch):
     """A failed delegate does not charge an extra wrapper request."""
     from machina.core.orchestrator import Orchestrator
