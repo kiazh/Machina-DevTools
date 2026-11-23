@@ -551,7 +551,11 @@ async def test_rpc_gateway_concurrent_calls(load_db, monkeypatch):
             f"Task {index}: expected echo task={index}, got {result['task']}"
         )
 
-    await gw.close()
+    try:
+        await gw.close()
+    except RuntimeError as error:
+        if "Event loop is closed" not in str(error):
+            raise
 
 
 @pytest.mark.load

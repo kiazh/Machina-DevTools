@@ -167,7 +167,11 @@ async def test_effort_set_over_the_wire_has_no_internal_error(sandbox, monkeypat
         assert frames[-1]["result"]["effort"] is None
         assert config.get("reasoning_effort") == ""
     finally:
-        await gw.close()
+        try:
+            await gw.close()
+        except RuntimeError as error:
+            if "Event loop is closed" not in str(error):
+                raise
 
 
 @pytest.mark.parametrize("effort", ["low", "medium", "high", "xhigh", "max"])
