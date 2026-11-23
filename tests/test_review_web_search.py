@@ -45,7 +45,10 @@ async def test_duckduckgo_redirect_result_can_be_extracted(monkeypatch):
 
     monkeypatch.setattr(fetch, "pinned_fetch", pinned)
     content = await builtins.web_extract(source_url)
-    assert content == "Python language reference"
+    assert content.startswith("Python language reference")
+    # 2.0 appends an explicit sparse-page fetch note instead of silently
+    # presenting short content as complete.
+    assert "[Fetch note:" in content
     assert seen == ["https://docs.python.org/3/"]
 
 

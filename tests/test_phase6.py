@@ -113,7 +113,7 @@ def test_mounted_secret_and_vault_lookup(monkeypatch, tmp_path):
                 raise_for_status=lambda: None, json=lambda: {"data": {"data": {name: "vault-key"}}}
             )
 
-    monkeypatch.setattr(secrets.httpx, "Client", Client)
+    monkeypatch.setattr("httpx.Client", Client)
     assert get_secret(name) == "vault-key"
 
 

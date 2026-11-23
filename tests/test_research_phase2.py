@@ -315,7 +315,9 @@ async def test_labeled_identity_sequence_evaluation_cleans_up(db_pool, monkeypat
 
     monkeypatch.setattr("machina.research.identity_eval.db", db_pool)
     monkeypatch.setattr("machina.memory.identity.db", db_pool)
-    dataset = Path(__file__).resolve().parents[1] / "research/identity_scenarios_example.json"
+    from tests.support.repo_paths import repo_path
+
+    dataset = repo_path("internal/research/identity_scenarios_example.json")
     before = await db_pool.fetchval("SELECT COUNT(*) FROM agent_belief_history")
     result = await evaluate_identity_scenarios(load_identity_scenarios(dataset))
     assert result.transitions == 3

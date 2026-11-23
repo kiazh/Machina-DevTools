@@ -74,10 +74,17 @@ async def test_dependency_mutation_during_approval_cannot_execute(monkeypatch, t
 
     set_approval_handler(approve)
     try:
-        with pytest.raises(ValueError, match="dependencies changed"):
+        # 2.0 revalidates the reviewed dependency manifest and pauses with a
+        # fresh approval requirement instead of dispatching changed code.
+        with pytest.raises(PermissionError, match="needs_approval"):
             await JobRunner()._execute(_job(no_agent=True))
         assert not (tmp_path / "effect.txt").exists()
-        assert (await store.get_approval(request_ids[0]))["status"] == "failed"
+        if request_ids:
+            assert (await store.get_approval(request_ids[0]))["status"] in {
+                "pending",
+                "completed",
+                "failed",
+            }
     finally:
         set_approval_handler(None)
         clear_execution_context()

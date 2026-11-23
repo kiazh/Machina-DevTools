@@ -82,9 +82,11 @@ def test_schema_rejects_undeclared_fields_and_wrong_types():
 
 
 def test_typescript_types_generated_from_wire_schema():
+    from machina import __file__ as machina_file
     from machina.protocol import typescript_source
 
-    assert Path("ui/src/events.ts").read_text(encoding="utf-8") == typescript_source()
+    events = Path(machina_file).resolve().parents[1] / "packages/contracts/src/events.ts"
+    assert events.read_text(encoding="utf-8") == typescript_source()
     schema = json.loads(Path("machina/protocol/events.json").read_text(encoding="utf-8"))
     assert schema["version"] == 2
     for event in schema["events"]:

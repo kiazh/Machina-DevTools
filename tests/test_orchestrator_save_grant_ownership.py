@@ -155,7 +155,7 @@ async def test_save_grant_cancellation_propagates_and_archives_child(
     assert stub.archived == [stub.child.id]
 
 
-async def test_save_grant_success_path_unchanged(_stub_delegate_env):
+async def test_save_grant_success_path_unchanged(_stub_delegate_env, monkeypatch):
     """Green path: inherited grant is copied onto the child, delegation completes."""
     stub = _stub_delegate_env
     agent = _OwnedAgent()
@@ -166,8 +166,13 @@ async def test_save_grant_success_path_unchanged(_stub_delegate_env):
 
     orch._default_agent = fake_default_agent
     orch._record_start = AsyncMock(return_value=uuid.uuid4())
+    orch._record_status = AsyncMock()
     orch._record_end = AsyncMock()
     orch._parent_context = AsyncMock(return_value="")
+    from machina.core import turns
+
+    monkeypatch.setattr(turns, "try_begin_turn", AsyncMock(return_value="claim"))
+    monkeypatch.setattr(turns, "end_turn", AsyncMock(return_value=True))
 
     result = await orch.delegate(
         "coder", "work", parent_session_id=stub.parent.id, from_agent="parent"

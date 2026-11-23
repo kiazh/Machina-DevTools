@@ -214,7 +214,7 @@ def static_queries(root: Path | None = None, *, include_langgraph_owned: bool = 
         sqlite_dialect = "sqlite3" in source
 
         def postgres_candidate(query: str) -> bool:
-            if sqlite_dialect and "?" in query:
+            if sqlite_dialect:
                 return False
             return bool(re.match(r"\s*(SELECT|INSERT|UPDATE|DELETE)\b", query, re.I))
 

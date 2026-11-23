@@ -23,6 +23,7 @@ async def test_learning_reviews_have_a_process_wide_pending_limit(monkeypatch):
     response = AgentResponse(content="done", tool_calls=[], tokens_used=1, iterations=1)
     for _ in range(20):
         instance = ReActAgent.__new__(ReActAgent)
+        instance.delegated = False
         instance._learning_tasks = set()
         instance._review_learning = AsyncMock(side_effect=wait_review)
         instance._schedule_learning_review(uuid.uuid4(), "task", response)

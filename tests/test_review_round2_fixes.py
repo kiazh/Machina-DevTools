@@ -268,15 +268,18 @@ class TestSharedToolExecutionHelper:
     def test_run_stream_delegates_to_helper(self):
         from machina.core import agent as agent_mod
 
-        src = inspect.getsource(agent_mod.ReActAgent.run_stream)
+        # 2.0 owns the single loop in _react_loop; both entry points delegate.
+        src = inspect.getsource(agent_mod._react_loop)
         assert "_execute_tool_calls_stream" in src
+        for entry in (agent_mod.ReActAgent.run, agent_mod.ReActAgent.run_stream):
+            assert "_react_loop(" in inspect.getsource(entry)
 
     def test_run_stream_has_no_inline_registry_execute(self):
-        """The duplicated inline registry.execute loop is gone from run_stream."""
+        """The duplicated inline registry.execute loop is gone from the loop."""
         from machina.core import agent as agent_mod
 
-        src = inspect.getsource(agent_mod.ReActAgent.run_stream)
-        assert "registry.execute(" not in src, "run_stream must not inline tool execution"
+        src = inspect.getsource(agent_mod._react_loop)
+        assert "registry.execute(" not in src, "the loop must not inline tool execution"
 
     def test_helper_contains_registry_execute(self):
         from machina.core import agent as agent_mod

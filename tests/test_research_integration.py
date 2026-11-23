@@ -266,7 +266,7 @@ async def test_terminal_requires_explicit_sandbox(monkeypatch):
     saved = _cfg.get("execution_mode")
     _cfg.set("execution_mode", "sandbox")
     try:
-        with pytest.raises(ValidationError, match="Docker backend"):
+        with pytest.raises(ValidationError, match="sandbox execution requires terminal_sandbox"):
             await terminal("git status")
     finally:
         _cfg.set("execution_mode", saved)

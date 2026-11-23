@@ -124,7 +124,9 @@ async def test_denied_outcome_survives_turn_engine_relay():
     assert completes, f"no tool_complete relayed: {events}"
     payload = completes[0].payload
     assert payload["outcome"] == "denied", payload
-    assert payload["isError"] is False, payload
+    # A denial is a failed tool action for the model; the outcome remains a
+    # distinct machine-readable value.
+    assert payload["isError"] is True, payload
     assert "NOT executed" in payload["result"], payload
 
 

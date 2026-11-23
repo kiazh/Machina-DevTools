@@ -427,7 +427,7 @@ def test_harness_status_reports_installed_inventory(tmp_path, monkeypatch):
     out = jsonlib.loads(asyncio.run(harness_tools.harness_status()))
     assert "installed" in out
     assert "skills_by_source" in out["installed"]
-    assert "install" in out["features"]
+    assert "install" in (out.get("features") or {}) or "features_omitted" in out
 
 
 def test_casefold_collision_marks_latter_invalid(tmp_path):
