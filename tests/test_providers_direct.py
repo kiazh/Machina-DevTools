@@ -85,6 +85,7 @@ def test_providers_tuple_lists_every_family():
         "copilot",
         "grok",
         "kiro",
+        "hermes",
         "custom",
         "ollama",
     }
@@ -134,6 +135,12 @@ def test_direct_specs_have_accurate_base_urls_and_keys():
             # Local Kiro proxy; keyless by default and auto-routed.
             "http://127.0.0.1:8000/v1",
             "KIRO_API_KEY",
+            "auto",
+        ),
+        "hermes": (
+            # Local Hermes proxy; keyless loopback endpoint.
+            "http://127.0.0.1:8645/v1",
+            "HERMES_PROXY_API_KEY",
             "auto",
         ),
     }
@@ -214,6 +221,7 @@ def test_config_effort_vocabulary_cross_reference():
 
 
 def test_get_provider_builds_every_family(monkeypatch):
+    from machina.core import hermes_proxy
     from machina.core.provider import (
         PROVIDER_SPECS,
         AnthropicProvider,
@@ -222,6 +230,13 @@ def test_get_provider_builds_every_family(monkeypatch):
         OpenRouterProvider,
         get_provider,
     )
+
+    # The Hermes arm launches the user's local proxy; keep the registry walk
+    # hermetic and assert the dynamic endpoint comes from the detected proxy.
+    hermes_spec = PROVIDER_SPECS["hermes"]
+    monkeypatch.setattr(hermes_proxy, "start", lambda **_kwargs: (True, "ready"))
+    monkeypatch.setattr(hermes_proxy, "base_url", lambda: hermes_spec.base_url)
+    monkeypatch.setattr(hermes_proxy, "default_model", lambda: hermes_spec.default_model)
 
     for name, spec in PROVIDER_SPECS.items():
         monkeypatch.setenv(spec.api_key_env, f"test-{name}-key")

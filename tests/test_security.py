@@ -55,18 +55,36 @@ class TestLearnSSRFAndPathTraversal:
         assert not _is_safe_url("ftp://example.com/file")
         assert not _is_safe_url("gopher://example.com/")
 
-    def test_is_safe_url_allows_public_urls(self):
+    def test_is_safe_url_allows_public_urls(self, monkeypatch):
         """SSRF: public HTTP URLs should be allowed."""
-        from machina.tools.builtins import _is_safe_url
+        import machina.tools.builtins as builtins
 
-        assert _is_safe_url("https://example.com/page")
-        assert _is_safe_url("http://example.com/page")
+        # Resolve deterministically: a live DNS lookup made this test flaky
+        # on networks with a hanging/blocked resolver, which is not what the
+        # policy under test is about.
+        monkeypatch.setattr(
+            builtins,
+            "_getaddrinfo_timeout",
+            lambda host, timeout=3.0: [
+                (2, 1, 6, "", ("93.184.216.34", 0)),
+            ],
+        )
 
-    def test_is_safe_url_rejects_unresolvable(self):
+        assert builtins._is_safe_url("https://example.com/page")
+        assert builtins._is_safe_url("http://example.com/page")
+
+    def test_is_safe_url_rejects_unresolvable(self, monkeypatch):
         """SSRF: unresolvable hostnames should be rejected (fail-safe)."""
-        from machina.tools.builtins import _is_safe_url
+        import socket
 
-        assert not _is_safe_url("http://nonexistent.invalid.tld.example/")
+        import machina.tools.builtins as builtins
+
+        def _unresolvable(host, timeout=3.0):
+            raise socket.gaierror("name resolution failed")
+
+        monkeypatch.setattr(builtins, "_getaddrinfo_timeout", _unresolvable)
+
+        assert not builtins._is_safe_url("http://nonexistent.invalid.tld.example/")
 
     def test_is_safe_url_loopback_only_with_explicit_opt_in(self):
         """SearXNG policy: loopback URLs pass only when the caller opts in."""

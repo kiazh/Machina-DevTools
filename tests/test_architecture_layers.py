@@ -240,7 +240,25 @@ _CORE_IMPORT_CEILINGS = {
 # scope, so the deferred census grew with the feature surface. The ratchet
 # resumes from this measured baseline; future growth still fails unless
 # itemized here.
-DEFERRED_IMPORT_CAP = 1026
+# Hermes local-proxy wave (2026-11-23, reviewed): 1026 -> 1031 (+5), all
+# bindings are detection/launch paths that must stay out of module scope:
+#   +1 core/provider/factory.py — ``_hermes_provider`` binds the proxy manager
+#      so importing the factory never starts or probes a proxy.
+#   +1 gateway/features/providers_feature.py — ``_hermes_models`` binds the
+#      catalog manager only when the Hermes catalog is requested.
+#   +1 cli/providers.py — ``_hermes_models_cmd`` keeps the CLI import surface
+#      unchanged for every other provider.
+#   +2 core/runtime.py — ``_detect_hermes_proxy`` and the ``hermes`` readiness
+#      arm bind the manager inside the worker-thread probes.
+#   +2 core/routing/catalog.py — readiness/catalog read the proxy manager only
+#      when the Hermes provider is enumerated, keeping router imports light.
+#   +1 gateway/server.py — initialize schedules Hermes autostart as a
+#      background task, like the Kiro gateway, never on the request path.
+#   +4 gateway/features/auth_hermes.py — status/start/stop/setup bind the proxy
+#      manager per RPC so importing the feature registry stays light.
+#   +4 cli/auth.py — each Hermes subcommand binds the manager only when that
+#      command runs, preserving the lazy CLI import surface.
+DEFERRED_IMPORT_CAP = 1042
 
 
 def test_module_level_core_imports_only_shrink():
@@ -695,7 +713,12 @@ GOD_FILE_CEILINGS: tuple[tuple[str, int], ...] = (
     ("core/provider/__init__.py", 73),
     ("core/provider/_log.py", 10),
     ("core/provider/reasoning.py", 61),
-    ("core/provider/specs.py", 210),
+    # Hermes local-proxy wave (2026-11-23, reviewed): specs.py 210 -> 223
+    # (one ProviderSpec table row + its comment) and factory.py 167 -> 198
+    # (``_hermes_provider`` launch/detect wrapper, the optional local bearer
+    # key, and the dispatch arm). Both are flat table/dispatch growth, not
+    # new logic tiers.
+    ("core/provider/specs.py", 223),
     ("core/provider/audit.py", 247),
     ("core/provider/rate_limit.py", 120),
     ("core/provider/caches.py", 97),
@@ -707,7 +730,7 @@ GOD_FILE_CEILINGS: tuple[tuple[str, int], ...] = (
     ("core/provider/direct.py", 348),
     ("core/provider/anthropic.py", 581),
     ("core/provider/chatgpt.py", 684),
-    ("core/provider/factory.py", 167),
+    ("core/provider/factory.py", 198),
     ("core/provider/catalog.py", 553),
     ("core/provider/copilot.py", 443),
 )
