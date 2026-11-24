@@ -280,7 +280,11 @@ _CORE_IMPORT_CEILINGS = {
 # Harness live output (2026-11-24, reviewed): 1060 -> 1061 (+1):
 #   +1 core/harness_jobs.py ``_flush_progress`` — interop's output redactor
 #      is bound per streamed chunk so diagnostics never leak credentials.
-DEFERRED_IMPORT_CAP = 1061
+# Harness live-log filtering (2026-11-24, reviewed): 1061 -> 1062 (+1):
+#   +1 core/harness_jobs.py ``_is_transient_failure_line`` — interop's credit
+#      detector classifies retried-attempt provider prose so it is hidden from
+#      the chat stream while the run keeps reacting to it.
+DEFERRED_IMPORT_CAP = 1062
 
 
 def test_module_level_core_imports_only_shrink():

@@ -85,6 +85,14 @@ def test_run_interface_shape_is_frozen():
     assert all(isinstance(value, str) and value for value in descriptions.values())
 
 
+@pytest.fixture(autouse=True)
+def _clear_hermes_model_cache():
+    """The last-good model is process state; each test starts fresh."""
+    interop._LAST_GOOD_HERMES_MODEL.clear()
+    yield
+    interop._LAST_GOOD_HERMES_MODEL.clear()
+
+
 def _proc(output: str = "", rc: int = 0, stderr: str = "", timed_out: bool = False):
     return interop._ProcessResult(
         returncode=rc, output=output, stderr=stderr, timed_out=timed_out, truncated=False
@@ -123,7 +131,10 @@ def test_run_task_known_but_unsupported_platform_is_typed(monkeypatch):
 def test_run_task_builds_the_documented_headless_command_and_is_typed(monkeypatch):
     seen: dict = {}
 
-    def fake_run(argv, *, env=None, timeout=0.0, stdin_text=None, cwd=None, on_output=None):
+    def fake_run(
+        argv, *, env=None, timeout=0.0, stdin_text=None, cwd=None, on_output=None,
+        cancel_event=None,
+    ):
         seen["argv"] = list(argv)
         seen["timeout"] = timeout
         seen["env"] = env
@@ -149,7 +160,10 @@ def test_run_task_builds_the_documented_headless_command_and_is_typed(monkeypatc
 def test_run_task_codex_prompt_goes_on_stdin_and_never_touches_argv(monkeypatch):
     seen: dict = {}
 
-    def fake_run(argv, *, env=None, timeout=0.0, stdin_text=None, cwd=None, on_output=None):
+    def fake_run(
+        argv, *, env=None, timeout=0.0, stdin_text=None, cwd=None, on_output=None,
+        cancel_event=None,
+    ):
         seen["argv"] = list(argv)
         seen["stdin_text"] = stdin_text
         return _proc(output="delegated ok\n")
@@ -204,7 +218,14 @@ def test_run_task_not_installed_is_typed_and_never_spawns(monkeypatch):
 
     assert result.ok is False and result.exit_code is None
     assert "not installed" in result.stderr
-    assert result.command == ["hermes", "--oneshot=x"], "hermes prompt is an option value"
+    assert result.command == [
+        "hermes",
+        "chat",
+        "--query-file",
+        "-",
+        "--format",
+        "stream-json",
+    ], "hermes prompt travels on stdin"
 
 
 # H09: option-like prompts must reach the harness literally -------------------
@@ -216,9 +237,9 @@ def test_run_task_not_installed_is_typed_and_never_spawns(monkeypatch):
 #     is a flag (`--help` prints usage, exit 0).
 #   * codex-cli 0.162.1 — `exec [OPTIONS] [PROMPT]`; `-` reads the prompt
 #     from stdin; `--help` prints usage, exit 0.
-#   * Hermes v0.21.6 — argparse `-z/--oneshot PROMPT`; an option-like value
-#     after the split flag is refused (`expected one argument`, exit 2);
-#     `--oneshot=<value>` binds the value literally.
+#   * Hermes — `chat --query-file -` reads the prompt from stdin, so it is
+#     never an argv token; `--format stream-json` emits the progress events
+#     Machina renders (the stub answers with the same event shape).
 
 _STUB_HARNESS_SCRIPTS = {
     # Emulates: `opencode run [flags] [<message...>]` with `--` splitting.
@@ -259,22 +280,16 @@ if [ "$stdin_prompt" = 1 ]; then
 fi
 printf 'TASK: %s\\n' "$prompt"
 """,
-    # Emulates: argparse `-z/--oneshot PROMPT` binding rules.
+    # Emulates: `hermes chat --query-file - --format stream-json`.
     "hermes": """#!/bin/sh
-for a in "$@"; do printf 'ARGV: %s\\n' "$a"; done
-for a in "$@"; do
-  case "$a" in
-    --oneshot=*) printf 'TASK: %s\\n' "${a#--oneshot=}"; exit 0 ;;
-  esac
-done
-if [ "$1" = "-z" ] || [ "$1" = "--oneshot" ]; then
-  case "${2:-}" in
-    ""|-*) printf 'usage: hermes: error: argument -z/--oneshot: expected one argument\\n' >&2; exit 2 ;;
-    *) printf 'TASK: %s\\n' "$2"; exit 0 ;;
-  esac
-fi
-printf 'no oneshot flag\\n' >&2
-exit 2
+for a in "$@"; do printf 'ARGV: %s\\n' "$a" >&2; done
+IFS= read -r prompt
+printf '{"type": "system", "subtype": "init", "model": "stub-model"}\\n'
+printf '{"type": "tool_use", "name": "terminal", "input": {"command": "echo hi"}}\\n'
+printf '{"type": "tool_result", "name": "terminal", "output": "hi", "exit_code": 0}\\n'
+printf '{"type": "text", "text": "TASK: %s"}\\n' "$prompt"
+printf '{"type": "result", "exit_code": 0, "text": "TASK: %s"}\\n' "$prompt"
+exit 0
 """,
 }
 
@@ -322,12 +337,50 @@ def test_run_task_delivers_option_like_prompts_literally(monkeypatch, tmp_path):
     ]
 
     hermes = interop.run_task("hermes", "--help", timeout=10.0)
-    assert hermes.command == [stub["hermes"], "--oneshot=--help"]
-    assert hermes.ok and hermes.exit_code == 0
-    assert hermes.stdout.splitlines() == [
-        "ARGV: --oneshot=--help",
-        "TASK: --help",
+    assert hermes.command == [
+        stub["hermes"],
+        "chat",
+        "--query-file",
+        "-",
+        "--format",
+        "stream-json",
     ]
+    assert hermes.ok and hermes.exit_code == 0
+    assert hermes.stdout == "TASK: --help", "the stdin prompt is never parsed as a flag"
+
+
+def test_run_task_hermes_renders_stream_json_progress(monkeypatch):
+    """Hermes ``--format stream-json`` events become readable live lines."""
+    events = [
+        '{"type": "system", "subtype": "init", "model": "stub-model"}',
+        '{"type": "tool_use", "name": "terminal", "input": {"command": "echo hi"}}',
+        '{"type": "tool_result", "name": "terminal", "output": "hi", "exit_code": 0}',
+        '{"type": "text", "text": "done"}',
+        '{"type": "result", "exit_code": 0, "text": "done"}',
+    ]
+    seen: list[str] = []
+
+    def fake_run(
+        argv, *, env=None, timeout=0.0, stdin_text=None, cwd=None, on_output=None,
+        cancel_event=None,
+    ):
+        if on_output is not None:
+            for event in events:
+                on_output("stdout", event + "\n")
+        return _proc(output="\n".join(events) + "\n")
+
+    monkeypatch.setattr(interop, "_which", lambda spec: f"/fake/bin/{spec.key}")
+    monkeypatch.setattr(interop, "_run", fake_run)
+
+    result = interop.run_task(
+        "hermes", "do it", on_output=lambda source, text: seen.append(text)
+    )
+
+    assert result.ok and result.stdout == "done", "raw JSON must never be the answer"
+    assert any("model: stub-model" in text for text in seen)
+    assert any("→ terminal: echo hi" in text for text in seen)
+    assert any("← terminal: hi" in text for text in seen)
+    assert not any('"type"' in text for text in seen)
 
 
 def test_run_task_refuses_a_platform_without_a_literal_prompt_mechanism(monkeypatch):
