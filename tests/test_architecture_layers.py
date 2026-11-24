@@ -277,7 +277,10 @@ _CORE_IMPORT_CEILINGS = {
 #   +1 gateway/server.py ``_run_harness_chat_turn`` — harness_jobs.
 #   +1 gateway/server.py ``_run_harness_chat_turn`` — workspace resolver.
 #   +1 gateway/server.py ``_run_harness_chat_turn`` — end_turn release.
-DEFERRED_IMPORT_CAP = 1060
+# Harness live output (2026-11-24, reviewed): 1060 -> 1061 (+1):
+#   +1 core/harness_jobs.py ``_flush_progress`` — interop's output redactor
+#      is bound per streamed chunk so diagnostics never leak credentials.
+DEFERRED_IMPORT_CAP = 1061
 
 
 def test_module_level_core_imports_only_shrink():
