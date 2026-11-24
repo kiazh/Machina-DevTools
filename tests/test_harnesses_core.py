@@ -149,7 +149,15 @@ def test_run_task_builds_the_documented_headless_command_and_is_typed(monkeypatc
     assert result.platform == "opencode"
     # H09: the `--` option terminator keeps the prompt out of flag position
     # (all of it becomes `run`'s variadic message).
-    assert result.command == ["/fake/bin/opencode", "run", "--", "fix the build"]
+    assert result.command == [
+        "/fake/bin/opencode",
+        "run",
+        "--format",
+        "json",
+        "--auto",
+        "--",
+        "fix the build",
+    ]
     assert result.ok and result.exit_code == 0
     assert result.stdout == "delegated ok", "ANSI must be stripped"
     assert seen["timeout"] == 12.5
@@ -221,6 +229,9 @@ def test_run_task_not_installed_is_typed_and_never_spawns(monkeypatch):
     assert result.command == [
         "hermes",
         "chat",
+        "--oneshot",
+        "--yolo",
+        "--accept-hooks",
         "--query-file",
         "-",
         "--format",
@@ -253,6 +264,9 @@ for a in "$@"; do
   if [ "$parse" = 1 ]; then
     case "$a" in
       --help|-h) printf 'OPENCODE HELP (usage text, exit 0)\\n'; exit 0 ;;
+      --format|--model|-m) continue ;;
+      --format=*|-m*) continue ;;
+      --auto) continue ;;
       -*) printf 'unknown option %s\\n' "$a" >&2; exit 1 ;;
     esac
   fi
@@ -317,10 +331,21 @@ def test_run_task_delivers_option_like_prompts_literally(monkeypatch, tmp_path):
     stub = _install_stub_harnesses(monkeypatch, tmp_path)
 
     opencode = interop.run_task("opencode", "--help", timeout=10.0)
-    assert opencode.command == [stub["opencode"], "run", "--", "--help"]
+    assert opencode.command == [
+        stub["opencode"],
+        "run",
+        "--format",
+        "json",
+        "--auto",
+        "--",
+        "--help",
+    ]
     assert opencode.ok and opencode.exit_code == 0
     assert opencode.stdout.splitlines() == [
         "ARGV: run",
+        "ARGV: --format",
+        "ARGV: json",
+        "ARGV: --auto",
         "ARGV: --",
         "ARGV: --help",
         "TASK: --help",
@@ -340,6 +365,9 @@ def test_run_task_delivers_option_like_prompts_literally(monkeypatch, tmp_path):
     assert hermes.command == [
         stub["hermes"],
         "chat",
+        "--oneshot",
+        "--yolo",
+        "--accept-hooks",
         "--query-file",
         "-",
         "--format",
