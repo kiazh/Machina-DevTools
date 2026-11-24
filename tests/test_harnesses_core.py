@@ -123,7 +123,7 @@ def test_run_task_known_but_unsupported_platform_is_typed(monkeypatch):
 def test_run_task_builds_the_documented_headless_command_and_is_typed(monkeypatch):
     seen: dict = {}
 
-    def fake_run(argv, *, env=None, timeout=0.0, stdin_text=None, cwd=None):
+    def fake_run(argv, *, env=None, timeout=0.0, stdin_text=None, cwd=None, on_output=None):
         seen["argv"] = list(argv)
         seen["timeout"] = timeout
         seen["env"] = env
@@ -149,7 +149,7 @@ def test_run_task_builds_the_documented_headless_command_and_is_typed(monkeypatc
 def test_run_task_codex_prompt_goes_on_stdin_and_never_touches_argv(monkeypatch):
     seen: dict = {}
 
-    def fake_run(argv, *, env=None, timeout=0.0, stdin_text=None, cwd=None):
+    def fake_run(argv, *, env=None, timeout=0.0, stdin_text=None, cwd=None, on_output=None):
         seen["argv"] = list(argv)
         seen["stdin_text"] = stdin_text
         return _proc(output="delegated ok\n")
