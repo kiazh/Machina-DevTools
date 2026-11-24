@@ -270,7 +270,11 @@ _CORE_IMPORT_CEILINGS = {
 #      without a module-level core edge.
 #   +2 gateway/features/interop.py — ``interop.run`` background branch and
 #      ``interop.jobs`` bind the store only on those methods.
-DEFERRED_IMPORT_CAP = 1052
+# Harness child chats (2026-11-24, reviewed): 1052 -> 1055 (+3):
+#   +1 core/harness_jobs.py ``_create_child_session`` — session_manager.
+#   +1 core/harness_jobs.py ``_append_message`` — context_manager.
+#   +1 core/harness_jobs.py ``_run`` — interop (bound only when a job runs).
+DEFERRED_IMPORT_CAP = 1055
 
 
 def test_module_level_core_imports_only_shrink():
