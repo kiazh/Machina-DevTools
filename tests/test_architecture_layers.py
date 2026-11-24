@@ -258,7 +258,19 @@ _CORE_IMPORT_CEILINGS = {
 #      manager per RPC so importing the feature registry stays light.
 #   +4 cli/auth.py — each Hermes subcommand binds the manager only when that
 #      command runs, preserving the lazy CLI import surface.
-DEFERRED_IMPORT_CAP = 1042
+# Background harness subagents (2026-11-24, reviewed): 1042 -> 1052 (+10):
+#   +1 core/harness_jobs.py — the worker binds ``machina.interop`` only when a
+#      job actually runs, keeping status/tools import-light.
+#   +3 tools/meta_harness.py background branch — harness_jobs,
+#      current_session_id and audit_log are bound only when a session-backed
+#      background run is requested.
+#   +2 tools/meta_harness.py ``harness_job`` — list/status/wait bind the job
+#      store and session scope per call.
+#   +2 gateway/server.py — the listener install/removal binds the job store
+#      without a module-level core edge.
+#   +2 gateway/features/interop.py — ``interop.run`` background branch and
+#      ``interop.jobs`` bind the store only on those methods.
+DEFERRED_IMPORT_CAP = 1052
 
 
 def test_module_level_core_imports_only_shrink():
